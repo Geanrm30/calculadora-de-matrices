@@ -14,7 +14,7 @@
 # =============================================================================
 
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox
 
 from fraccion import desde_texto
 from clasificacion import INCONSISTENTE
@@ -57,7 +57,6 @@ class Aplicacion:
         self.n_ecuaciones = tk.IntVar(value=3)
         self.n_variables = tk.IntVar(value=3)
         self.usar_jordan = tk.BooleanVar(value=True)
-        self.informe_actual = ""
         self.resultado_actual = None
 
         self._construir_encabezado()
@@ -170,13 +169,8 @@ class Aplicacion:
                   activeforeground=BLANCO, relief="flat", pady=8,
                   command=self.resolver).pack(fill="x", pady=(6, 4))
 
-        fila = tk.Frame(marco, bg=GRIS_FONDO)
-        fila.pack(fill="x")
-
-        tk.Button(fila, text="Limpiar", font=FUENTE_NORMAL,
-                  command=self.limpiar).pack(side="left", expand=True, fill="x", padx=(0, 3))
-        tk.Button(fila, text="Guardar informe", font=FUENTE_NORMAL,
-                  command=self.guardar).pack(side="left", expand=True, fill="x", padx=(3, 0))
+        tk.Button(marco, text="Limpiar", font=FUENTE_NORMAL,
+                  command=self.limpiar).pack(fill="x")
 
     def _panel_resultado(self, padre):
         """Cuadro de texto donde se muestra el informe."""
@@ -272,7 +266,6 @@ class Aplicacion:
                 casilla.delete(0, tk.END)
                 casilla.insert(0, "0")
         self.texto.delete("1.0", tk.END)
-        self.informe_actual = ""
         self.resultado_actual = None
         self.etiqueta_estado.config(text="Ingrese el sistema y presione RESOLVER.",
                                     fg=GRIS_TEXTO)
@@ -319,7 +312,6 @@ class Aplicacion:
                                  "Ocurrió un problema: {}".format(error))
             return
 
-        self.informe_actual = informe
         self.resultado_actual = resultado
         self.mostrar_informe(informe)
 
@@ -352,30 +344,6 @@ class Aplicacion:
                 self.texto.tag_add("error", inicio, fin)
             elif "CUMPLE" in linea or "Verificación superada" in linea:
                 self.texto.tag_add("exito", inicio, fin)
-
-    def guardar(self):
-        """Guarda el informe mostrado en un archivo de texto."""
-        if self.informe_actual == "":
-            messagebox.showinfo("Sin informe",
-                                "Primero resuelva un sistema.")
-            return
-
-        ruta = filedialog.asksaveasfilename(
-            defaultextension=".txt",
-            filetypes=[("Archivo de texto", "*.txt")],
-            initialfile="reporte.txt")
-
-        if not ruta:
-            return
-
-        try:
-            archivo = open(ruta, "w", encoding="utf-8")
-            archivo.write(self.informe_actual)
-            archivo.close()
-            messagebox.showinfo("Guardado", "Informe guardado en:\n{}".format(ruta))
-        except OSError as error:
-            messagebox.showerror("Error", "No se pudo guardar: {}".format(error))
-
 
 def main():
     raiz = tk.Tk()

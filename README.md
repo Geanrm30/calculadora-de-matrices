@@ -173,5 +173,3 @@ ecuaciones, filas de ceros, coeficientes fraccionarios y sistemas de 8x8.
 - El programa admite sistemas de hasta 8 x 8.
 - La casilla **Incluir forma escalonada reducida** decide si el programa
   continúa hasta la matriz identidad y muestra esos pasos en el informe.
-- El botón **Guardar informe** exporta todo el desarrollo a un archivo
-  `.txt`, útil para adjuntarlo al reporte de la actividad.

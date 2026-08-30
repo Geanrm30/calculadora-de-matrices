@@ -4,9 +4,8 @@
 #  Convierte el diccionario devuelto por resolutor.resolver() en un informe
 #  de texto completo.
 #
-#  Al estar desacoplado de la interfaz, el mismo informe puede mostrarse en
-#  pantalla, exportarse a un archivo o redirigirse a otro destino sin
-#  duplicar la logica de presentacion.
+#  Al estar desacoplado de la interfaz, mantiene separadas la logica de
+#  presentacion y la interfaz grafica.
 # =============================================================================
 
 from formato import texto_matriz, texto_sistema, separador, subtitulo
@@ -95,6 +94,9 @@ def seccion_jordan(resultado):
 def seccion_clasificacion(resultado, numero):
     """Rangos y tipo de sistema."""
     analisis = resultado["analisis"]
+    columnas_pivote = resultado["columnas_pivote"]
+    numeros_pivote = ", ".join(str(c + 1) for c in columnas_pivote)
+    variables_basicas = ", ".join("x{}".format(c + 1) for c in columnas_pivote)
 
     lineas = []
     lineas.append(subtitulo("{}. CLASIFICACIÓN DEL SISTEMA".format(numero)))
@@ -102,6 +104,8 @@ def seccion_clasificacion(resultado, numero):
     lineas.append("  Rango de A          : {}".format(analisis["rango_A"]))
     lineas.append("  Rango de [A | b]    : {}".format(analisis["rango_Ab"]))
     lineas.append("  Número de variables : {}".format(analisis["n_vars"]))
+    lineas.append("  Columnas pivote     : {}".format(numeros_pivote))
+    lineas.append("  Variables básicas   : {}".format(variables_basicas))
 
     if analisis["tipo"] == INCONSISTENTE:
         lineas.append("")
