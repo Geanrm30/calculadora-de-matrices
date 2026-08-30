@@ -126,22 +126,35 @@ class Aplicacion:
                       row=2, column=0, columnspan=2, pady=(8, 0), sticky="we")
 
     def _panel_matriz(self, padre):
-        """
-        Cuadrícula donde se escriben los coeficientes.
-        Las casillas se crean en 'self.contenedor', que se vacía y se vuelve
-        a llenar cada vez que cambia el tamaño del sistema.
-        """
+        """Cuadrícula con barras de scroll fijas mediante grid."""
         marco = tk.LabelFrame(padre, text=" Matriz aumentada [A | b] ", bg=GRIS_FONDO,
                               fg=GRIS_TEXTO, font=FUENTE_ETIQUETA, padx=8, pady=8)
         marco.pack(fill="both", expand=True, pady=(10, 8))
 
-        tk.Label(marco, text="Se aceptan enteros (-7), fracciones (3/4) y decimales (2.5).",
+        tk.Label(marco, text="Se aceptan enteros (-7), fracciones (3/4), decimales (2.5) y raíces (√4).",
                  bg=GRIS_FONDO, fg="#555555", font=("Segoe UI", 8),
-                 justify="left", wraplength=320).pack(side="bottom", anchor="w",
-                                                      pady=(6, 0))
+                 justify="left", wraplength=320).pack(side="bottom", anchor="w", pady=(6, 0))
 
-        self.contenedor = tk.Frame(marco, bg=GRIS_FONDO)
-        self.contenedor.pack(anchor="nw")
+        # Estructura de Scroll
+        self.marco_canvas = tk.Frame(marco, bg=GRIS_FONDO)
+        self.marco_canvas.pack(fill="both", expand=True, anchor="nw")
+        
+        self.marco_canvas.grid_rowconfigure(0, weight=1)
+        self.marco_canvas.grid_columnconfigure(0, weight=1)
+
+        self.canvas = tk.Canvas(self.marco_canvas, bg=GRIS_FONDO, highlightthickness=0)
+        self.scroll_y = tk.Scrollbar(self.marco_canvas, orient="vertical", command=self.canvas.yview)
+        self.scroll_x = tk.Scrollbar(self.marco_canvas, orient="horizontal", command=self.canvas.xview)
+        
+        self.canvas.configure(yscrollcommand=self.scroll_y.set, xscrollcommand=self.scroll_x.set)
+        
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        self.scroll_y.grid(row=0, column=1, sticky="ns")
+        self.scroll_x.grid(row=1, column=0, sticky="ew")
+
+        self.contenedor = tk.Frame(self.canvas, bg=GRIS_FONDO)
+        self.ventana_canvas = self.canvas.create_window((0, 0), window=self.contenedor, anchor="nw")
+        self.contenedor.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
 
     def _panel_acciones(self, padre):
         """Botones y opciones, anclados al fondo del panel izquierdo."""

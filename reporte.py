@@ -155,7 +155,7 @@ def seccion_solucion(resultado, numero):
     expresiones = resultado["expresiones"]
     libres = resultado["libres"]
 
-    lineas.append("\n  Solución general (en función de las variables libres):")
+    lineas.append("\n  Solución general parametrizada:")
     lineas.append("")
     for j in range(n_vars):
         if j in libres:
@@ -163,6 +163,27 @@ def seccion_solucion(resultado, numero):
         else:
             lineas.append("  x{} = {}".format(
                 j + 1, texto_expresion(expresiones[j], libres)))
+
+    # Forma Vectorial
+    lineas.append("\n  Solución en forma vectorial:")
+    vec_const = []
+    vec_params = {k: [] for k in libres}
+
+    for j in range(n_vars):
+        if j in libres:
+            vec_const.append("0")
+            for k in libres:
+                vec_params[k].append("1" if k == j else "0")
+        else:
+            expr = expresiones[j]
+            vec_const.append(str(expr[0]))
+            for idx, k in enumerate(libres):
+                vec_params[k].append(str(expr[idx + 1]))
+
+    vector_str = "  x = [" + ", ".join(vec_const) + "]^T"
+    for k in libres:
+        vector_str += "\n      + x{} * [".format(k + 1) + ", ".join(vec_params[k]) + "]^T"
+    lineas.append(vector_str)
 
     lineas.append("\n  Solución particular tomando todas las variables libres = 0:")
     lineas.append("")
@@ -204,8 +225,8 @@ def seccion_verificacion(resultado, numero):
     lineas.append("")
     for r in resultado["verificacion"]:
         estado = "CUMPLE" if r["correcto"] else "FALLA"
-        lineas.append("     Ecuación {}: obtenido = {} | esperado = {}  [{}]".format(
-            r["ecuacion"], r["obtenido"], r["esperado"], estado))
+        lineas.append("     Ecuación {}: {} = {} | esperado = {}  [{}]".format(
+            r["ecuacion"], r["operacion"], r["obtenido"], r["esperado"], estado))
 
     lineas.append("")
     if resultado["todo_correcto"]:

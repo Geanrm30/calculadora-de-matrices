@@ -29,18 +29,26 @@ def verificar_valores(matriz_original, n_vars, x):
     for i in range(len(matriz_original)):
         fila = matriz_original[i]
 
-        # Producto de la fila de A por el vector solucion
         obtenido = Fraccion(0)
+        cadena_operacion = []
+        
         for j in range(n_vars):
             obtenido = obtenido + fila[j] * x[j]
+            if not fila[j].es_cero():
+                cadena_operacion.append("({})({})".format(fila[j], x[j]))
 
         esperado = fila[n_vars]
         correcto = (obtenido == esperado)
         if not correcto:
             todo_correcto = False
 
+        # Ensamblar cadena visual
+        texto_op = " + ".join(cadena_operacion) if cadena_operacion else "0"
+        texto_op = texto_op.replace("+ (-", "- (")
+
         resultados.append({
             "ecuacion": i + 1,
+            "operacion": texto_op, # NUEVO
             "obtenido": obtenido,
             "esperado": esperado,
             "correcto": correcto,

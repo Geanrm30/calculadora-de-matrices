@@ -38,16 +38,14 @@ class Fraccion:
     # -----------------------------------------------------------------
     # Construccion
     # -----------------------------------------------------------------
-    def __init__(self, numerador, denominador=1):
+    def __init__(self, numerador, denominador=1, simbolo=None):
         if denominador == 0:
             raise ZeroDivisionError("El denominador no puede ser cero.")
 
-        # El signo siempre vive en el numerador
         if denominador < 0:
             numerador = -numerador
             denominador = -denominador
 
-        # Simplificacion inmediata: evita que los numeros crezcan sin control
         divisor = mcd(numerador, denominador)
         if divisor > 1:
             numerador = numerador // divisor
@@ -55,6 +53,7 @@ class Fraccion:
 
         self.num = numerador
         self.den = denominador
+        self.simbolo = simbolo
 
     # -----------------------------------------------------------------
     # Conversion de otros tipos a Fraccion
@@ -125,12 +124,21 @@ class Fraccion:
     # Representacion en texto
     # -----------------------------------------------------------------
     def __str__(self):
+        # Si conserva el símbolo intacto (no ha sido operada)
+        if hasattr(self, 'simbolo') and self.simbolo is not None:
+            return self.simbolo
+            
+        # Si es un número entero
         if self.den == 1:
             return str(self.num)
+            
+        # Si la fracción es gigante (producto de operar con raíces), 
+        # se muestra como decimal corto a 4 cifras para no deformar la matriz visualmente.
+        if self.den > 9999:
+            return "{:.4f}".format(self.num / self.den)
+            
+        # Fracción normal pequeña
         return "{}/{}".format(self.num, self.den)
-
-    def __repr__(self):
-        return self.__str__()
 
 
 # ---------------------------------------------------------------------------
@@ -146,12 +154,37 @@ def desde_texto(texto):
         decimal     ->  2.5   -0.25   (se convierte a fraccion exacta)
     Lanza ValueError si el texto no es valido.
     """
+
     texto = texto.strip().replace(" ", "")
     if texto == "":
         raise ValueError("Valor vacio.")
 
     # Se acepta la coma como separador decimal
     texto = texto.replace(",", ".")
+
+    # Caso especial: Raíz cuadrada con símbolo √ (Alt+251)
+    if texto.startswith("√") or (texto.startswith("sqrt(") and texto.endswith(")")):
+        if texto.startswith("√"):
+            adentro = texto[1:]
+        else:
+            adentro = texto.split("(")[1][:-1]
+            
+        try:
+            valor_interno = float(adentro)
+            if valor_interno < 0:
+                raise ValueError("Raíz negativa")
+            raiz_calculada = valor_interno ** 0.5
+            
+            if raiz_calculada.is_integer():
+                return Fraccion(int(raiz_calculada), 1)
+            else:
+                decimales = "{:.6f}".format(raiz_calculada).split(".")
+                numerador = int(decimales[0] + decimales[1])
+                denominador = 10 ** 6
+                # Se guarda como fracción exacta pero conserva el símbolo visual
+                return Fraccion(numerador, denominador, simbolo="√" + adentro)
+        except ValueError:
+            raise ValueError("Valor inválido dentro de la raíz.")
 
     # Caso 1: fraccion escrita como a/b
     if "/" in texto:
