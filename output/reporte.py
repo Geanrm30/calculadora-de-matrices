@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-#  MODULO: reporte.py
+#  MODULO: output/reporte.py
 #  Convierte el diccionario devuelto por resolutor.resolver() en un informe
 #  de texto completo.
 #
@@ -8,9 +8,10 @@
 #  presentacion y la interfaz grafica.
 # =============================================================================
 
-from formato import texto_matriz, texto_sistema, separador, subtitulo
-from solucion import texto_expresion
-from clasificacion import DETERMINADO, INDETERMINADO, INCONSISTENTE
+from core.formato import (texto_matriz, texto_sistema, separador, subtitulo,
+                           nombre_variable)
+from solver.solucion import texto_expresion
+from solver.clasificacion import DETERMINADO, INDETERMINADO, INCONSISTENTE
 
 
 # ---------------------------------------------------------------------------
@@ -40,7 +41,7 @@ def seccion_datos(resultado):
 
 
 def seccion_eliminacion(resultado):
-    """Todos los pasos de la reducción a forma escalonada."""
+    """Todos los pasos de la reduccion a forma escalonada."""
     n_vars = resultado["n_vars"]
     pasos = resultado["pasos"]
 
@@ -96,7 +97,7 @@ def seccion_clasificacion(resultado, numero):
     analisis = resultado["analisis"]
     columnas_pivote = resultado["columnas_pivote"]
     numeros_pivote = ", ".join(str(c + 1) for c in columnas_pivote)
-    variables_basicas = ", ".join("x{}".format(c + 1) for c in columnas_pivote)
+    variables_basicas = ", ".join(nombre_variable(c) for c in columnas_pivote)
 
     lineas = []
     lineas.append(subtitulo("{}. CLASIFICACIÓN DEL SISTEMA".format(numero)))
@@ -119,7 +120,7 @@ def seccion_clasificacion(resultado, numero):
 
     else:
         libres = analisis["libres"]
-        nombres = ", ".join("x{}".format(c + 1) for c in libres)
+        nombres = ", ".join(nombre_variable(c) for c in libres)
         lineas.append("")
         lineas.append("  El rango es menor que el número de variables.")
         lineas.append("  Variables libres ({}): {}".format(len(libres), nombres))
@@ -149,13 +150,12 @@ def seccion_solucion(resultado, numero):
         for j in range(n_vars):
             valor = x[j]
             if valor.den == 1:
-                lineas.append("  x{} = {}".format(j + 1, valor))
+                lineas.append("  {} = {}".format(nombre_variable(j), valor))
             else:
-                lineas.append("  x{} = {}   (≈ {:.6f})".format(
-                    j + 1, valor, valor.a_decimal()))
+                lineas.append("  {} = {}   (≈ {:.6f})".format(
+                    nombre_variable(j), valor, valor.a_decimal()))
         return "\n".join(lineas)
 
-    # Caso indeterminado
     expresiones = resultado["expresiones"]
     libres = resultado["libres"]
 
@@ -163,12 +163,12 @@ def seccion_solucion(resultado, numero):
     lineas.append("")
     for j in range(n_vars):
         if j in libres:
-            lineas.append("  x{} = x{}   (parámetro libre)".format(j + 1, j + 1))
+            lineas.append("  {} = {}   (parámetro libre)".format(
+                nombre_variable(j), nombre_variable(j)))
         else:
-            lineas.append("  x{} = {}".format(
-                j + 1, texto_expresion(expresiones[j], libres)))
+            lineas.append("  {} = {}".format(
+                nombre_variable(j), texto_expresion(expresiones[j], libres)))
 
-    # Forma Vectorial
     lineas.append("\n  Solución en forma vectorial:")
     vec_const = []
     vec_params = {k: [] for k in libres}
@@ -186,19 +186,19 @@ def seccion_solucion(resultado, numero):
 
     vector_str = "  x = [" + ", ".join(vec_const) + "]^T"
     for k in libres:
-        vector_str += "\n      + x{} * [".format(k + 1) + ", ".join(vec_params[k]) + "]^T"
+        vector_str += "\n      + {} * [".format(nombre_variable(k)) + ", ".join(vec_params[k]) + "]^T"
     lineas.append(vector_str)
 
     lineas.append("\n  Solución particular tomando todas las variables libres = 0:")
     lineas.append("")
     x = resultado["solucion"]
-    valores = ", ".join("x{} = {}".format(j + 1, x[j]) for j in range(n_vars))
+    valores = ", ".join("{} = {}".format(nombre_variable(j), x[j]) for j in range(n_vars))
     lineas.append("  " + valores)
     return "\n".join(lineas)
 
 
 def seccion_verificacion(resultado, numero):
-    """Sustitución en el sistema original."""
+    """Sustitucion en el sistema original."""
     tipo = resultado["analisis"]["tipo"]
 
     lineas = []
@@ -209,7 +209,6 @@ def seccion_verificacion(resultado, numero):
         lineas.append("  No se realiza verificación porque no hay solución que sustituir.")
         return "\n".join(lineas)
 
-    # Verificacion simbolica (solo en el caso indeterminado)
     if resultado["verificacion_general"] is not None:
         lineas.append("\n  a) Solución general sustituida en el sistema original.")
         lineas.append("     Se comprueba que los parámetros se cancelan, es decir que")

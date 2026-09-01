@@ -1,21 +1,16 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-#  MODULO: clasificacion.py
+#  MODULO: solver/clasificacion.py
 #  Clasificacion del sistema a partir de la matriz escalonada.
 #
 #  Criterio (teorema de Rouche-Frobenius):
 #      rango(A) < rango([A|b])       -> INCONSISTENTE      (sin solucion)
 #      rango(A) = rango([A|b]) = n   -> CONSISTENTE DETERMINADO   (unica)
 #      rango(A) = rango([A|b]) < n   -> CONSISTENTE INDETERMINADO (infinitas)
-#
-#  Ademas se detecta el caso HOMOGENEO (todos los terminos independientes
-#  iguales a cero), que siempre es consistente porque admite al menos la
-#  solucion trivial.
 # =============================================================================
 
-from matriz import fila_de_coeficientes_nulos
+from core.matriz import fila_de_coeficientes_nulos
 
-# Etiquetas devueltas por clasificar()
 INCONSISTENTE = "inconsistente"
 DETERMINADO = "determinado"
 INDETERMINADO = "indeterminado"
@@ -56,7 +51,6 @@ def clasificar(M_escalonada, n_vars, columnas_pivote, M_original):
     rango_Ab = rango_A + (1 if fila_contradiccion is not None else 0)
     libres = variables_libres(n_vars, columnas_pivote)
 
-    # Determinacion del tipo
     if fila_contradiccion is not None:
         tipo = INCONSISTENTE
         nombre = "SISTEMA INCONSISTENTE: SIN SOLUCIÓN"

@@ -10,5 +10,4 @@ build/
 .venv/
 venv/
 *.log
-*.txt
-!README.md
+.claude/

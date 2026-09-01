@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-#  MODULO: fraccion.py
+#  MODULO: core/fraccion.py
 #  Aritmetica exacta con numeros racionales.
 #
 #  Motivo: la eliminacion gaussiana requiere determinar si un elemento es
@@ -103,7 +103,6 @@ class Fraccion:
     # -----------------------------------------------------------------
     def __eq__(self, otro):
         otro = self._convertir(otro)
-        # Al estar siempre simplificadas, basta comparar numerador y denominador
         return self.num == otro.num and self.den == otro.den
 
     def es_cero(self):
@@ -124,20 +123,12 @@ class Fraccion:
     # Representacion en texto
     # -----------------------------------------------------------------
     def __str__(self):
-        # Si conserva el símbolo intacto (no ha sido operada)
         if hasattr(self, 'simbolo') and self.simbolo is not None:
             return self.simbolo
-            
-        # Si es un número entero
         if self.den == 1:
             return str(self.num)
-            
-        # Si la fracción es gigante (producto de operar con raíces), 
-        # se muestra como decimal corto a 4 cifras para no deformar la matriz visualmente.
         if self.den > 9999:
             return "{:.4f}".format(self.num / self.den)
-            
-        # Fracción normal pequeña
         return "{}/{}".format(self.num, self.den)
 
 
@@ -152,41 +143,37 @@ def desde_texto(texto):
         entero      ->  -7
         fraccion    ->  3/4   -5/2
         decimal     ->  2.5   -0.25   (se convierte a fraccion exacta)
+        raiz        ->  sqrt(2)  o  √2
     Lanza ValueError si el texto no es valido.
     """
-
     texto = texto.strip().replace(" ", "")
     if texto == "":
         raise ValueError("Valor vacio.")
 
-    # Se acepta la coma como separador decimal
     texto = texto.replace(",", ".")
 
-    # Caso especial: Raíz cuadrada con símbolo √ (Alt+251)
     if texto.startswith("√") or (texto.startswith("sqrt(") and texto.endswith(")")):
         if texto.startswith("√"):
             adentro = texto[1:]
         else:
             adentro = texto.split("(")[1][:-1]
-            
+
         try:
             valor_interno = float(adentro)
             if valor_interno < 0:
-                raise ValueError("Raíz negativa")
+                raise ValueError("Raiz negativa")
             raiz_calculada = valor_interno ** 0.5
-            
+
             if raiz_calculada.is_integer():
                 return Fraccion(int(raiz_calculada), 1)
             else:
                 decimales = "{:.6f}".format(raiz_calculada).split(".")
                 numerador = int(decimales[0] + decimales[1])
                 denominador = 10 ** 6
-                # Se guarda como fracción exacta pero conserva el símbolo visual
                 return Fraccion(numerador, denominador, simbolo="√" + adentro)
         except ValueError:
-            raise ValueError("Valor inválido dentro de la raíz.")
+            raise ValueError("Valor invalido dentro de la raiz.")
 
-    # Caso 1: fraccion escrita como a/b
     if "/" in texto:
         partes = texto.split("/")
         if len(partes) != 2:
@@ -197,7 +184,6 @@ def desde_texto(texto):
             raise ValueError("El denominador no puede ser cero.")
         return Fraccion(numerador, denominador)
 
-    # Caso 2: decimal -> se pasa a fraccion exacta (2.5 = 25/10 = 5/2)
     if "." in texto:
         partes = texto.split(".")
         if len(partes) != 2:
@@ -217,10 +203,8 @@ def desde_texto(texto):
             numerador = -numerador
         return Fraccion(numerador, denominador)
 
-    # Caso 3: entero
     return Fraccion(int(texto), 1)
 
 
-# Constantes de uso frecuente
 CERO = Fraccion(0)
 UNO = Fraccion(1)

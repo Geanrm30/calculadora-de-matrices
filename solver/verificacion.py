@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-#  MODULO: verificacion.py
+#  MODULO: solver/verificacion.py
 #  Comprobacion automatica de la solucion obtenida.
 #
 #  La sustitucion se hace SIEMPRE en el sistema original (la copia guardada
@@ -11,12 +11,8 @@
 #  una comparacion con tolerancia.
 # =============================================================================
 
-from fraccion import Fraccion
+from core.fraccion import Fraccion
 
-
-# ---------------------------------------------------------------------------
-# Verificacion de una solucion concreta
-# ---------------------------------------------------------------------------
 
 def verificar_valores(matriz_original, n_vars, x):
     """
@@ -31,7 +27,7 @@ def verificar_valores(matriz_original, n_vars, x):
 
         obtenido = Fraccion(0)
         cadena_operacion = []
-        
+
         for j in range(n_vars):
             obtenido = obtenido + fila[j] * x[j]
             if not fila[j].es_cero():
@@ -42,13 +38,12 @@ def verificar_valores(matriz_original, n_vars, x):
         if not correcto:
             todo_correcto = False
 
-        # Ensamblar cadena visual
         texto_op = " + ".join(cadena_operacion) if cadena_operacion else "0"
         texto_op = texto_op.replace("+ (-", "- (")
 
         resultados.append({
             "ecuacion": i + 1,
-            "operacion": texto_op, # NUEVO
+            "operacion": texto_op,
             "obtenido": obtenido,
             "esperado": esperado,
             "correcto": correcto,
@@ -57,10 +52,6 @@ def verificar_valores(matriz_original, n_vars, x):
     return resultados, todo_correcto
 
 
-# ---------------------------------------------------------------------------
-# Verificacion de la solucion general (caso indeterminado)
-# ---------------------------------------------------------------------------
-
 def verificar_expresiones(matriz_original, n_vars, expresiones, libres):
     """
     Comprueba la solucion general SIN dar valores a los parametros.
@@ -68,10 +59,6 @@ def verificar_expresiones(matriz_original, n_vars, expresiones, libres):
     Sustituye en cada ecuacion las expresiones simbolicas y verifica que:
       - el termino independiente resultante sea igual a b, y
       - el coeficiente de cada parametro se cancele (quede en cero).
-
-    Si ambas cosas se cumplen, la ecuacion es valida para CUALQUIER valor
-    de las variables libres, que es justamente lo que significa tener
-    infinitas soluciones.
     """
     ancho = 1 + len(libres)
     resultados = []
@@ -80,7 +67,6 @@ def verificar_expresiones(matriz_original, n_vars, expresiones, libres):
     for i in range(len(matriz_original)):
         fila = matriz_original[i]
 
-        # Combinacion lineal de las expresiones segun los coeficientes de la fila
         acumulado = [Fraccion(0) for _ in range(ancho)]
         for j in range(n_vars):
             if not fila[j].es_cero():
@@ -89,7 +75,6 @@ def verificar_expresiones(matriz_original, n_vars, expresiones, libres):
 
         constante_ok = (acumulado[0] == fila[n_vars])
 
-        # Todos los parametros deben cancelarse
         parametros_ok = True
         for k in range(1, ancho):
             if not acumulado[k].es_cero():

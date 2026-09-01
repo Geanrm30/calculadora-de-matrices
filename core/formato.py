@@ -1,12 +1,19 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-#  MODULO: formato.py
+#  MODULO: core/formato.py
 #  Construccion de las cadenas de texto que se muestran al usuario.
 #
 #  Ninguna funcion de este modulo imprime: todas DEVUELVEN cadenas. El
 #  destino final del texto (pantalla, archivo u otro) queda a cargo del
 #  modulo que lo consuma.
 # =============================================================================
+
+_SUBSCRIPTS = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+
+
+def subindice(n):
+    """Convierte un numero a digitos subindice Unicode: 1 -> ₁, 12 -> ₁₂."""
+    return str(n).translate(_SUBSCRIPTS)
 
 
 # ---------------------------------------------------------------------------
@@ -51,9 +58,9 @@ def texto_matriz(M, n_vars, titulo=None, sangria="  "):
 
 def texto_coeficiente(magnitud):
     """
-    Escribe el coeficiente que acompaña a una variable.
-    El 1 se omite (x2, no 1x2) y las fracciones van entre paréntesis
-    para que (3/2)x2 no se confunda con 3/(2x2).
+    Escribe el coeficiente que acompana a una variable.
+    El 1 se omite (x₂, no 1x₂) y las fracciones van entre parentesis
+    para que (3/2)x₂ no se confunda con 3/(2x₂).
     """
     if magnitud.es_uno():
         return ""
@@ -64,30 +71,29 @@ def texto_coeficiente(magnitud):
 
 def nombre_variable(indice, nombres=None):
     """
-    Nombre de la variable numero 'indice'. Por defecto x1, x2, x3...
-    El parametro 'nombres' permite otra numeracion, que hace falta cuando
-    se dibuja un corte y las dos variables que quedan no son x1 y x2.
+    Nombre de la variable numero 'indice'. Por defecto x₁, x₂, x₃...
+    Usa digitos subindice Unicode para notacion matematica correcta.
+    El parametro 'nombres' permite otra numeracion, util al mostrar un
+    subconjunto de variables en la solucion parametrizada.
     """
     if nombres is not None and indice < len(nombres):
         return nombres[indice]
-    return "x{}".format(indice + 1)
+    return "x" + subindice(indice + 1)
 
 
 def texto_termino(coeficiente, indice_variable, es_primero, nombres=None):
     """
-    Escribe un termino del tipo '+ 3x2' cuidando el signo y omitiendo
-    los coeficientes 1 y -1 (se escribe x2, no 1x2).
+    Escribe un termino del tipo '+ 3x₂' cuidando el signo y omitiendo
+    los coeficientes 1 y -1 (se escribe x₂, no 1x₂).
     """
     if coeficiente.es_cero():
         return ""
 
-    # Signo
     if es_primero:
         signo = "-" if coeficiente.es_negativo() else ""
     else:
         signo = " - " if coeficiente.es_negativo() else " + "
 
-    # Valor absoluto del coeficiente
     magnitud = -coeficiente if coeficiente.es_negativo() else coeficiente
     cuerpo = "{}{}".format(texto_coeficiente(magnitud),
                            nombre_variable(indice_variable, nombres))
@@ -107,7 +113,7 @@ def texto_ecuacion(fila, n_vars, nombres=None):
             primero = False
 
     if partes == "":
-        partes = "0"  # todos los coeficientes eran cero
+        partes = "0"
 
     return "{} = {}".format(partes, fila[n_vars])
 
