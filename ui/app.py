@@ -3,8 +3,9 @@ import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
 
 from core.fraccion import desde_texto
-from core.formato import subindice, nombre_variable, texto_ecuacion
+from core.formato import subindice, nombre_variable, texto_ecuacion, subtitulo
 from solver.clasificacion import INCONSISTENTE, DETERMINADO, INDETERMINADO
+from solver.solucion import texto_expresion
 from solver.resolutor import resolver as _resolver
 from output.reporte import (separador, seccion_clasificacion,
                              seccion_solucion, seccion_verificacion)
@@ -314,7 +315,12 @@ class Aplicacion:
         self.notebook.add(tab, text="  Solución y verificación  ")
         self.tab_solucion = tab
 
-        # widget de texto (informe estilo antiguo)
+        # Todo -- matriz, clasificación, solución (con el vector dibujado)
+        # y verificación -- vive en UNA sola area que se desplaza junta,
+        # en vez de un panel fijo arriba y un cuadro de texto aparte
+        # abajo. Los widgets (matriz, vector) se incrustan dentro del
+        # propio Text con window_create, intercalados con las lineas de
+        # texto en el orden correcto.
         marco = tk.Frame(tab, bg=FONDO)
         marco.pack(fill="both", expand=True, padx=2, pady=2)
 
@@ -322,7 +328,7 @@ class Aplicacion:
         hsb = ttk.Scrollbar(tab,   orient="horizontal")
 
         self._txt_sol = tk.Text(marco, wrap="none", font=F_MONO,
-                                 bg=PANEL, fg=TEXTO,
+                                 bg=FONDO, fg=TEXTO,
                                  insertbackground=NARANJA,
                                  selectbackground="#2D3B5A",
                                  selectforeground=AZUL,
@@ -410,27 +416,85 @@ class Aplicacion:
                      relief="flat", highlightthickness=1, highlightbackground=BORDE
                      ).grid(row=i + 1, column=n_vars + 1, padx=1, pady=1, sticky="nsew")
 
-    def _escribir_txt(self, widget, contenido):
-        widget.config(state="normal")
-        widget.delete("1.0", tk.END)
-        widget.insert("1.0", contenido)
-        # aplicar tags línea a línea
-        lineas = contenido.split("\n")
-        for num, linea in enumerate(lineas):
-            ini = "{}.0".format(num + 1)
-            fin = "{}.end".format(num + 1)
+    def _dibujar_vector_columna(self, padre, valores, color=TEXTO):
+        """
+        Dibuja un vector como columna entre corchetes -- igual que se
+        escribe a mano en la pizarra -- en vez de texto plano tipo
+        '[3, 0, 1]^T'. Se usa Canvas porque tkinter no tiene un widget
+        de 'vector matematico'; los corchetes son dos lineas verticales.
+        """
+        alto_fila = 24
+        alto = alto_fila * len(valores) + 14
+        ancho = 46
+        lienzo = tk.Canvas(padre, width=ancho, height=alto, bg=FONDO,
+                          highlightthickness=0)
+        lienzo.create_line(6, 5, 6, alto - 5, fill=color, width=2)
+        lienzo.create_line(ancho - 6, 5, ancho - 6, alto - 5, fill=color, width=2)
+        for i, valor in enumerate(valores):
+            y = 16 + i * alto_fila
+            lienzo.create_text(ancho / 2, y, text=str(valor), fill=color, font=F_MONO)
+        return lienzo
+
+    def _crear_frame_matriz_embebido(self, M, n_vars, pivotes):
+        """Crea un Frame con la matriz dibujada, listo para incrustar
+        dentro del Text con window_create."""
+        frame = tk.Frame(self._txt_sol, bg=FONDO)
+        self._dibujar_matriz(frame, M, n_vars, pivotes)
+        return frame
+
+    def _crear_frame_vector(self, resultado):
+        """Crea un Frame con 'x = [vector] + s·[vector]...' dibujado en
+        columnas, listo para incrustar dentro del Text."""
+        expresiones = resultado["expresiones"]
+        libres = resultado["libres"]
+        n_vars = resultado["n_vars"]
+
+        fila = tk.Frame(self._txt_sol, bg=FONDO)
+
+        tk.Label(fila, text="x =", bg=FONDO, fg=TEXTO, font=F_MONO_B
+                 ).pack(side="left", padx=(0, 8))
+
+        constante = [expresiones[j][0] for j in range(n_vars)]
+        self._dibujar_vector_columna(fila, constante, color=TEXTO).pack(side="left")
+
+        for idx, columna in enumerate(libres):
+            tk.Label(fila, text="  +  {} ·".format(nombre_variable(columna)),
+                     bg=FONDO, fg=NARANJA, font=F_MONO_B
+                     ).pack(side="left", padx=(10, 8))
+            vector = [expresiones[j][idx + 1] for j in range(n_vars)]
+            self._dibujar_vector_columna(fila, vector, color=NARANJA).pack(side="left")
+
+        return fila
+
+    def _insertar_texto(self, texto):
+        """Inserta texto en self._txt_sol y aplica los mismos colores
+        (titulo/exito/error) linea por linea, igual que antes hacia el
+        bloque completo -- solo que ahora se hace por partes, porque el
+        contenido se intercala con widgets incrustados."""
+        inicio = int(self._txt_sol.index("end-1c").split(".")[0])
+        self._txt_sol.insert(tk.END, texto + "\n")
+
+        for offset, linea in enumerate(texto.split("\n")):
+            num = inicio + offset
+            ini = "{}.0".format(num)
+            fin = "{}.end".format(num)
             if linea.startswith("---") or linea.startswith("==="):
-                widget.tag_add("titulo", ini, fin)
+                self._txt_sol.tag_add("titulo", ini, fin)
             elif ">>" in linea:
                 if "INCONSISTENTE" in linea:
-                    widget.tag_add("error", ini, fin)
+                    self._txt_sol.tag_add("error", ini, fin)
                 else:
-                    widget.tag_add("exito", ini, fin)
+                    self._txt_sol.tag_add("exito", ini, fin)
             elif "FALLA" in linea:
-                widget.tag_add("error", ini, fin)
+                self._txt_sol.tag_add("error", ini, fin)
             elif "CUMPLE" in linea or "superada" in linea:
-                widget.tag_add("exito", ini, fin)
-        widget.config(state="disabled")
+                self._txt_sol.tag_add("exito", ini, fin)
+
+    def _insertar_widget(self, widget):
+        """Incrusta un widget (matriz o vector dibujado) dentro del flujo
+        del Text, como si fuera una linea mas."""
+        self._txt_sol.window_create(tk.END, window=widget)
+        self._txt_sol.insert(tk.END, "\n\n")
 
     # ──────────────────────────────────────────────────────────
     # Cuadrícula de entrada
@@ -553,7 +617,9 @@ class Aplicacion:
         for b in (self._p_ini, self._p_prev, self._p_next, self._p_fin):
             b.config(state="disabled")
 
-        self._escribir_txt(self._txt_sol, "")
+        self._txt_sol.config(state="normal")
+        self._txt_sol.delete("1.0", tk.END)
+        self._txt_sol.config(state="disabled")
 
     def copiar_informe(self):
         if not self._informe_completo:
@@ -843,25 +909,71 @@ class Aplicacion:
             self._actualizar_proceso()
 
     # ──────────────────────────────────────────────────────────
-    # Tab 2 — Solución y Verificación (informe texto)
+    # Tab 2 — Solución y Verificación (matriz + vectorial + informe texto)
     # ──────────────────────────────────────────────────────────
 
     def _poblar_solucion(self, r, jordan):
-        numero = 3
-        if jordan and r.get("pasos_jordan") is not None:
-            numero = 4
+        self._txt_sol.config(state="normal")
+        self._txt_sol.delete("1.0", tk.END)
 
-        bloques = [
-            separador("="),
-            "  CLASIFICACIÓN · SOLUCIÓN · VERIFICACIÓN",
-            separador("="),
-            seccion_clasificacion(r, numero),
-            seccion_solucion(r, numero + 1),
-            seccion_verificacion(r, numero + 2),
-            "\n" + separador("="),
-        ]
-        texto = "\n".join(bloques)
-        self._escribir_txt(self._txt_sol, texto)
+        self._insertar_texto(separador("="))
+        self._insertar_texto("  CLASIFICACIÓN · SOLUCIÓN · VERIFICACIÓN")
+        self._insertar_texto(separador("="))
+
+        # — Matriz final, incrustada en el mismo flujo —
+        tiene_jordan = jordan and r.get("reducida") is not None
+        matriz_final = r["reducida"] if tiene_jordan else r["escalonada"]
+        titulo_matriz = ("Matriz en forma escalonada reducida (RREF):" if tiene_jordan
+                         else "Matriz en forma escalonada:")
+        self._insertar_texto("\n  " + titulo_matriz)
+        self._insertar_widget(
+            self._crear_frame_matriz_embebido(matriz_final, r["n_vars"], r["columnas_pivote"]))
+
+        # — Clasificación —
+        numero = 4 if tiene_jordan else 3
+        self._insertar_texto(seccion_clasificacion(r, numero))
+
+        # — Solución: justo despues de la clasificación —
+        tipo = r["analisis"]["tipo"]
+        if tipo == INDETERMINADO:
+            numero_sol = numero + 1
+            expresiones = r["expresiones"]
+            libres = r["libres"]
+            n_vars = r["n_vars"]
+
+            self._insertar_texto(subtitulo("{}. SOLUCIÓN".format(numero_sol)))
+            self._insertar_texto("\n  Solución general (forma vectorial):")
+            self._insertar_widget(self._crear_frame_vector(r))
+
+            libres_nombres = ", ".join(nombre_variable(c) for c in libres)
+            self._insertar_texto("  donde {} ∈ ℝ (parámetro libre).".format(libres_nombres))
+
+            self._insertar_texto("\n  Solución general parametrizada:\n")
+            for j in range(n_vars):
+                if j in libres:
+                    texto = "  {} = {}   (parámetro libre)".format(
+                        nombre_variable(j), nombre_variable(j))
+                else:
+                    texto = "  {} = {}".format(
+                        nombre_variable(j), texto_expresion(expresiones[j], libres))
+                self._insertar_texto(texto)
+
+            x = r["solucion"]
+            valores = ", ".join("{} = {}".format(nombre_variable(j), x[j])
+                                for j in range(n_vars))
+            self._insertar_texto("\n  Solución particular tomando todas las variables libres = 0:\n")
+            self._insertar_texto("  " + valores)
+
+            numero_verificacion = numero_sol + 1
+        else:
+            self._insertar_texto(seccion_solucion(r, numero + 1))
+            numero_verificacion = numero + 2
+
+        # — Verificación —
+        self._insertar_texto(seccion_verificacion(r, numero_verificacion))
+        self._insertar_texto("\n" + separador("="))
+
+        self._txt_sol.config(state="disabled")
 
 
 def main():
