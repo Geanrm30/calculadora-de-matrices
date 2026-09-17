@@ -59,6 +59,7 @@ class Aplicacion:
         self.n_ecuaciones = tk.IntVar(value=3)
         self.n_variables  = tk.IntVar(value=3)
         self.usar_jordan  = tk.BooleanVar(value=True)
+        self.incluir_vectores = tk.BooleanVar(value=False)
         self.resultado_actual  = None
         self._informe_completo = ""
 
@@ -119,6 +120,14 @@ class Aplicacion:
                  bg=PANEL, fg=TEXTO, font=F_TITULO).pack(anchor="sw", pady=(14, 0))
         tk.Label(cnt, text="Método matricial  ·  operaciones elementales por filas",
                  bg=PANEL, fg=MUTED, font=F_SUBTIT).pack(anchor="nw", pady=(0, 10))
+
+        btn_volver = tk.Button(barra, text="Volver al Menú", font=F_BTN_SM,
+                               bg=BORDE, fg=TEXTO,
+                               activebackground=MUTED, activeforeground=PANEL,
+                               relief="flat", padx=15, pady=4, cursor="hand2",
+                               command=self.volver_menu)
+        btn_volver.pack(side="right", padx=20)
+        self._hover(btn_volver, MUTED, BORDE)
 
     def _construir_cuerpo(self):
         self.paned = ttk.PanedWindow(self.raiz, orient="horizontal")
@@ -236,6 +245,12 @@ class Aplicacion:
                        bg=FONDO, fg=TEXTO, selectcolor=SUPERF,
                        activebackground=FONDO, activeforeground=TEXTO,
                        font=("Segoe UI", 9)).pack(anchor="w")
+
+        tk.Checkbutton(m, text="Incluir análisis de vectores en Rn (Combinación e Independencia)",
+                       variable=self.incluir_vectores,
+                       bg=FONDO, fg=TEXTO, selectcolor=SUPERF,
+                       activebackground=FONDO, activeforeground=TEXTO,
+                       font=("Segoe UI", 9)).pack(anchor="w", pady=(2, 0))
 
         br = tk.Button(m, text="RESOLVER", font=F_BTN,
                        bg=NARANJA, fg=PANEL,
@@ -575,6 +590,7 @@ class Aplicacion:
 
         n_vars = self.n_variables.get()
         jordan = self.usar_jordan.get()
+        vectores = self.incluir_vectores.get()
 
         try:
             resultado = _resolver(matriz, n_vars, aplicar_jordan=jordan)
@@ -595,7 +611,7 @@ class Aplicacion:
         self.lbl_estado.config(text=nombre, fg=color)
 
         self._poblar_proceso(resultado)
-        self._poblar_solucion(resultado, jordan)
+        self._poblar_solucion(resultado, jordan, vectores)
         self.notebook.select(0)
 
     def limpiar(self):
@@ -620,6 +636,11 @@ class Aplicacion:
         self._txt_sol.config(state="normal")
         self._txt_sol.delete("1.0", tk.END)
         self._txt_sol.config(state="disabled")
+
+    def volver_menu(self):
+        self.raiz.destroy()
+        import main
+        main.iniciar_menu()
 
     def copiar_informe(self):
         if not self._informe_completo:
@@ -912,7 +933,7 @@ class Aplicacion:
     # Tab 2 — Solución y Verificación (matriz + vectorial + informe texto)
     # ──────────────────────────────────────────────────────────
 
-    def _poblar_solucion(self, r, jordan):
+    def _poblar_solucion(self, r, jordan, vectores=False):
         self._txt_sol.config(state="normal")
         self._txt_sol.delete("1.0", tk.END)
 
@@ -931,17 +952,24 @@ class Aplicacion:
 
         # — Clasificación —
         numero = 4 if tiene_jordan else 3
+        from output.reporte import seccion_clasificacion, seccion_solucion, seccion_verificacion
+        
         self._insertar_texto(seccion_clasificacion(r, numero))
+        numero += 1
+
+        if vectores:
+            from output.reporte import seccion_vectores
+            self._insertar_texto(seccion_vectores(r, numero))
+            numero += 1
 
         # — Solución: justo despues de la clasificación —
         tipo = r["analisis"]["tipo"]
         if tipo == INDETERMINADO:
-            numero_sol = numero + 1
             expresiones = r["expresiones"]
             libres = r["libres"]
             n_vars = r["n_vars"]
 
-            self._insertar_texto(subtitulo("{}. SOLUCIÓN".format(numero_sol)))
+            self._insertar_texto(subtitulo("{}. SOLUCIÓN".format(numero)))
             self._insertar_texto("\n  Solución general (forma vectorial):")
             self._insertar_widget(self._crear_frame_vector(r))
 
@@ -964,10 +992,10 @@ class Aplicacion:
             self._insertar_texto("\n  Solución particular tomando todas las variables libres = 0:\n")
             self._insertar_texto("  " + valores)
 
-            numero_verificacion = numero_sol + 1
+            numero_verificacion = numero + 1
         else:
-            self._insertar_texto(seccion_solucion(r, numero + 1))
-            numero_verificacion = numero + 2
+            self._insertar_texto(seccion_solucion(r, numero))
+            numero_verificacion = numero + 1
 
         # — Verificación —
         self._insertar_texto(seccion_verificacion(r, numero_verificacion))
