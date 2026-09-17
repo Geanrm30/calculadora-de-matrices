@@ -129,6 +129,39 @@ def seccion_clasificacion(resultado, numero):
     lineas.append("  >> " + analisis["nombre"])
     return "\n".join(lineas)
 
+def seccion_vectores(resultado, numero):
+    """Interpreta el sistema escalonado en términos de espacios vectoriales."""
+    tipo = resultado["analisis"]["tipo"]
+    rango_A = resultado["analisis"]["rango_A"]
+    n_vars = resultado["analisis"]["n_vars"]
+
+    lineas = []
+    lineas.append(subtitulo("{}. ANÁLISIS DE VECTORES EN Rn".format(numero)))
+    lineas.append("")
+
+    # a) Combinación Lineal (evaluando el vector b)
+    lineas.append("  a) Combinación Lineal del vector independiente (b):")
+    if tipo == INCONSISTENTE:
+        lineas.append("     [FALLA] El vector 'b' NO es combinación lineal de los vectores columna.")
+        lineas.append("     El sistema es inconsistente; no existen escalares que generen a 'b'.")
+    else:
+        lineas.append("     [CUMPLE] El vector 'b' SÍ es combinación lineal de los vectores columna.")
+        if tipo == DETERMINADO:
+            lineas.append("     Existe una única combinación de escalares para generarlo.")
+        else:
+            lineas.append("     Existen infinitas combinaciones de escalares para generarlo.")
+
+    # b) Independencia Lineal (evaluando las columnas de A)
+    lineas.append("\n  b) Independencia Lineal (vectores columna de A):")
+    if rango_A == n_vars:
+        lineas.append("     [CUMPLE] El conjunto de vectores es Linealmente Independiente.")
+        lineas.append("     Rango(A) igual a variables. La única solución al sistema homogéneo es la trivial.")
+    else:
+        lineas.append("     [FALLA] El conjunto de vectores es Linealmente Dependiente.")
+        lineas.append("     Existen variables libres. Hay vectores redundantes que son combinación del resto.")
+
+    return "\n".join(lineas)
+
 
 def seccion_solucion(resultado, numero):
     """Valores de las variables."""
@@ -245,7 +278,7 @@ def seccion_verificacion(resultado, numero):
 # Informe completo
 # ---------------------------------------------------------------------------
 
-def generar(resultado, incluir_jordan=True):
+def generar(resultado, incluir_jordan=True, incluir_vectores=False):
     """Arma el informe completo como una sola cadena de texto."""
     bloques = []
     bloques.append(separador("="))
@@ -262,8 +295,15 @@ def generar(resultado, incluir_jordan=True):
         numero = 4
 
     bloques.append(seccion_clasificacion(resultado, numero))
-    bloques.append(seccion_solucion(resultado, numero + 1))
-    bloques.append(seccion_verificacion(resultado, numero + 2))
+    numero += 1
+
+    # Insertar bloque de vectores si está activo
+    if incluir_vectores:
+        bloques.append(seccion_vectores(resultado, numero))
+        numero += 1
+
+    bloques.append(seccion_solucion(resultado, numero))
+    bloques.append(seccion_verificacion(resultado, numero + 1))
     bloques.append("\n" + separador("="))
 
     return "\n".join(bloques)
