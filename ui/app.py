@@ -7,6 +7,7 @@ from core.formato import subindice, nombre_variable, texto_ecuacion, subtitulo
 from solver.clasificacion import INCONSISTENTE, DETERMINADO, INDETERMINADO
 from solver.solucion import texto_expresion
 from solver.resolutor import resolver as _resolver
+import core.estado as estado
 from output.reporte import (separador, seccion_clasificacion,
                              seccion_solucion, seccion_verificacion)
 
@@ -55,11 +56,19 @@ class Aplicacion:
         s.theme_use("clam")
         self._estilos(s)
 
-        self.casillas     = []
-        self.n_ecuaciones = tk.IntVar(value=3)
-        self.n_variables  = tk.IntVar(value=3)
-        self.usar_jordan  = tk.BooleanVar(value=True)
-        self.incluir_vectores = tk.BooleanVar(value=False)
+        self.casillas = []
+
+        # ── Recuperacion de lo escrito antes de cambiar de herramienta.
+        #    core/estado.py conserva el sistema y las opciones mientras el
+        #    programa siga abierto, asi que volver aqui no borra nada.
+        guardado = estado.leer_sistema()
+        self._texto_inicial = guardado["celdas"]
+        self._contexto      = guardado["contexto"]
+
+        self.n_ecuaciones = tk.IntVar(value=guardado["n_ecuaciones"])
+        self.n_variables  = tk.IntVar(value=guardado["n_variables"])
+        self.usar_jordan  = tk.BooleanVar(value=guardado["usar_jordan"])
+        self.incluir_vectores = tk.BooleanVar(value=guardado["incluir_vectores"])
         self.resultado_actual  = None
         self._informe_completo = ""
 
@@ -71,7 +80,16 @@ class Aplicacion:
         self._construir_encabezado()
         self._construir_cuerpo()
         self.generar_casillas()
+        self._mostrar_contexto()
         self.raiz.bind("<Control-Return>", lambda e: self.resolver())
+
+        # Cerrar con la X termina el programa, pero guardando lo escrito.
+        self.raiz.protocol("WM_DELETE_WINDOW", self._al_cerrar)
+
+        # Si el sistema llego desde la herramienta de matrices, se resuelve
+        # de inmediato para que el usuario vea el resultado sin otro clic.
+        if estado.tomar_orden_de_resolver():
+            self.resolver()
 
     # ──────────────────────────────────────────────────────────
     # Estilos ttk
@@ -172,7 +190,21 @@ class Aplicacion:
         btn_c.pack(side="right")
         self._hover(btn_c, BORDE, SUPERF)
 
+        btn_m = tk.Button(barra, text="Enviar [A | b] a Operaciones",
+            font=F_BTN_SM, bg=SUPERF, fg=TEXTO,
+            activebackground=BORDE, activeforeground=TEXTO,
+            relief="flat", padx=10, pady=4, cursor="hand2",
+            command=self.enviar_a_matrices)
+        btn_m.pack(side="right", padx=(0, 4))
+        self._hover(btn_m, BORDE, SUPERF)
+
         ttk.Separator(p, orient="horizontal").pack(fill="x")
+
+        # Aviso del origen del sistema; se muestra solo si otra herramienta
+        # lo envio (ver _mostrar_contexto).
+        self.lbl_contexto = tk.Label(p, text="", bg=HDR_BG, fg=AZUL,
+                                      font=("Segoe UI", 9, "bold"),
+                                      anchor="w", padx=10, pady=6)
 
         self.notebook = ttk.Notebook(p)
         self.notebook.pack(fill="both", expand=True)
@@ -246,7 +278,7 @@ class Aplicacion:
                        activebackground=FONDO, activeforeground=TEXTO,
                        font=("Segoe UI", 9)).pack(anchor="w")
 
-        tk.Checkbutton(m, text="Incluir análisis de vectores en Rn (Combinación e Independencia)",
+        tk.Checkbutton(m, text="Incluir análisis en Rⁿ: combinación lineal e independencia",
                        variable=self.incluir_vectores,
                        bg=FONDO, fg=TEXTO, selectcolor=SUPERF,
                        activebackground=FONDO, activeforeground=TEXTO,
@@ -516,7 +548,9 @@ class Aplicacion:
     # ──────────────────────────────────────────────────────────
 
     def generar_casillas(self):
-        anteriores = self.leer_texto_casillas()
+        # La primera vez no hay casillas todavia: se usa lo guardado en
+        # core/estado.py (o nada, si es el primer arranque del programa).
+        anteriores = self.leer_texto_casillas() or self._texto_inicial or []
         for h in self._contenedor.winfo_children():
             h.destroy()
 
@@ -603,7 +637,9 @@ class Aplicacion:
 
         # Informe completo (para Copiar)
         from output.reporte import generar
-        self._informe_completo = generar(resultado, incluir_jordan=jordan)
+        self._informe_completo = generar(resultado, incluir_jordan=jordan,
+                                         incluir_vectores=vectores,
+                                         contexto=self._contexto)
 
         tipo   = resultado["analisis"]["tipo"]
         nombre = resultado["analisis"]["nombre"]
@@ -621,6 +657,11 @@ class Aplicacion:
                 c.insert(0, "0")
         self.resultado_actual  = None
         self._informe_completo = ""
+
+        # El sistema ya no es el que envio la otra herramienta.
+        self._contexto = None
+        estado.limpiar_contexto()
+        self._mostrar_contexto()
         self.lbl_estado.config(
             text="Ingrese el sistema y presione RESOLVER.", fg=MUTED)
 
@@ -637,10 +678,70 @@ class Aplicacion:
         self._txt_sol.delete("1.0", tk.END)
         self._txt_sol.config(state="disabled")
 
-    def volver_menu(self):
+    # ──────────────────────────────────────────────────────────
+    # Estado compartido y navegación
+    # ──────────────────────────────────────────────────────────
+
+    def _guardar_estado(self):
+        """Deja el sistema y las opciones en core/estado.py."""
+        estado.guardar_sistema(self.leer_texto_casillas(),
+                               self.n_ecuaciones.get(),
+                               self.n_variables.get(),
+                               self.usar_jordan.get(),
+                               self.incluir_vectores.get())
+
+    def _al_cerrar(self):
+        """Cierre con la X: se guarda todo y no se pide otra ventana."""
+        self._guardar_estado()
+        estado.ir_a(None)
         self.raiz.destroy()
-        import main
-        main.iniciar_menu()
+
+    def _navegar(self, destino):
+        """Guarda y pide a main.py que abra otra herramienta."""
+        self._guardar_estado()
+        estado.ir_a(destino)
+        self.raiz.destroy()
+
+    def volver_menu(self):
+        self._navegar("menu")
+
+    def enviar_a_matrices(self):
+        """
+        Manda la matriz de coeficientes A y el vector b a la herramienta de
+        operaciones, para seguir trabajando con ellos sin reescribirlos.
+        """
+        celdas = self.leer_texto_casillas()
+        if not celdas:
+            return
+
+        n = self.n_variables.get()
+        texto_A = [fila[:n] for fila in celdas]
+        texto_b = [[fila[n]] for fila in celdas]
+
+        self._guardar_estado()
+        estado.enviar_matrices(texto_A, texto_b)
+        estado.ir_a("matrices")
+        self.raiz.destroy()
+
+    def _mostrar_contexto(self):
+        """
+        Explica de donde vino el sistema cuando lo envio otra herramienta,
+        para que los resultados se lean en los terminos correctos.
+        """
+        mensajes = {
+            "matricial": "Ecuación matricial A·x = b enviada desde Operaciones con matrices.",
+            "combinacion": ("Combinación lineal: se pregunta si b es combinación de las "
+                            "columnas de A. Las xᵢ son los escalares."),
+            "independencia": ("Independencia lineal: sistema homogéneo A·x = 0 de las "
+                              "columnas de A. Solución única = independientes."),
+        }
+        texto = mensajes.get(self._contexto)
+
+        if texto:
+            self.lbl_contexto.config(text="  " + texto)
+            self.lbl_contexto.pack(fill="x", before=self.notebook)
+        else:
+            self.lbl_contexto.pack_forget()
 
     def copiar_informe(self):
         if not self._informe_completo:
@@ -957,9 +1058,14 @@ class Aplicacion:
         self._insertar_texto(seccion_clasificacion(r, numero))
         numero += 1
 
-        if vectores:
-            from output.reporte import seccion_vectores
-            self._insertar_texto(seccion_vectores(r, numero))
+        # Las tres lecturas (ecuacion matricial, combinacion lineal e
+        # independencia) son el mismo calculo con distinto enunciado. La
+        # misma funcion que arma el informe decide cuales corresponden, de
+        # modo que pantalla e informe nunca muestren cosas distintas.
+        from output.reporte import secciones_en_rn
+
+        for seccion in secciones_en_rn(r, vectores, self._contexto):
+            self._insertar_texto(seccion(r, numero))
             numero += 1
 
         # — Solución: justo despues de la clasificación —

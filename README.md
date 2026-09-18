@@ -14,11 +14,15 @@ sistema y verificación automática de la solución.
 python main.py
 ```
 
-También funciona el acceso directo anterior:
+Se abre un menú con las dos herramientas:
 
-```
-python gui.py
-```
+1. **Solucionador (Gauss / Gauss-Jordan)** — ecuación matricial `A·x = b`,
+   combinación lineal e independencia lineal.
+2. **Operaciones con matrices y vectores** — suma, resta, escalar, producto
+   y transpuesta, con el desarrollo paso a paso.
+
+Lo que se escribe en una herramienta **no se pierde** al pasar a la otra:
+`core/estado.py` conserva las cuadrículas mientras el programa siga abierto.
 
 ---
 
@@ -42,18 +46,22 @@ El código está organizado en cuatro paquetes más un punto de entrada:
 
 ```
 calculadora-de-matrices/
-├── main.py              ← punto de entrada
-├── gui.py               ← acceso alternativo (compatibilidad)
+├── main.py              ← menú y navegación entre herramientas
 │
-├── core/                ← estructuras de datos fundamentales
+├── core/                ← estructuras de datos y álgebra básica
 │   ├── fraccion.py      Aritmética exacta con números racionales.
 │   ├── matriz.py        Matriz aumentada y operaciones elementales.
+│   ├── algebra.py       Suma, resta, escalar, producto y transpuesta.
+│   ├── vector.py        Operaciones en Rⁿ (un vector es una matriz n×1).
+│   ├── procedimiento.py Paso a paso escrito de cada operación.
+│   ├── estado.py        Memoria compartida entre las dos herramientas.
 │   └── formato.py       Construcción de cadenas (matrices, ecuaciones).
 │
 ├── solver/              ← lógica de resolución
 │   ├── clasificacion.py Clasifica el sistema (Rouché-Frobenius).
 │   ├── eliminacion.py   Reducción a forma escalonada y escalonada reducida.
 │   ├── solucion.py      Sustitución regresiva numérica y simbólica.
+│   ├── independencia.py Dependencia lineal y relación de dependencia.
 │   ├── verificacion.py  Sustituye la solución en el sistema original.
 │   └── resolutor.py     Coordina el proceso y devuelve el resultado.
 │
@@ -61,7 +69,8 @@ calculadora-de-matrices/
 │   └── reporte.py       Arma el informe de texto completo.
 │
 └── ui/                  ← interfaz gráfica
-    └── app.py           Ventana tkinter: entrada, validación, visualización.
+    ├── app.py           Solucionador de sistemas.
+    └── app_matrices.py  Operaciones con matrices y vectores.
 ```
 
 Dependencias entre paquetes (sin ciclos):
@@ -99,6 +108,40 @@ donde cada fila queda expresada directamente como `xᵢ = valor`.
 
 ---
 
+## Las tres lecturas del mismo sistema
+
+`A·x = b`, la combinación lineal y la independencia lineal son el mismo
+cálculo leído con distinto enunciado, y el programa lo resuelve una sola vez
+explicándolo de las tres maneras:
+
+| Enunciado | Sistema que se resuelve | Respuesta |
+|---|---|---|
+| Ecuación matricial `A·x = b` | `[A \| b]` | valor de cada `xᵢ` |
+| ¿Es `b` combinación lineal de las columnas de `A`? | `[A \| b]` | los escalares de la combinación, o que no existe |
+| ¿Son las columnas de `A` linealmente independientes? | `[A \| 0]` | solución trivial única = independientes; si no, una relación de dependencia explícita |
+
+Hay dos maneras de pedir estos análisis, y dan exactamente lo mismo:
+
+- **Desde el solucionador**, marcando la casilla *Incluir análisis en Rⁿ*:
+  se añaden las dos secciones (combinación lineal e independencia) al
+  sistema que ya esté escrito.
+- **Desde Operaciones con matrices**, con los botones de envío: además de
+  plantear la pregunta, el sistema viaja armado y se resuelve solo.
+
+La sección de combinación lineal se omite en un sistema homogéneo, porque
+`b = 0` siempre es combinación de cualquier conjunto: ahí la pregunta que
+importa es la independencia.
+
+El producto `A·x` se muestra además de las dos formas vistas en clase:
+como **combinación lineal de las columnas** de `A`
+(`A·x = x₁·a₁ + … + xₙ·aₙ`) y con la **regla fila-vector** (la entrada `i`
+del resultado usa solo la fila `i` de `A`).
+
+También se comprueban las propiedades `A(u + v) = A·u + A·v` y
+`A(c·u) = c(A·u)`, calculando los dos lados por separado y comparándolos.
+
+---
+
 ## Atajos y funciones de la interfaz
 
 | Acción | Cómo |
@@ -107,6 +150,13 @@ donde cada fila queda expresada directamente como `xᵢ = valor`.
 | Limpiar la cuadrícula | Botón **Limpiar** |
 | Copiar el informe | Botón **Copiar informe** |
 | Incluir forma reducida | Casilla **Gauss-Jordan** |
+| Análisis en Rⁿ completo | Casilla **Incluir análisis en Rⁿ** |
+| Mandar `[A \| b]` a operaciones | Botón **Enviar [A \| b] a Operaciones** |
+| Mandar `A·x = b` al solucionador | Botón **Resolver la ecuación A·x = b** |
+| Preguntar por combinación lineal | Botón **¿Es b combinación lineal…?** |
+| Preguntar por independencia | Botón **¿Son las columnas… independientes?** |
+| Ver el desarrollo de una operación | Casilla **Mostrar el paso a paso** |
+| Encadenar operaciones | Botones **Resultado → A** / **Resultado → B** |
 
 ---
 
