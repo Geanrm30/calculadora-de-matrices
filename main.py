@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import core.estado as estado
 from ui.app import Aplicacion
 from ui.app_matrices import AppMatrices
+from ui.app_teoremas import AppTeoremas
 
 # Paleta (la misma de las dos herramientas)
 FONDO   = "#1E1E2E"
@@ -106,6 +107,8 @@ def iniciar():
             _abrir_ventana(Aplicacion)
         elif destino == "matrices":
             _abrir_ventana(AppMatrices)
+        elif destino == "teoremas":
+            _abrir_ventana(AppTeoremas)
         else:
             break
 

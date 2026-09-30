@@ -18,6 +18,7 @@ from core.fraccion import desde_texto, Fraccion
 import core.algebra as alg
 import core.procedimiento as proc
 import core.estado as estado
+import core.propiedades as prop
 
 # ─────────────────────────────────────────────────────────────
 # Paleta oscura y tipografías
@@ -144,6 +145,13 @@ class AppMatrices:
         btn.pack(side="right", padx=20)
         self._hover(btn, MUTED, BORDE)
 
+        btn_teo = tk.Button(barra, text="Ver teoremas", font=F_BTN_SM,
+                            bg=BORDE, fg=TEXTO, relief="flat",
+                            padx=15, pady=4, cursor="hand2",
+                            command=lambda: self._navegar("teoremas"))
+        btn_teo.pack(side="right", padx=(0, 4))
+        self._hover(btn_teo, MUTED, BORDE)
+
     def _construir_cuerpo(self):
         paned = ttk.PanedWindow(self.raiz, orient="horizontal")
         paned.pack(fill="both", expand=True, padx=10, pady=10)
@@ -259,25 +267,35 @@ class AppMatrices:
                        activeforeground=TEXTO,
                        font=("Segoe UI", 9)).pack(anchor="w", pady=(6, 0))
 
-        # — Propiedades del producto matriz-vector (teorema visto en clase) —
-        props = tk.LabelFrame(p, text=" Propiedades de A·x ", bg=FONDO, fg=MUTED,
+        # — Propiedades de vectores y matrices (elegir una o verificar todas) —
+        props = tk.LabelFrame(p, text=" Propiedades ", bg=FONDO, fg=MUTED,
                               font=F_BOLD, padx=10, pady=8)
         props.pack(fill="x", pady=(8, 0))
 
-        tk.Label(props, text="u y v son la 1ª y la 2ª columna de B.",
+        tk.Label(props, text="u y v son la 1ª y la 2ª columna de B;  r es el escalar.",
                  bg=FONDO, fg=MUTED, font=("Segoe UI", 8)).pack(anchor="w")
 
-        b_suma = tk.Button(props, text="A(u + v) = A·u + A·v", font=F_BTN_SM,
-                           bg=SUPERF, fg=TEXTO, relief="flat", cursor="hand2",
-                           command=lambda: self.ejecutar_operacion("prop_suma"))
-        b_suma.pack(fill="x", pady=2)
-        self._hover(b_suma, BORDE, SUPERF)
+        etiquetas = [prop.etiqueta(c) for c, _n, _k, _f in prop.PROPIEDADES]
+        self.propiedad = tk.StringVar(value=etiquetas[0])
+        ttk.Combobox(props, textvariable=self.propiedad, values=etiquetas,
+                     state="readonly", font=F_NORMAL).pack(fill="x", pady=(4, 2))
 
-        b_esc = tk.Button(props, text="A(r · u) = r (A·u)", font=F_BTN_SM,
+        fila_p = tk.Frame(props, bg=FONDO)
+        fila_p.pack(fill="x", pady=2)
+        fila_p.grid_columnconfigure(0, weight=1)
+        fila_p.grid_columnconfigure(1, weight=1)
+
+        b_ver = tk.Button(fila_p, text="Verificar la elegida", font=F_BTN_SM,
                           bg=SUPERF, fg=TEXTO, relief="flat", cursor="hand2",
-                          command=lambda: self.ejecutar_operacion("prop_escalar"))
-        b_esc.pack(fill="x", pady=2)
-        self._hover(b_esc, BORDE, SUPERF)
+                          command=lambda: self.ejecutar_operacion("prop"))
+        b_ver.grid(row=0, column=0, sticky="we", padx=(0, 2))
+        self._hover(b_ver, BORDE, SUPERF)
+
+        b_todas = tk.Button(fila_p, text="Verificar todas", font=F_BTN_SM,
+                            bg=SUPERF, fg=TEXTO, relief="flat", cursor="hand2",
+                            command=lambda: self.ejecutar_operacion("prop_todas"))
+        b_todas.grid(row=0, column=1, sticky="we", padx=(2, 0))
+        self._hover(b_todas, BORDE, SUPERF)
 
         # — Envío al solucionador —
         env = tk.LabelFrame(p, text=" Enviar al solucionador ", bg=FONDO,
@@ -505,7 +523,7 @@ class AppMatrices:
         # B solo se lee cuando la operacion la necesita; asi un error en B no
         # impide calcular Aᵀ ni r·A.
         necesita_B = operacion in ("suma", "resta", "multiplicacion",
-                                   "prop_suma", "prop_escalar")
+                                   "prop", "prop_todas")
 
         A = self._leer_matriz(self.casillas_A, "A")
         if A is None:
@@ -518,7 +536,7 @@ class AppMatrices:
                 return
 
         try:
-            if operacion in ("prop_suma", "prop_escalar"):
+            if operacion in ("prop", "prop_todas"):
                 self._ejecutar_propiedad(operacion, A, B)
                 return
 
@@ -573,33 +591,22 @@ class AppMatrices:
 
     def _ejecutar_propiedad(self, operacion, A, B):
         """
-        Comprueba las propiedades del producto matriz-vector tomando u y v de
-        las columnas de B: u es la primera columna y v la segunda.
+        Verifica con los datos de las cuadriculas la propiedad elegida o todas
+        (core/propiedades.py). u y v son la 1ª y la 2ª columna de B.
         """
-        if len(A[0]) != len(B):
-            messagebox.showerror(
-                "Dimensiones incompatibles",
-                "A tiene {} columnas y los vectores de B tienen {} componentes.\n\n"
-                "Para calcular A·u las columnas de A deben coincidir con las "
-                "filas de B.".format(len(A[0]), len(B)))
+        r = self._leer_escalar()
+        if r is None:
             return
 
-        u = [fila[0] for fila in B]
-
-        if operacion == "prop_escalar":
-            r = self._leer_escalar()
-            if r is None:
-                return
-            lineas = proc.pasos_propiedad_escalar(A, r, u)
+        if operacion == "prop_todas":
+            lineas = prop.verificar_todas(A, B, r)
         else:
-            if len(B[0]) < 2:
-                messagebox.showerror(
-                    "Faltan datos",
-                    "Esta propiedad necesita dos vectores.\n\n"
-                    "Poné 2 columnas en B: la primera es u y la segunda es v.")
+            clave = prop.clave_de_etiqueta(self.propiedad.get())
+            try:
+                lineas, _cumple = prop.verificar(clave, A, B, r)
+            except ValueError as ex:
+                messagebox.showerror("No se puede verificar", str(ex))
                 return
-            v = [fila[1] for fila in B]
-            lineas = proc.pasos_propiedad_suma(A, u, v)
 
         self.resultado_actual = None
         self.btn_res_A.config(state="disabled")

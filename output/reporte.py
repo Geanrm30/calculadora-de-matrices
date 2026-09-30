@@ -33,9 +33,12 @@ def seccion_datos(resultado):
     lineas.append(texto_matriz(original, n_vars, "  Matriz aumentada [A | b]:"))
 
     if resultado["analisis"]["homogeneo"]:
-        lineas.append("\n  Observación: el sistema es homogéneo (todos los términos")
-        lineas.append("  independientes son cero), por lo que siempre es consistente:")
-        lineas.append("  como mínimo admite la solución trivial.")
+        lineas.append("\n  ¿Homogéneo?: SÍ (A·x = 0)")
+        lineas.append("  Todos los términos independientes son cero, por lo que siempre")
+        lineas.append("  es consistente: como mínimo admite la solución trivial.")
+    else:
+        lineas.append("\n  ¿Homogéneo?: NO (A·x = b con b ≠ 0)")
+        lineas.append("  Al menos un término independiente es distinto de cero.")
 
     return "\n".join(lineas)
 
@@ -107,6 +110,8 @@ def seccion_clasificacion(resultado, numero):
     lineas.append("  Número de variables : {}".format(analisis["n_vars"]))
     lineas.append("  Columnas pivote     : {}".format(numeros_pivote))
     lineas.append("  Variables básicas   : {}".format(variables_basicas))
+    lineas.append("  ¿Homogéneo?         : {}".format(
+        "SÍ (A·x = 0)" if analisis["homogeneo"] else "NO (b ≠ 0)"))
 
     if analisis["tipo"] == INCONSISTENTE:
         lineas.append("")
