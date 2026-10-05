@@ -159,6 +159,17 @@ class AppMatrices:
         btn.pack(side="right", padx=20)
         self._hover(btn, MUTED, BORDE)
 
+        btn_teo = tk.Button(barra, text="Ver Teoremas", font=F_BTN_SM,
+                            bg=BORDE, fg=TEXTO, relief="flat",
+                            padx=15, pady=4, cursor="hand2",
+                            command=lambda: self._navegar("teoremas"))
+        btn_teo.pack(side="right", padx=(0, 4))
+        self._hover(btn_teo, MUTED, BORDE)
+
+        _ART = " A+B  A−B  r·A  Aᵀ\n det  A⁻¹  Cramer  ✓"
+        tk.Label(barra, text=_ART, fg=NARANJA, bg=PANEL,
+                 font=("Consolas", 9), justify="left").pack(side="left", padx=(16, 0))
+
     def _construir_cuerpo(self):
         paned = ttk.PanedWindow(self.raiz, orient="horizontal")
         paned.pack(fill="both", expand=True, padx=10, pady=10)
@@ -659,7 +670,12 @@ class AppMatrices:
                 lineas.append("det(A) por Sarrus  =  {}".format(determinante_sarrus(A)))
             lineas.append("")
             if val.es_cero():
-                lineas.append("La matriz A es SINGULAR: det(A) = 0 y no tiene inversa.")
+                from modulos.modulo_matrices import rango
+                r = rango(A)
+                lineas.append(
+                    "La matriz A es SINGULAR: det(A) = 0,  "
+                    "tiene solo {} posición{} pivote (rango {}) y no tiene inversa.".format(
+                        r, "es" if r != 1 else "", r))
             else:
                 lineas.append("La matriz A es invertible: det(A) ≠ 0.")
             self.resultado_actual = None
@@ -799,10 +815,9 @@ class AppMatrices:
             metodo = "Adjunta"
 
         # Verificación exacta A·A⁻¹ = I usando la propia función de producto
+        from modulos.modulo_matrices import es_identidad
         producto = alg.multiplicar_matrices(A, inv)
-        es_identidad = all(
-            producto[i][j] == (Fraccion(1) if i == j else Fraccion(0))
-            for i in range(n) for j in range(n))
+        ok = es_identidad(producto)
 
         lineas = []
         if self.ver_pasos.get():
@@ -817,7 +832,7 @@ class AppMatrices:
         lineas.append("")
         lineas.extend(proc.texto_resultado("Comprobación  A · A⁻¹ =", producto))
         lineas.append("")
-        if es_identidad:
+        if ok:
             lineas.append("A · A⁻¹ = I  (verificación exacta con aritmética de fracciones).")
         else:
             lineas.append("[ERROR] La verificación A · A⁻¹ = I falló.")

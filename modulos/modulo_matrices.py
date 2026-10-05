@@ -192,3 +192,34 @@ def cramer(A, b):
         solucion.append(determinante(Ai) / det_A)
 
     return solucion
+
+
+def es_identidad(M):
+    """Devuelve True si M es la matriz identidad n×n (comparación exacta de fracciones)."""
+    n = len(M)
+    return (n == len(M[0]) and
+            all(M[i][j] == (Fraccion(1) if i == j else Fraccion(0))
+                for i in range(n) for j in range(n)))
+
+
+def rango(A):
+    """Número de pivotes de A (rango de la matriz) calculado por escalonamiento."""
+    n = len(A)
+    m = len(A[0])
+    M = [[A[i][j] for j in range(m)] for i in range(n)]
+    fila_actual = 0
+    for col in range(m):
+        pivote = next(
+            (f for f in range(fila_actual, n) if not M[f][col].es_cero()), None)
+        if pivote is None:
+            continue
+        M[fila_actual], M[pivote] = M[pivote], M[fila_actual]
+        p = M[fila_actual][col]
+        M[fila_actual] = [v / p for v in M[fila_actual]]
+        for fila in range(n):
+            if fila != fila_actual and not M[fila][col].es_cero():
+                factor = M[fila][col]
+                M[fila] = [M[fila][k] - factor * M[fila_actual][k]
+                           for k in range(m)]
+        fila_actual += 1
+    return fila_actual

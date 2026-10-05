@@ -154,6 +154,18 @@ class Aplicacion:
         btn_volver.pack(side="right", padx=20)
         self._hover(btn_volver, MUTED, BORDE)
 
+        btn_teo = tk.Button(barra, text="Ver Teoremas", font=F_BTN_SM,
+                            bg=BORDE, fg=TEXTO,
+                            activebackground=MUTED, activeforeground=PANEL,
+                            relief="flat", padx=15, pady=4, cursor="hand2",
+                            command=lambda: self._navegar("teoremas"))
+        btn_teo.pack(side="right", padx=(0, 4))
+        self._hover(btn_teo, MUTED, BORDE)
+
+        _ART = " ┌─────┐   ┌──┐   ┌──┐\n │  A  │ · │ x│ = │ b│\n └─────┘   └──┘   └──┘"
+        tk.Label(barra, text=_ART, fg=AZUL, bg=PANEL,
+                 font=("Consolas", 8), justify="left").pack(side="left", padx=(16, 0))
+
     def _construir_cuerpo(self):
         self.paned = ttk.PanedWindow(self.raiz, orient="horizontal")
         self.paned.pack(fill="both", expand=True, padx=10, pady=10)
