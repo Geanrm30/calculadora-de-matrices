@@ -1,10 +1,11 @@
-# Solucionador de sistemas de ecuaciones lineales
+# Calculadora de Álgebra Lineal
 
-Resolución de sistemas por el método matricial, aplicando operaciones
-elementales por filas hasta la forma escalonada, con clasificación del
-sistema y verificación automática de la solución.
+Proyecto integrador de MTM0120 Álgebra Lineal — Universidad Americana.
+Implementa las Unidades I–III del curso: sistemas de ecuaciones, operaciones
+con matrices y vectores, propiedades algebraicas, determinantes e inversas.
 
-Álgebra Lineal — Unidad I: Ecuaciones lineales en álgebra lineal.
+**Elaborado por:** Anthony Sying González Chow, Jose Maria Moncada Maya,
+Geanfranco Alexander Rodriguez Mendieta
 
 ---
 
@@ -14,97 +15,132 @@ sistema y verificación automática de la solución.
 python main.py
 ```
 
-Se abre un menú con las dos herramientas:
+Se abre el menú principal con dos herramientas:
 
 1. **Solucionador (Gauss / Gauss-Jordan)** — ecuación matricial `A·x = b`,
    combinación lineal e independencia lineal.
-2. **Operaciones con matrices y vectores** — suma, resta, escalar, producto
-   y transpuesta, con el desarrollo paso a paso.
+2. **Operaciones con matrices y vectores** — tres pestañas:
+   - *Operaciones*: suma, resta, escalar, producto, transpuesta,
+     determinante e inversa (dos métodos), con desarrollo paso a paso.
+   - *Propiedades*: verifica las 29 propiedades algebraicas de las
+     Sesiones 9–11 con aritmética exacta de fracciones.
+   - *Solucionador*: envía el sistema al solucionador o resuelve
+     `A·x = b` por la Regla de Cramer.
 
 Lo que se escribe en una herramienta **no se pierde** al pasar a la otra:
-`core/estado.py` conserva las cuadrículas mientras el programa siga abierto.
+`core/estado.py` conserva las cuadrículas mientras el programa esté abierto.
 
 ---
 
 ## Dependencias
 
 No se utiliza **NumPy**, **SciPy** ni funciones de álgebra lineal de **math**.
-El proyecto no declara ninguna dependencia externa: las únicas
-importaciones corresponden a módulos propios y a `tkinter`, incluido en la
-biblioteca estándar de Python.
+El proyecto no declara ninguna dependencia externa: las únicas importaciones
+corresponden a módulos propios y a `tkinter`, incluido en la biblioteca
+estándar de Python.
 
 La implementación se apoya en estructuras nativas del lenguaje: listas
 anidadas, condicionales, bucles y funciones. El máximo común divisor se
-implementa mediante el algoritmo de Euclides en lugar de recurrir a
-`math.gcd`.
+implementa mediante el algoritmo de Euclides en lugar de `math.gcd`.
 
 ---
 
 ## Estructura
 
-El código está organizado en cuatro paquetes más un punto de entrada:
-
 ```
 calculadora-de-matrices/
-├── main.py              ← menú y navegación entre herramientas
+├── main.py               ← menú y navegación entre herramientas
 │
-├── core/                ← estructuras de datos y álgebra básica
-│   ├── fraccion.py      Aritmética exacta con números racionales.
-│   ├── matriz.py        Matriz aumentada y operaciones elementales.
-│   ├── algebra.py       Suma, resta, escalar, producto y transpuesta.
-│   ├── vector.py        Operaciones en Rⁿ (un vector es una matriz n×1).
-│   ├── procedimiento.py Paso a paso escrito de cada operación.
-│   ├── estado.py        Memoria compartida entre las dos herramientas.
-│   └── formato.py       Construcción de cadenas (matrices, ecuaciones).
+├── core/                 ← estructuras de datos y álgebra básica
+│   ├── fraccion.py       Aritmética exacta con números racionales.
+│   ├── matriz.py         Matriz aumentada y operaciones elementales.
+│   ├── algebra.py        Suma, resta, escalar, producto y transpuesta.
+│   ├── vector.py         Operaciones en Rⁿ (un vector es una matriz n×1).
+│   ├── procedimiento.py  Paso a paso escrito de cada operación.
+│   ├── propiedades.py    Verificador de las 29 propiedades algebraicas.
+│   ├── teoremas.py       Catálogo de teoremas del curso.
+│   ├── estado.py         Memoria compartida entre las herramientas.
+│   └── formato.py        Construcción de cadenas (matrices, ecuaciones).
 │
-├── solver/              ← lógica de resolución
-│   ├── clasificacion.py Clasifica el sistema (Rouché-Frobenius).
-│   ├── eliminacion.py   Reducción a forma escalonada y escalonada reducida.
-│   ├── solucion.py      Sustitución regresiva numérica y simbólica.
-│   ├── independencia.py Dependencia lineal y relación de dependencia.
-│   ├── verificacion.py  Sustituye la solución en el sistema original.
-│   └── resolutor.py     Coordina el proceso y devuelve el resultado.
+├── modulos/              ← operaciones sobre matrices cuadradas
+│   └── modulo_matrices.py  Determinante (3 métodos), inversa (2 métodos),
+│                            cofactores, adjunta y Regla de Cramer.
 │
-├── output/              ← presentación
-│   └── reporte.py       Arma el informe de texto completo.
+├── solver/               ← lógica de resolución de sistemas
+│   ├── clasificacion.py  Clasifica el sistema (Rouché-Frobenius).
+│   ├── eliminacion.py    Reducción a forma escalonada y reducida.
+│   ├── solucion.py       Sustitución regresiva numérica y simbólica.
+│   ├── independencia.py  Dependencia lineal y relación de dependencia.
+│   ├── verificacion.py   Sustituye la solución en el sistema original.
+│   └── resolutor.py      Coordina el proceso y devuelve el resultado.
 │
-└── ui/                  ← interfaz gráfica
-    ├── app.py           Solucionador de sistemas.
-    └── app_matrices.py  Operaciones con matrices y vectores.
+├── output/               ← presentación
+│   └── reporte.py        Arma el informe de texto completo.
+│
+└── ui/                   ← interfaz gráfica
+    ├── app.py            Solucionador de sistemas.
+    ├── app_matrices.py   Operaciones con matrices y vectores.
+    └── app_teoremas.py   Visor de teoremas del curso.
 ```
 
 Dependencias entre paquetes (sin ciclos):
 
 ```
-ui/  →  output/  →  solver/  →  core/
-ui/  →            →  solver/  →  core/
-ui/  →                          core/
+ui/  →  output/  →  solver/   →  core/
+ui/  →             modulos/   →  core/
+ui/  →                           core/
 ```
 
-`solver/resolutor.py` no imprime ni pide datos: solo resuelve y devuelve un
-diccionario. La interfaz y el informe leen ese mismo resultado, así que no
-existe el riesgo de que muestren cosas distintas.
+`solver/resolutor.py` y `modulos/modulo_matrices.py` no imprimen ni piden
+datos: solo calculan y devuelven resultados. La interfaz lee esos resultados,
+así que no existe el riesgo de que muestren cosas distintas.
 
 ---
 
 ## Qué hace el programa
 
-1. **Entrada de datos.** Número de ecuaciones y de variables (hasta 20×20),
-   luego los coeficientes de A y los términos independientes de b.
-   Se aceptan enteros (`-7`), fracciones (`3/4`), decimales (`2.5`)
-   y raíces (`√4`, `sqrt(2)`).
-2. **Procesamiento.** Muestra la matriz aumentada inicial y aplica las
-   operaciones elementales por filas, mostrando la matriz después de cada
-   paso con la operación aplicada.
-3. **Clasificación.** Compara rango(A), rango([A|b]) y el número de
-   variables, e imprime una de las tres clasificaciones. En el caso
-   indeterminado identifica las variables libres.
-4. **Salida y verificación.** Muestra el valor de cada variable con notación
-   de subíndice (x₁, x₂…) y sustituye la solución en el sistema original
-   para comprobar la igualdad de forma exacta.
+### Solucionador (Gauss / Gauss-Jordan)
+
+1. **Entrada.** Número de ecuaciones y variables (hasta 20×20), coeficientes
+   de A y términos independientes de b. Se aceptan enteros (`-7`), fracciones
+   (`3/4`), decimales (`2.5`) y raíces (`√4`, `sqrt(2)`).
+2. **Procesamiento.** Aplica operaciones elementales por filas mostrando la
+   matriz después de cada paso con la operación aplicada.
+3. **Clasificación.** Compara rango(A), rango([A|b]) y el número de variables
+   e imprime el resultado. En el caso indeterminado identifica las variables
+   libres.
+4. **Verificación.** Muestra el valor de cada variable (x₁, x₂…) y sustituye
+   la solución en el sistema original para comprobar la igualdad de forma exacta.
 
 Opcionalmente continúa hasta la **forma escalonada reducida (Gauss-Jordan)**,
-donde cada fila queda expresada directamente como `xᵢ = valor`.
+donde cada fila queda como `xᵢ = valor`.
+
+### Operaciones con matrices y vectores
+
+**Pestaña Operaciones**
+
+- Suma, resta, producto, transpuesta y multiplicación por escalar `r`.
+- `det(A)` — determinante por expansión de cofactores; para matrices 3×3
+  muestra también el resultado por la Regla de Sarrus.
+- `A⁻¹ G-J` — inversa por Gauss-Jordan con verificación `A·A⁻¹ = I`.
+- `A⁻¹ Adj` — inversa por la fórmula `A⁻¹ = (1/det A) · adj(A)`.
+- Casilla **Mostrar el paso a paso**: despliega el desarrollo completo para
+  todas las operaciones, incluyendo los tres métodos del determinante, los dos
+  de la inversa y la Regla de Cramer.
+
+**Pestaña Propiedades**
+
+Verifica las 29 propiedades algebraicas de las Sesiones 9–11 (producto
+matriz-vector, vectores en Rⁿ, suma y escalar de matrices, transpuesta,
+producto de matrices, inversa y determinante). Cada verificación calcula
+los dos lados por caminos distintos y los compara con aritmética exacta.
+
+**Pestaña Solucionador**
+
+- Envía `[A|b]` al solucionador para resolver `A·x = b`, preguntar si `b`
+  es combinación lineal de las columnas de A, o analizar independencia lineal.
+- **Regla de Cramer**: resuelve `A·x = b` mostrando `det(A)`, cada `Aᵢ` con
+  su determinante y la fórmula `xᵢ = det(Aᵢ) / det(A)`.
 
 ---
 
@@ -122,23 +158,17 @@ explicándolo de las tres maneras:
 
 Hay dos maneras de pedir estos análisis, y dan exactamente lo mismo:
 
-- **Desde el solucionador**, marcando la casilla *Incluir análisis en Rⁿ*:
-  se añaden las dos secciones (combinación lineal e independencia) al
-  sistema que ya esté escrito.
-- **Desde Operaciones con matrices**, con los botones de envío: además de
-  plantear la pregunta, el sistema viaja armado y se resuelve solo.
+- **Desde el solucionador**, marcando *Incluir análisis en Rⁿ*: se añaden
+  las secciones de combinación lineal e independencia al sistema escrito.
+- **Desde Operaciones con matrices**, con los botones de envío: el sistema
+  viaja armado y se resuelve automáticamente.
 
 La sección de combinación lineal se omite en un sistema homogéneo, porque
-`b = 0` siempre es combinación de cualquier conjunto: ahí la pregunta que
-importa es la independencia.
+`b = 0` siempre es combinación de cualquier conjunto.
 
-El producto `A·x` se muestra además de las dos formas vistas en clase:
-como **combinación lineal de las columnas** de `A`
-(`A·x = x₁·a₁ + … + xₙ·aₙ`) y con la **regla fila-vector** (la entrada `i`
-del resultado usa solo la fila `i` de `A`).
-
-También se comprueban las propiedades `A(u + v) = A·u + A·v` y
-`A(c·u) = c(A·u)`, calculando los dos lados por separado y comparándolos.
+El producto `A·x` se muestra de las dos formas vistas en clase: como
+**combinación lineal de las columnas** de `A` (`x₁·a₁ + … + xₙ·aₙ`) y con
+la **regla fila-vector**.
 
 ---
 
@@ -155,8 +185,10 @@ También se comprueban las propiedades `A(u + v) = A·u + A·v` y
 | Mandar `A·x = b` al solucionador | Botón **Resolver la ecuación A·x = b** |
 | Preguntar por combinación lineal | Botón **¿Es b combinación lineal…?** |
 | Preguntar por independencia | Botón **¿Son las columnas… independientes?** |
+| Resolver por Cramer | Botón **Resolver A·x = b (Regla de Cramer)** |
 | Ver el desarrollo de una operación | Casilla **Mostrar el paso a paso** |
-| Encadenar operaciones | Botones **Resultado → A** / **Resultado → B** |
+| Usar el resultado en otra operación | Botones **Resultado → A** / **→ B** / **→ C** |
+| Intercambiar matrices | Botón **Intercambiar A ↔ B** |
 
 ---
 
@@ -184,55 +216,55 @@ tolerancia arbitraria y puede producir clasificaciones erróneas. La clase
 resultados se expresan como fracciones irreducibles y la verificación final
 es una igualdad estricta.
 
+**Tres métodos para el determinante.** `modulo_matrices.py` implementa la
+expansión de cofactores (válida para cualquier n≥1), la regla de Sarrus
+(solo 3×3) y la reducción a forma triangular superior. Los tres producen el
+mismo resultado; mostrarlos juntos permite comparar los procedimientos vistos
+en clase.
+
+**Dos métodos para la inversa.** Gauss-Jordan construye `[A|I]` y reduce
+hasta `[I|A⁻¹]`. La fórmula adjunta calcula primero cada cofactor `Cᵢⱼ`,
+forma la matriz de cofactores, la transpone para obtener `adj(A)` y divide
+entre `det(A)`. Ambos métodos incluyen la verificación `A·A⁻¹ = I`.
+
 **Intercambio de filas condicionado.** Las filas se permutan únicamente
 cuando el pivote candidato es cero, tomando la primera fila inferior con
 valor no nulo en esa columna. El pivoteo parcial por mayor magnitud controla
 la propagación del error de redondeo en aritmética de punto flotante y
-carece de utilidad sobre aritmética racional exacta, donde solo incrementa
-el tamaño de numeradores y denominadores.
+carece de utilidad sobre aritmética racional exacta.
 
 **Normalización del pivote.** Una vez seleccionado el pivote, la fila se
 divide entre él. La matriz escalonada resultante presenta unos en las
-posiciones pivote y la sustitución regresiva se simplifica al evitar la
-división final.
+posiciones pivote y la sustitución regresiva se simplifica.
 
-**Sustitución regresiva simbólica.** En forma escalonada, no reducida, una
-fila puede contener a la derecha del pivote otras variables pivote además de
-las libres. Cada variable se representa por ello como el vector
-`[constante, coef_libre_1, ...]`, de modo que esos coeficientes se propagan
-correctamente durante el despeje. Para el sistema `x₁+2x₂+3x₃=6`,
-`2x₁+4x₂+7x₃=13` la solución general es `x₁ = 3 - 2x₂`, `x₃ = 1`; omitir
-el término correspondiente a `x₃` produciría `x₁ = 13/2 - 2x₂`, incorrecto.
+**Sustitución regresiva simbólica.** En forma escalonada no reducida, cada
+variable se representa como el vector `[constante, coef_libre_1, …]` para
+propagar correctamente los coeficientes de las variables libres durante el
+despeje.
 
 **Verificación simbólica en el caso indeterminado.** Además de comprobar una
-solución particular, el programa sustituye la solución general en el sistema
-original y verifica que los coeficientes de los parámetros se anulen. Esto
-establece que la igualdad se satisface para cualquier valor de las variables
-libres, condición que la comprobación de un único punto no permite
-establecer.
+solución particular, el programa sustituye la solución general y verifica que
+los coeficientes de los parámetros se anulen, estableciendo que la igualdad
+se satisface para cualquier valor de las variables libres.
 
 **Verificación contra el sistema original.** Se conserva una copia intacta
 previa al escalonamiento. La sustitución en la matriz reducida carecería de
-valor probatorio, al ser el resultado del mismo procedimiento que se desea
-comprobar.
+valor probatorio.
 
-**Notación con subíndices Unicode.** Las variables se muestran como x₁, x₂,
-x₃… en la interfaz y en el informe, usando dígitos subíndice del estándar
-Unicode (₀–₉). Esto permite representar correctamente sistemas con 10 o más
-variables (x₁₀, x₁₁…) sin ambigüedad.
+**Notación con subíndices Unicode.** Las variables se muestran como x₁, x₂…
+usando dígitos subíndice Unicode (₀–₉), lo que permite representar
+correctamente sistemas con 10 o más variables (x₁₀, x₁₁…).
 
 ---
 
 ## Casos de prueba
-
-Sistemas empleados para validar el programa y resultado esperado:
 
 | Sistema | Resultado |
 |---|---|
 | `2x₁+3x₂+x₃=1` ; `5x₁+3x₂+4x₃=2` ; `x₁+x₂-x₃=1` | Determinado: `x₁=2/3`, `x₂=0`, `x₃=-1/3` |
 | `2x₁-3x₂-4x₃=3` ; `3x₁+x₂-x₃=1` ; `x₁+2x₂-3x₃=16` | Determinado: `x₁=-2`, `x₂=3`, `x₃=-4` |
 | `2x₁+x₂+x₃=2` ; `x₁-x₂+2x₃=3` ; `3x₁+x₂-x₃=1` | Determinado: `x₁=7/9`, `x₂=-4/9`, `x₃=8/9` |
-| `x₂-4x₃=8` ; `2x₁-3x₂+2x₃=1` ; `5x₁-8x₂+7x₃=1` | Inconsistente: la eliminación conduce a `0 = 5/2` |
+| `x₂-4x₃=8` ; `2x₁-3x₂+2x₃=1` ; `5x₁-8x₂+7x₃=1` | Inconsistente: `0 = 5/2` |
 | `x₁+2x₂+3x₃=6` ; `2x₁+4x₂+7x₃=13` | Indeterminado: `x₁ = 3 - 2x₂`, `x₃ = 1` |
 | `x₁+2x₂+3x₃=0` ; `2x₁+4x₂+6x₃=0` ; `x₁+x₂+x₃=0` | Homogéneo indeterminado |
 
@@ -243,8 +275,8 @@ ecuaciones, filas de ceros, coeficientes fraccionarios y sistemas hasta 20×20.
 
 ## Notas de uso
 
-- Al ejecutar, Python genera una carpeta `__pycache__` con los módulos
-  compilados en cada paquete. Es normal y no forma parte de la entrega.
+- Al ejecutar, Python genera una carpeta `__pycache__` en cada paquete con
+  los módulos compilados. Es normal y no forma parte de la entrega.
 - El programa admite sistemas de hasta **20×20** variables.
 - La casilla **Incluir forma escalonada reducida** decide si el programa
   continúa hasta la matriz identidad y muestra esos pasos en el informe.

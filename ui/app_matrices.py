@@ -13,6 +13,7 @@ from tkinter import messagebox, ttk
 from core.fraccion import desde_texto, Fraccion
 import core.algebra as alg
 import core.procedimiento as proc
+import core.propiedades as prop
 import core.estado as estado
 
 # ─────────────────────────────────────────────────────────────
@@ -91,6 +92,8 @@ class AppMatrices:
         self.escalar   = tk.StringVar(value=guardado["escalar"])
         self.escalar_s = tk.StringVar(value=guardado.get("escalar_s", "3"))
         self.ver_pasos = tk.BooleanVar(value=guardado["paso_a_paso"])
+        etiquetas_prop = [prop.etiqueta(c) for c, _n, _k, _f in prop.PROPIEDADES]
+        self.propiedad = tk.StringVar(value=etiquetas_prop[0])
 
         self._construir_encabezado()
         self._construir_cuerpo()
@@ -287,32 +290,76 @@ class AppMatrices:
                        activeforeground=TEXTO,
                        font=("Segoe UI", 9)).pack(anchor="w", pady=(6, 0))
 
-        # — Propiedades del producto matriz-vector (teorema visto en clase) —
-        props = tk.LabelFrame(p, text=" Propiedades de A·x ", bg=FONDO, fg=MUTED,
-                              font=F_BOLD, padx=10, pady=8)
-        props.pack(fill="x", pady=(8, 0))
+        # ── Separador y operaciones sobre A cuadrada (det / inversa) ──
+        tk.Frame(tab_ops, bg=BORDE, height=1).pack(fill="x", pady=(10, 4))
+        tk.Label(tab_ops, text="Operaciones sobre A cuadrada:",
+                 bg=FONDO, fg=MUTED, font=("Segoe UI", 8)).pack(anchor="w")
+        f_det = tk.Frame(tab_ops, bg=FONDO)
+        f_det.pack(fill="x", pady=(2, 0))
+        f_det.grid_columnconfigure(0, weight=1)
+        f_det.grid_columnconfigure(1, weight=1)
+        f_det.grid_columnconfigure(2, weight=1)
+        self._op(f_det, 0, 0, "det(A)",    "det")
+        self._op(f_det, 0, 1, "A⁻¹  G-J",  "inversa_gj")
+        self._op(f_det, 0, 2, "A⁻¹  Adj",  "inversa_adj")
 
-        tk.Label(props, text="u y v son la 1ª y la 2ª columna de B.",
+        # ── Tab 2: Propiedades ────────────────────────────────
+        tab_props = tk.Frame(nb, bg=FONDO, padx=10, pady=8)
+        nb.add(tab_props, text="  Propiedades  ")
+
+        tk.Label(tab_props,
+                 text="u, v = col 1 y 2 de B  ·  r = escalar  ·  C = tercera matriz  ·  s = 2º escalar",
                  bg=FONDO, fg=MUTED, font=("Segoe UI", 8)).pack(anchor="w")
 
-        b_suma = tk.Button(props, text="A(u + v) = A·u + A·v", font=F_BTN_SM,
-                           bg=SUPERF, fg=TEXTO, relief="flat", cursor="hand2",
-                           command=lambda: self.ejecutar_operacion("prop_suma"))
-        b_suma.pack(fill="x", pady=2)
-        self._hover(b_suma, BORDE, SUPERF)
+        f_s = tk.Frame(tab_props, bg=FONDO)
+        f_s.pack(fill="x", pady=(4, 0))
+        tk.Label(f_s, text="s =", bg=FONDO, fg=TEXTO,
+                 font=F_NORMAL).pack(side="left")
+        tk.Entry(f_s, textvariable=self.escalar_s, width=6, font=F_MONO,
+                 justify="center", bg=SUPERF, fg=TEXTO,
+                 insertbackground=NARANJA, relief="flat").pack(side="left", padx=4)
+        tk.Label(f_s, text="(2º escalar, para propiedades que lo necesiten)",
+                 bg=FONDO, fg=MUTED, font=("Segoe UI", 8)).pack(side="left")
 
-        b_esc = tk.Button(props, text="A(r · u) = r (A·u)", font=F_BTN_SM,
+        etiquetas = [prop.etiqueta(c) for c, _n, _k, _f in prop.PROPIEDADES]
+        ttk.Combobox(tab_props, textvariable=self.propiedad, values=etiquetas,
+                     state="readonly", font=F_NORMAL).pack(fill="x", pady=(4, 2))
+
+        fila_p = tk.Frame(tab_props, bg=FONDO)
+        fila_p.pack(fill="x", pady=2)
+        fila_p.grid_columnconfigure(0, weight=1)
+        fila_p.grid_columnconfigure(1, weight=1)
+
+        b_ver = tk.Button(fila_p, text="Verificar la elegida", font=F_BTN_SM,
                           bg=SUPERF, fg=TEXTO, relief="flat", cursor="hand2",
-                          command=lambda: self.ejecutar_operacion("prop_escalar"))
-        b_esc.pack(fill="x", pady=2)
-        self._hover(b_esc, BORDE, SUPERF)
+                          command=lambda: self.ejecutar_operacion("prop"))
+        b_ver.grid(row=0, column=0, sticky="we", padx=(0, 2))
+        self._hover(b_ver, BORDE, SUPERF)
 
-        # — Envío al solucionador —
-        env = tk.LabelFrame(p, text=" Enviar al solucionador ", bg=FONDO,
-                            fg=MUTED, font=F_BOLD, padx=10, pady=8)
-        env.pack(fill="x", pady=(8, 0))
+        b_todas = tk.Button(fila_p, text="Verificar todas", font=F_BTN_SM,
+                            bg=SUPERF, fg=TEXTO, relief="flat", cursor="hand2",
+                            command=lambda: self.ejecutar_operacion("prop_todas"))
+        b_todas.grid(row=0, column=1, sticky="we", padx=(2, 0))
+        self._hover(b_todas, BORDE, SUPERF)
 
-        tk.Label(env, text="B debe tener una sola columna: es el vector b.",
+        # ── Tab 3: Solucionador ───────────────────────────────
+        tab_env = tk.Frame(nb, bg=FONDO, padx=10, pady=8)
+        nb.add(tab_env, text="  Solucionador  ")
+
+        tk.Label(tab_env, text="B debe tener una sola columna: es el vector b.",
+                 bg=FONDO, fg=MUTED, font=("Segoe UI", 8)).pack(anchor="w")
+        self._envio(tab_env, "Resolver la ecuación  A · x = b", "matricial")
+        self._envio(tab_env, "¿Es b combinación lineal de las columnas de A?", "combinacion")
+        self._envio(tab_env, "¿Son las columnas de A linealmente independientes?", "independencia")
+        tk.Frame(tab_env, bg=BORDE, height=1).pack(fill="x", pady=(8, 4))
+        b_cramer = tk.Button(tab_env,
+                             text="Resolver A · x = b  (Regla de Cramer)",
+                             font=F_BTN_SM, bg=VERDE, fg=PANEL,
+                             relief="flat", cursor="hand2", pady=3, anchor="w",
+                             command=self._mostrar_cramer)
+        b_cramer.pack(fill="x", pady=2)
+        self._hover(b_cramer, "#85C27D", VERDE)
+        tk.Label(tab_env, text="A debe ser cuadrada n×n y det(A) ≠ 0.",
                  bg=FONDO, fg=MUTED, font=("Segoe UI", 8)).pack(anchor="w")
 
         # ── Resultado (siempre visible, ocupa el espacio restante) ──
@@ -560,7 +607,8 @@ class AppMatrices:
         # B solo se lee cuando la operacion la necesita; asi un error en B no
         # impide calcular Aᵀ ni r·A.
         necesita_B = operacion in ("suma", "resta", "multiplicacion",
-                                   "prop_suma", "prop_escalar")
+                                   "prop_suma", "prop_escalar",
+                                   "prop", "prop_todas")
 
         A = self._leer_matriz(self.casillas_A, "A")
         if A is None:
@@ -573,7 +621,7 @@ class AppMatrices:
                 return
 
         try:
-            if operacion in ("prop_suma", "prop_escalar"):
+            if operacion in ("prop_suma", "prop_escalar", "prop", "prop_todas"):
                 self._ejecutar_propiedad(operacion, A, B)
                 return
 
@@ -786,33 +834,37 @@ class AppMatrices:
 
     def _ejecutar_propiedad(self, operacion, A, B):
         """
-        Comprueba las propiedades del producto matriz-vector tomando u y v de
-        las columnas de B: u es la primera columna y v la segunda.
+        Verifica con los datos de las cuadriculas la propiedad elegida o todas
+        (core/propiedades.py). u y v son la 1ª y la 2ª columna de B.
         """
-        if len(A[0]) != len(B):
-            messagebox.showerror(
-                "Dimensiones incompatibles",
-                "A tiene {} columnas y los vectores de B tienen {} componentes.\n\n"
-                "Para calcular A·u las columnas de A deben coincidir con las "
-                "filas de B.".format(len(A[0]), len(B)))
+        r = self._leer_escalar()
+        if r is None:
+            return
+        s = self._leer_escalar_s()
+        if s is None:
             return
 
-        u = [fila[0] for fila in B]
+        C = None
+        if self.casillas_C:
+            C = self._leer_matriz(self.casillas_C, "C")
+            if C is None:
+                return
 
-        if operacion == "prop_escalar":
-            r = self._leer_escalar()
-            if r is None:
-                return
-            lineas = proc.pasos_propiedad_escalar(A, r, u)
-        else:
-            if len(B[0]) < 2:
-                messagebox.showerror(
-                    "Faltan datos",
-                    "Esta propiedad necesita dos vectores.\n\n"
-                    "Poné 2 columnas en B: la primera es u y la segunda es v.")
-                return
-            v = [fila[1] for fila in B]
-            lineas = proc.pasos_propiedad_suma(A, u, v)
+        try:
+            if operacion == "prop_todas":
+                lineas = prop.verificar_todas(A, B, r, C, s)
+            else:
+                if operacion in ("prop_suma", "prop_escalar"):
+                    clave = "mv_suma" if operacion == "prop_suma" else "mv_escalar"
+                else:
+                    clave = prop.clave_de_etiqueta(self.propiedad.get())
+                    if clave is None:
+                        messagebox.showerror("Error", "Propiedad no reconocida.")
+                        return
+                lineas, _ = prop.verificar(clave, A, B, r, C, s)
+        except (ValueError, ZeroDivisionError) as ex:
+            messagebox.showerror("No se puede verificar", str(ex))
+            return
 
         self.resultado_actual = None
         self.btn_res_A.config(state="disabled")
