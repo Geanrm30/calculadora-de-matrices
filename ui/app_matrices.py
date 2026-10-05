@@ -92,6 +92,7 @@ class AppMatrices:
         self.escalar   = tk.StringVar(value=guardado["escalar"])
         self.escalar_s = tk.StringVar(value=guardado.get("escalar_s", "3"))
         self.ver_pasos = tk.BooleanVar(value=guardado["paso_a_paso"])
+        self.metodo_det = tk.StringVar(value=self.METODO_COFACTORES)
         etiquetas_prop = [prop.etiqueta(c) for c, _n, _k, _f in prop.PROPIEDADES]
         self.propiedad = tk.StringVar(value=etiquetas_prop[0])
 
@@ -314,6 +315,25 @@ class AppMatrices:
         self._op(f_det, 0, 1, "A⁻¹  G-J",  "inversa_gj")
         self._op(f_det, 0, 2, "A⁻¹  Adj",  "inversa_adj")
 
+        f_met = tk.Frame(tab_ops, bg=FONDO)
+        f_met.pack(fill="x", pady=(4, 0))
+        tk.Label(f_met, text="Método del determinante:", bg=FONDO, fg=TEXTO,
+                 font=("Segoe UI", 9)).pack(side="left")
+        self.combo_metodo_det = ttk.Combobox(
+            f_met, textvariable=self.metodo_det, state="readonly",
+            values=self._metodos_det_disponibles(), font=F_NORMAL, width=26)
+        self.combo_metodo_det.pack(side="left", padx=(6, 0), fill="x", expand=True)
+
+        b_cramer = tk.Button(tab_ops,
+                             text="Resolver A · x = b  (Regla de Cramer)",
+                             font=F_BTN_SM, bg=VERDE, fg=PANEL,
+                             relief="flat", cursor="hand2", pady=3, anchor="w",
+                             command=self._mostrar_cramer)
+        b_cramer.pack(fill="x", pady=(6, 2))
+        self._hover(b_cramer, "#85C27D", VERDE)
+        tk.Label(tab_ops, text="B debe ser el vector b (1 columna); A cuadrada n×n con det(A) ≠ 0.",
+                 bg=FONDO, fg=MUTED, font=("Segoe UI", 8)).pack(anchor="w")
+
         # ── Tab 2: Propiedades ────────────────────────────────
         tab_props = tk.Frame(nb, bg=FONDO, padx=10, pady=8)
         nb.add(tab_props, text="  Propiedades  ")
@@ -362,16 +382,6 @@ class AppMatrices:
         self._envio(tab_env, "Resolver la ecuación  A · x = b", "matricial")
         self._envio(tab_env, "¿Es b combinación lineal de las columnas de A?", "combinacion")
         self._envio(tab_env, "¿Son las columnas de A linealmente independientes?", "independencia")
-        tk.Frame(tab_env, bg=BORDE, height=1).pack(fill="x", pady=(8, 4))
-        b_cramer = tk.Button(tab_env,
-                             text="Resolver A · x = b  (Regla de Cramer)",
-                             font=F_BTN_SM, bg=VERDE, fg=PANEL,
-                             relief="flat", cursor="hand2", pady=3, anchor="w",
-                             command=self._mostrar_cramer)
-        b_cramer.pack(fill="x", pady=2)
-        self._hover(b_cramer, "#85C27D", VERDE)
-        tk.Label(tab_env, text="A debe ser cuadrada n×n y det(A) ≠ 0.",
-                 bg=FONDO, fg=MUTED, font=("Segoe UI", 8)).pack(anchor="w")
 
         # ── Resultado (siempre visible, ocupa el espacio restante) ──
         res = tk.LabelFrame(p, text=" Resultado ", bg=FONDO, fg=MUTED,
@@ -508,6 +518,25 @@ class AppMatrices:
             self.contenedor_C, self.filas_C.get(), self.cols_C.get(), ant_C)
 
         self._actualizar_titulos()
+        self._actualizar_metodos_det()
+
+    METODO_COFACTORES = "Cofactores"
+    METODO_TRIANGULAR = "Triangular (eliminación)"
+    METODO_SARRUS = "Sarrus (solo 3×3)"
+
+    def _metodos_det_disponibles(self):
+        """Sarrus solo se ofrece cuando A es 3×3."""
+        metodos = [self.METODO_COFACTORES, self.METODO_TRIANGULAR]
+        if self.filas_A.get() == 3 and self.cols_A.get() == 3:
+            metodos.append(self.METODO_SARRUS)
+        return metodos
+
+    def _actualizar_metodos_det(self):
+        """Refresca las opciones del menú según el tamaño actual de A."""
+        metodos = self._metodos_det_disponibles()
+        self.combo_metodo_det.config(values=metodos)
+        if self.metodo_det.get() not in metodos:
+            self.metodo_det.set(self.METODO_COFACTORES)
 
     def _actualizar_titulos(self):
         """Llama 'vector' a la cuadricula cuando tiene una sola columna."""
@@ -654,20 +683,25 @@ class AppMatrices:
 
         # Determinante: muestra paso a paso (si activo) + resultado + diagnóstico
         if operacion == "det":
+            metodo = self.metodo_det.get()
+            es_3x3 = len(A) == 3 and len(A[0]) == 3
+            if metodo == self.METODO_SARRUS and not es_3x3:
+                metodo = self.METODO_COFACTORES
             val = resultado[0][0]
+            if metodo == self.METODO_SARRUS:
+                from modulos.modulo_matrices import determinante_sarrus
+                val = determinante_sarrus(A)
             lineas = []
             if self.ver_pasos.get():
-                lineas.extend(proc.pasos_determinante_cofactores(A))
-                lineas.extend(proc.pasos_determinante_triangular(A))
-                if len(A) == 3 and len(A[0]) == 3:
+                if metodo == self.METODO_SARRUS:
                     lineas.extend(proc.pasos_determinante_sarrus(A))
+                elif metodo == self.METODO_TRIANGULAR:
+                    lineas.extend(proc.pasos_determinante_triangular(A))
+                else:
+                    lineas.extend(proc.pasos_determinante_cofactores(A))
                 lineas.append("─" * 52)
                 lineas.append("")
-            lineas.append("det(A)  =  {}".format(val))
-            # El curso exige mostrar Sarrus como segundo método para matrices 3×3
-            if len(A) == 3 and len(A[0]) == 3:
-                from modulos.modulo_matrices import determinante_sarrus
-                lineas.append("det(A) por Sarrus  =  {}".format(determinante_sarrus(A)))
+            lineas.append("det(A)  =  {}    (método: {})".format(val, metodo))
             lineas.append("")
             if val.es_cero():
                 from modulos.modulo_matrices import rango

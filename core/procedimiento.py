@@ -509,9 +509,10 @@ def pasos_determinante_sarrus(A):
     """Regla de Sarrus: 3 diagonales positivas y 3 negativas para matrices 3×3."""
     lineas = _encabezado(
         "PASO A PASO - det(A) POR LA REGLA DE SARRUS (3×3)",
-        "det = (a11a22a33 + a12a23a31 + a13a21a32)"
-        " - (a31a22a13 + a32a23a11 + a33a21a12)",
-        "Solo válida para matrices 3×3.")
+        "det = (a11·a22·a33 + a12·a23·a31 + a13·a21·a32)"
+        " - (a31·a22·a13 + a32·a23·a11 + a33·a21·a12)",
+        "Los 3 primeros productos (↘) suman; los 3 últimos (↗) restan. "
+        "Solo válida para 3×3.")
 
     lineas.append("  Matriz A:")
     for fila in A:
@@ -545,6 +546,11 @@ def pasos_determinante_sarrus(A):
     pos = p1 + p2 + p3
     neg = n1 + n2 + n3
     resultado = pos - neg
+    lineas.append("  Reemplazando en la regla:")
+    lineas.append("    det = ({} + {} + {}) - ({} + {} + {})".format(
+        _valor(p1), _valor(p2), _valor(p3),
+        _valor(n1), _valor(n2), _valor(n3)))
+    lineas.append("")
     lineas.append("  Suma positiva:  {} + {} + {} = {}".format(
         _valor(p1), _valor(p2), _valor(p3), str(pos)))
     lineas.append("  Suma negativa:  {} + {} + {} = {}".format(
