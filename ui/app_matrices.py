@@ -674,8 +674,8 @@ class AppMatrices:
                 r = rango(A)
                 lineas.append(
                     "La matriz A es SINGULAR: det(A) = 0,  "
-                    "tiene solo {} posición{} pivote (rango {}) y no tiene inversa.".format(
-                        r, "es" if r != 1 else "", r))
+                    "tiene solo {} {} pivote (rango {}) y no tiene inversa.".format(
+                        r, "posición" if r == 1 else "posiciones", r))
             else:
                 lineas.append("La matriz A es invertible: det(A) ≠ 0.")
             self.resultado_actual = None
