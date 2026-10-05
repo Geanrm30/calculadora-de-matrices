@@ -1,15 +1,11 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: ui/app_matrices.py
-#  Herramienta de operaciones con matrices y vectores.
-#
-#  Un vector de R^n es una matriz de una sola columna, asi que las mismas
-#  cuadriculas sirven para vectores: basta poner 1 en el numero de columnas.
-#  Cuando eso ocurre la herramienta lo detecta y habla de vectores.
-#
-#  Todo lo escrito aqui se guarda en core/estado.py, de modo que al ir al
-#  solucionador y volver, las matrices siguen en su sitio.
-# =============================================================================
+"""
+Herramienta gráfica (tkinter) para operaciones con matrices y vectores:
+suma, resta, escalar, producto, transpuesta, determinante, inversa y Cramer.
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -59,9 +55,17 @@ class AppMatrices:
         s.configure("TPanedwindow", background=FONDO)
         s.configure("TScrollbar", background=PANEL, troughcolor=FONDO,
                     arrowcolor=MUTED, borderwidth=0)
+        s.configure("TNotebook", background=FONDO, borderwidth=0,
+                    tabmargins=[0, 0, 0, 0])
+        s.configure("TNotebook.Tab", background=PANEL, foreground=MUTED,
+                    font=("Segoe UI", 9), padding=[12, 5])
+        s.map("TNotebook.Tab",
+              background=[("selected", SUPERF)],
+              foreground=[("selected", TEXTO)])
 
         self.casillas_A = []
         self.casillas_B = []
+        self.casillas_C = []
         self.resultado_actual = None     # ultima matriz calculada (Fraccion)
 
         # ── Recuperacion de lo que se dejo escrito antes de cambiar de
@@ -69,17 +73,23 @@ class AppMatrices:
         guardado = estado.leer_matrices()
         self._texto_A = guardado["A"]
         self._texto_B = guardado["B"]
+        self._texto_C = guardado.get("C")
 
         filas_A = len(self._texto_A) if self._texto_A else 2
         cols_A  = len(self._texto_A[0]) if self._texto_A else 2
         filas_B = len(self._texto_B) if self._texto_B else 2
         cols_B  = len(self._texto_B[0]) if self._texto_B else 2
+        filas_C = len(self._texto_C) if self._texto_C else 2
+        cols_C  = len(self._texto_C[0]) if self._texto_C else 2
 
         self.filas_A = tk.IntVar(value=filas_A)
         self.cols_A  = tk.IntVar(value=cols_A)
         self.filas_B = tk.IntVar(value=filas_B)
         self.cols_B  = tk.IntVar(value=cols_B)
-        self.escalar = tk.StringVar(value=guardado["escalar"])
+        self.filas_C = tk.IntVar(value=filas_C)
+        self.cols_C  = tk.IntVar(value=cols_C)
+        self.escalar   = tk.StringVar(value=guardado["escalar"])
+        self.escalar_s = tk.StringVar(value=guardado.get("escalar_s", "3"))
         self.ver_pasos = tk.BooleanVar(value=guardado["paso_a_paso"])
 
         self._construir_encabezado()
@@ -97,13 +107,15 @@ class AppMatrices:
     # ──────────────────────────────────────────────────────────
 
     def _guardar_estado(self):
-        """Deja las cuadriculas y el ultimo resultado en core/estado.py."""
+        """Deja las cuadriculas, escalares y el ultimo resultado en core/estado.py."""
         estado.guardar_matrices(
             [[c.get() for c in fila] for fila in self.casillas_A],
             [[c.get() for c in fila] for fila in self.casillas_B],
             self.escalar.get(),
             self.txt_resultado.get("1.0", tk.END).rstrip(),
-            self.ver_pasos.get())
+            self.ver_pasos.get(),
+            [[c.get() for c in fila] for fila in self.casillas_C],
+            self.escalar_s.get())
 
     def _al_cerrar(self):
         """Cierre con la X: se guarda todo y no se pide otra ventana."""
@@ -133,8 +145,8 @@ class AppMatrices:
         cnt.pack(side="left", padx=20, fill="y")
         tk.Label(cnt, text="Operaciones con matrices y vectores",
                  bg=PANEL, fg=TEXTO, font=F_TITULO).pack(anchor="sw", pady=(14, 0))
-        tk.Label(cnt, text="Suma · resta · escalar · producto · transpuesta   "
-                           "(un vector es una matriz de 1 columna)",
+        tk.Label(cnt, text="Suma · resta · escalar · producto · transpuesta · "
+                           "determinante · inversa",
                  bg=PANEL, fg=MUTED, font=F_SUBTIT).pack(anchor="nw", pady=(0, 10))
 
         btn = tk.Button(barra, text="Volver al Menú", font=F_BTN_SM,
@@ -174,6 +186,12 @@ class AppMatrices:
         mb.pack(fill="x", pady=(0, 10))
         self._spin(mb, 0, "Filas (n):", self.filas_B)
         self._spin(mb, 1, "Cols (p):",  self.cols_B)
+
+        mc = tk.LabelFrame(p, text=" Tamaño de C ", bg=FONDO, fg=MUTED,
+                           font=F_BOLD, padx=10, pady=10)
+        mc.pack(fill="x", pady=(0, 10))
+        self._spin(mc, 0, "Filas (m):", self.filas_C)
+        self._spin(mc, 1, "Cols (n):",  self.cols_C)
 
         tk.Label(p, text="Poné 1 columna para trabajar con vectores de Rⁿ.",
                  bg=FONDO, fg=MUTED, font=("Segoe UI", 8),
@@ -225,14 +243,24 @@ class AppMatrices:
         self.contenedor_B = tk.Frame(self.frame_B, bg=FONDO)
         self.contenedor_B.pack(anchor="nw")
 
-    # ── Panel derecho: operaciones, envíos y resultado ────────
+        self.frame_C = tk.LabelFrame(p, text=" Matriz C ", bg=FONDO, fg=AZUL,
+                                     font=F_BOLD, padx=8, pady=8)
+        self.frame_C.pack(fill="both", expand=True, pady=(5, 0))
+        self.contenedor_C = tk.Frame(self.frame_C, bg=FONDO)
+        self.contenedor_C.pack(anchor="nw")
+
+    # ── Panel derecho: tabs de control + resultado ────────────
 
     def _panel_derecho(self, p):
-        ops = tk.LabelFrame(p, text=" Operaciones ", bg=FONDO, fg=MUTED,
-                            font=F_BOLD, padx=10, pady=8)
-        ops.pack(fill="x")
+        # ── Notebook (Operaciones / Propiedades / Solucionador) ──
+        nb = ttk.Notebook(p)
+        nb.pack(fill="x", pady=(0, 8))
 
-        rejilla = tk.Frame(ops, bg=FONDO)
+        # ── Tab 1: Operaciones ────────────────────────────────
+        tab_ops = tk.Frame(nb, bg=FONDO, padx=10, pady=8)
+        nb.add(tab_ops, text="  Operaciones  ")
+
+        rejilla = tk.Frame(tab_ops, bg=FONDO)
         rejilla.pack(fill="x")
         rejilla.grid_columnconfigure(0, weight=1)
         rejilla.grid_columnconfigure(1, weight=1)
@@ -242,7 +270,7 @@ class AppMatrices:
         self._op(rejilla, 1, 0, "A × B",  "multiplicacion")
         self._op(rejilla, 1, 1, "Aᵀ",     "transpuesta")
 
-        f_esc = tk.Frame(ops, bg=FONDO)
+        f_esc = tk.Frame(tab_ops, bg=FONDO)
         f_esc.pack(fill="x", pady=(6, 0))
         be = tk.Button(f_esc, text="r · A   (escalar)", font=F_BTN,
                        bg=NARANJA, fg=PANEL, relief="flat", cursor="hand2",
@@ -253,7 +281,7 @@ class AppMatrices:
                  justify="center", bg=SUPERF, fg=TEXTO,
                  insertbackground=NARANJA, relief="flat").pack(side="right")
 
-        tk.Checkbutton(ops, text="Mostrar el paso a paso del cálculo",
+        tk.Checkbutton(tab_ops, text="Mostrar el paso a paso del cálculo",
                        variable=self.ver_pasos, bg=FONDO, fg=TEXTO,
                        selectcolor=SUPERF, activebackground=FONDO,
                        activeforeground=TEXTO,
@@ -287,14 +315,10 @@ class AppMatrices:
         tk.Label(env, text="B debe tener una sola columna: es el vector b.",
                  bg=FONDO, fg=MUTED, font=("Segoe UI", 8)).pack(anchor="w")
 
-        self._envio(env, "Resolver la ecuación  A · x = b", "matricial")
-        self._envio(env, "¿Es b combinación lineal de las columnas de A?", "combinacion")
-        self._envio(env, "¿Son las columnas de A linealmente independientes?", "independencia")
-
-        # — Resultado —
+        # ── Resultado (siempre visible, ocupa el espacio restante) ──
         res = tk.LabelFrame(p, text=" Resultado ", bg=FONDO, fg=MUTED,
                             font=F_BOLD, padx=6, pady=6)
-        res.pack(fill="both", expand=True, pady=(8, 0))
+        res.pack(fill="both", expand=True)
 
         acciones = tk.Frame(res, bg=FONDO)
         acciones.pack(fill="x", pady=(0, 4))
@@ -312,6 +336,13 @@ class AppMatrices:
                                    command=lambda: self.usar_resultado("B"))
         self.btn_res_B.pack(side="left", padx=(0, 4))
         self._hover(self.btn_res_B, BORDE, SUPERF)
+
+        self.btn_res_C = tk.Button(acciones, text="Resultado → C", font=F_BTN_SM,
+                                   bg=SUPERF, fg=TEXTO, relief="flat",
+                                   state="disabled", cursor="hand2",
+                                   command=lambda: self.usar_resultado("C"))
+        self.btn_res_C.pack(side="left", padx=(0, 4))
+        self._hover(self.btn_res_C, BORDE, SUPERF)
 
         b_copiar = tk.Button(acciones, text="Copiar", font=F_BTN_SM,
                              bg=SUPERF, fg=TEXTO, relief="flat", cursor="hand2",
@@ -395,7 +426,7 @@ class AppMatrices:
         return casillas
 
     def generar_cuadriculas(self):
-        """Rehace las dos cuadriculas con el tamano indicado en los spinbox."""
+        """Rehace las tres cuadriculas con el tamano indicado en los spinbox."""
         if self.casillas_A:
             ant_A = [[c.get() for c in fila] for fila in self.casillas_A]
         else:
@@ -406,10 +437,17 @@ class AppMatrices:
         else:
             ant_B = self._texto_B
 
+        if self.casillas_C:
+            ant_C = [[c.get() for c in fila] for fila in self.casillas_C]
+        else:
+            ant_C = self._texto_C
+
         self.casillas_A = self._crear_celdas(
             self.contenedor_A, self.filas_A.get(), self.cols_A.get(), ant_A)
         self.casillas_B = self._crear_celdas(
             self.contenedor_B, self.filas_B.get(), self.cols_B.get(), ant_B)
+        self.casillas_C = self._crear_celdas(
+            self.contenedor_C, self.filas_C.get(), self.cols_C.get(), ant_C)
 
         self._actualizar_titulos()
 
@@ -417,6 +455,7 @@ class AppMatrices:
         """Llama 'vector' a la cuadricula cuando tiene una sola columna."""
         etiqueta_A = " Vector A ({}×1) " if self.cols_A.get() == 1 else " Matriz A ({}×{}) "
         etiqueta_B = " Vector B ({}×1) " if self.cols_B.get() == 1 else " Matriz B ({}×{}) "
+        etiqueta_C = " Vector C ({}×1) " if self.cols_C.get() == 1 else " Matriz C ({}×{}) "
 
         if self.cols_A.get() == 1:
             self.frame_A.config(text=etiqueta_A.format(self.filas_A.get()))
@@ -428,8 +467,13 @@ class AppMatrices:
         else:
             self.frame_B.config(text=etiqueta_B.format(self.filas_B.get(), self.cols_B.get()))
 
+        if self.cols_C.get() == 1:
+            self.frame_C.config(text=etiqueta_C.format(self.filas_C.get()))
+        else:
+            self.frame_C.config(text=etiqueta_C.format(self.filas_C.get(), self.cols_C.get()))
+
     def limpiar(self):
-        for casillas in (self.casillas_A, self.casillas_B):
+        for casillas in (self.casillas_A, self.casillas_B, self.casillas_C):
             for fila in casillas:
                 for c in fila:
                     c.delete(0, tk.END)
@@ -437,6 +481,7 @@ class AppMatrices:
         self.resultado_actual = None
         self.btn_res_A.config(state="disabled")
         self.btn_res_B.config(state="disabled")
+        self.btn_res_C.config(state="disabled")
         self.mostrar_resultado("")
 
     def intercambiar(self):
@@ -492,6 +537,16 @@ class AppMatrices:
                                      self.escalar.get()))
             return None
 
+    def _leer_escalar_s(self):
+        """Lee el segundo escalar s; devuelve None si no es valido."""
+        try:
+            return desde_texto(self.escalar_s.get())
+        except (ValueError, ZeroDivisionError):
+            messagebox.showerror("Segundo escalar inválido",
+                                 "El valor «{}» no es un número válido para s.".format(
+                                     self.escalar_s.get()))
+            return None
+
     # ──────────────────────────────────────────────────────────
     # Operaciones
     # ──────────────────────────────────────────────────────────
@@ -522,12 +577,48 @@ class AppMatrices:
                 self._ejecutar_propiedad(operacion, A, B)
                 return
 
+            # Inversa: tiene su propio display (det + A·A⁻¹=I + diagnóstico)
+            if operacion in ("inversa_gj", "inversa_adj"):
+                self._mostrar_inversa(operacion, A)
+                return
+
             resultado, titulo, pasos = self._calcular(operacion, A, B)
         except ValueError as ex:
-            messagebox.showerror("Dimensiones incompatibles", str(ex))
+            titulo_err = ("Matriz no invertible"
+                          if operacion in ("det", "inversa_gj", "inversa_adj")
+                          else "Dimensiones incompatibles")
+            messagebox.showerror(titulo_err, str(ex))
             return
 
         if resultado is None:
+            return
+
+        # Determinante: muestra paso a paso (si activo) + resultado + diagnóstico
+        if operacion == "det":
+            val = resultado[0][0]
+            lineas = []
+            if self.ver_pasos.get():
+                lineas.extend(proc.pasos_determinante_cofactores(A))
+                lineas.extend(proc.pasos_determinante_triangular(A))
+                if len(A) == 3 and len(A[0]) == 3:
+                    lineas.extend(proc.pasos_determinante_sarrus(A))
+                lineas.append("─" * 52)
+                lineas.append("")
+            lineas.append("det(A)  =  {}".format(val))
+            # El curso exige mostrar Sarrus como segundo método para matrices 3×3
+            if len(A) == 3 and len(A[0]) == 3:
+                from modulos.modulo_matrices import determinante_sarrus
+                lineas.append("det(A) por Sarrus  =  {}".format(determinante_sarrus(A)))
+            lineas.append("")
+            if val.es_cero():
+                lineas.append("La matriz A es SINGULAR: det(A) = 0 y no tiene inversa.")
+            else:
+                lineas.append("La matriz A es invertible: det(A) ≠ 0.")
+            self.resultado_actual = None
+            self.btn_res_A.config(state="disabled")
+            self.btn_res_B.config(state="disabled")
+            self.btn_res_C.config(state="disabled")
+            self.mostrar_resultado("\n".join(lineas))
             return
 
         lineas = []
@@ -540,6 +631,7 @@ class AppMatrices:
         self.resultado_actual = resultado
         self.btn_res_A.config(state="normal")
         self.btn_res_B.config(state="normal")
+        self.btn_res_C.config(state="normal")
         self.mostrar_resultado("\n".join(lineas))
 
     def _calcular(self, operacion, A, B):
@@ -569,7 +661,128 @@ class AppMatrices:
         if operacion == "transpuesta":
             return alg.transponer(A), "Aᵀ =", proc.pasos_transpuesta(A)
 
+        if operacion == "det":
+            from modulos.modulo_matrices import determinante
+            return [[determinante(A)]], "det(A) =", []
+
         return None, "", []
+
+    def _mostrar_cramer(self):
+        """Resuelve A·x = b con la Regla de Cramer y muestra xᵢ = det(Aᵢ)/det(A)."""
+        A = self._leer_matriz(self.casillas_A, "A")
+        if A is None:
+            return
+        B = self._leer_matriz(self.casillas_B, "B")
+        if B is None:
+            return
+
+        if len(B[0]) != 1:
+            messagebox.showerror(
+                "B no es un vector",
+                "B tiene {} columnas. Cramer necesita que B sea el vector b (1 columna).".format(
+                    len(B[0])))
+            return
+        if len(A) != len(A[0]):
+            messagebox.showerror(
+                "A no es cuadrada",
+                "Cramer requiere A cuadrada (A es {}×{}).".format(len(A), len(A[0])))
+            return
+        if len(B) != len(A):
+            messagebox.showerror(
+                "Dimensiones incompatibles",
+                "A tiene {} filas y b tiene {} componentes.".format(len(A), len(B)))
+            return
+
+        from modulos.modulo_matrices import cramer, determinante
+
+        b_vec = [B[i][0] for i in range(len(B))]
+        n = len(A)
+
+        try:
+            det_A = determinante(A)
+            sol = cramer(A, b_vec)
+        except ValueError as ex:
+            messagebox.showerror("Regla de Cramer", str(ex))
+            return
+
+        lineas = []
+        if self.ver_pasos.get():
+            lineas.extend(proc.pasos_cramer(A, b_vec))
+            lineas.append("─" * 52)
+            lineas.append("")
+        lineas.extend(["Regla de Cramer:  A · x = b", "",
+                        "det(A)  =  {}".format(det_A), ""])
+
+        # Mostrar xᵢ = det(Aᵢ) / det(A) para cada variable
+        for i in range(n):
+            Ai = [[A[fila][col] if col != i else b_vec[fila]
+                   for col in range(n)]
+                  for fila in range(len(A))]
+            det_Ai = determinante(Ai)
+            lineas.append("  x{}  =  det(A{}) / det(A)  =  {}  /  {}  =  {}".format(
+                i + 1, i + 1, det_Ai, det_A, sol[i]))
+
+        lineas.append("")
+        sol_mat = [[v] for v in sol]
+        lineas.extend(proc.texto_resultado("x =", sol_mat))
+
+        self.resultado_actual = sol_mat
+        self.btn_res_A.config(state="normal")
+        self.btn_res_B.config(state="normal")
+        self.btn_res_C.config(state="normal")
+        self.mostrar_resultado("\n".join(lineas))
+
+    def _mostrar_inversa(self, operacion, A):
+        """Calcula A⁻¹, verifica A·A⁻¹=I y muestra det(A) y el diagnóstico completo."""
+        from modulos.modulo_matrices import (determinante, inversa_gauss_jordan,
+                                              inversa_adjunta)
+        det = determinante(A)
+        n = len(A)
+
+        if det.es_cero():
+            raise ValueError(
+                "La matriz A es singular: det(A) = 0. No tiene inversa.")
+
+        if operacion == "inversa_gj":
+            inv = inversa_gauss_jordan(A)
+            metodo = "Gauss-Jordan"
+        else:
+            inv = inversa_adjunta(A)
+            metodo = "Adjunta"
+
+        # Verificación exacta A·A⁻¹ = I usando la propia función de producto
+        producto = alg.multiplicar_matrices(A, inv)
+        es_identidad = all(
+            producto[i][j] == (Fraccion(1) if i == j else Fraccion(0))
+            for i in range(n) for j in range(n))
+
+        lineas = []
+        if self.ver_pasos.get():
+            if operacion == "inversa_gj":
+                lineas.extend(proc.pasos_inversa_gauss_jordan(A))
+            else:
+                lineas.extend(proc.pasos_inversa_adjunta(A))
+            lineas.append("─" * 52)
+            lineas.append("")
+        lineas.extend(["det(A)  =  {}".format(det), ""])
+        lineas.extend(proc.texto_resultado("A⁻¹  ({}) =".format(metodo), inv))
+        lineas.append("")
+        lineas.extend(proc.texto_resultado("Comprobación  A · A⁻¹ =", producto))
+        lineas.append("")
+        if es_identidad:
+            lineas.append("A · A⁻¹ = I  (verificación exacta con aritmética de fracciones).")
+        else:
+            lineas.append("[ERROR] La verificación A · A⁻¹ = I falló.")
+        lineas.append("")
+        lineas.append(
+            "La matriz A es invertible: det(A) ≠ 0, tiene {} posiciones pivote, "
+            "sus columnas son L.I. y generan ℝ{}.".format(n, n))
+
+        self.resultado_actual = inv
+        self.btn_res_A.config(state="normal")
+        self.btn_res_B.config(state="normal")
+        self.btn_res_C.config(state="normal")
+        self.mostrar_resultado("\n".join(lineas))
 
     def _ejecutar_propiedad(self, operacion, A, B):
         """
@@ -604,11 +817,12 @@ class AppMatrices:
         self.resultado_actual = None
         self.btn_res_A.config(state="disabled")
         self.btn_res_B.config(state="disabled")
+        self.btn_res_C.config(state="disabled")
         self.mostrar_resultado("\n".join(lineas))
 
     def usar_resultado(self, destino):
         """
-        Copia la ultima matriz calculada dentro de la cuadricula A o B, para
+        Copia la ultima matriz calculada dentro de la cuadricula A, B o C, para
         encadenar operaciones sin volver a escribir los numeros.
         """
         if self.resultado_actual is None:
@@ -621,11 +835,16 @@ class AppMatrices:
             self.casillas_A = []
             self.filas_A.set(len(texto))
             self.cols_A.set(len(texto[0]))
-        else:
+        elif destino == "B":
             self._texto_B = texto
             self.casillas_B = []
             self.filas_B.set(len(texto))
             self.cols_B.set(len(texto[0]))
+        else:
+            self._texto_C = texto
+            self.casillas_C = []
+            self.filas_C.set(len(texto))
+            self.cols_C.set(len(texto[0]))
 
         self.generar_cuadriculas()
 

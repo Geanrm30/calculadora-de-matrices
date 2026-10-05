@@ -1,19 +1,13 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: core/procedimiento.py
-#  Paso a paso de las operaciones con matrices y vectores.
-#
-#  core/algebra.py CALCULA; este modulo EXPLICA. Recorre las mismas
-#  posiciones que recorren los bucles del calculo y escribe, entrada por
-#  entrada, la formula general, la sustitucion de los valores y el resultado.
-#  Ninguna funcion imprime: todas devuelven listas de lineas de texto.
-#
-#  El producto A.x se explica con los DOS procedimientos vistos en clase:
-#      1) Ax como combinacion lineal de las columnas de A
-#                Ax = x1.a1 + x2.a2 + ... + xn.an
-#      2) Regla fila-vector: la entrada i de Ax es la suma de los productos
-#         de la fila i de A por las entradas de x.
-# =============================================================================
+"""
+Paso a paso de las operaciones con matrices y vectores para el Proyecto Integrador.
+core/algebra.py CALCULA; este módulo EXPLICA. Recorre las mismas posiciones que
+los bucles del cálculo y escribe fórmula, sustitución y resultado por cada entrada.
+Ninguna función imprime: todas devuelven listas de líneas de texto.
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 from core.formato import subindice, ancho_columna
 import core.algebra as algebra
@@ -449,6 +443,370 @@ def _comparar(izquierdo, derecho, nombre_izq, nombre_der):
             nombre_izq, nombre_der))
     else:
         lineas.append("    [FALLA] Los dos lados no coinciden.")
+    lineas.append("")
+    return lineas
+
+
+# ---------------------------------------------------------------------------
+# Determinante por expansión de cofactores
+# ---------------------------------------------------------------------------
+
+def pasos_determinante_cofactores(A):
+    """Expansión de la primera fila: muestra cada submatriz, cofactor y contribución."""
+    from modulos.modulo_matrices import submatriz, determinante
+    from core.fraccion import Fraccion
+    n = len(A)
+
+    lineas = _encabezado(
+        "PASO A PASO - det(A) POR EXPANSIÓN DE COFACTORES (primera fila)",
+        "det(A) = a₁₁C₁₁ + a₁₂C₁₂ + ... + a₁ₙC₁ₙ   donde  Cᵢⱼ = (-1)^(i+j) · Mᵢⱼ",
+        "Se expande por la primera fila (i = 1). A es {}×{}.".format(n, n))
+
+    if n == 1:
+        lineas.append("  Para 1×1: det([a]) = a = {}".format(str(A[0][0])))
+        lineas.append("")
+        return lineas
+
+    terms = []
+    for j in range(n):
+        signo_f = Fraccion(1) if j % 2 == 0 else Fraccion(-1)
+        sig_str = "+" if j % 2 == 0 else "-"
+        a1j = A[0][j]
+        Sub = submatriz(A, 0, j)
+        det_sub = determinante(Sub)
+        contrib = signo_f * a1j * det_sub
+        terms.append(contrib)
+
+        lineas.append("  ── Cofactor C₁{} (j = {}):".format(j + 1, j + 1))
+        lineas.append("     signo  = (-1)^(1+{}) = {}1".format(j + 1, sig_str))
+        lineas.append("     a₁{}  = {}".format(j + 1, str(a1j)))
+        lineas.append("     Submatriz M₁{} (sin fila 1, sin columna {}):".format(
+            j + 1, j + 1))
+        for fila_s in Sub:
+            lineas.append("       [ {} ]".format("   ".join(str(v) for v in fila_s)))
+        lineas.append("     det(M₁{}) = {}".format(j + 1, str(det_sub)))
+        cof_ij = signo_f * det_sub
+        lineas.append("     C₁{} = {} · {} = {}".format(
+            j + 1, sig_str, _valor(det_sub), str(cof_ij)))
+        lineas.append("     Contribución: a₁{} · C₁{} = {} · {} = {}".format(
+            j + 1, j + 1, _valor(a1j), _valor(cof_ij), str(contrib)))
+        lineas.append("")
+
+    total = terms[0]
+    for k in range(1, n):
+        total = total + terms[k]
+    lineas.append("  det(A) = {}".format(" + ".join(_valor(t) for t in terms)))
+    lineas.append("       = {}".format(str(total)))
+    lineas.append("")
+    return lineas
+
+
+# ---------------------------------------------------------------------------
+# Determinante por Sarrus (solo 3×3)
+# ---------------------------------------------------------------------------
+
+def pasos_determinante_sarrus(A):
+    """Regla de Sarrus: 3 diagonales positivas y 3 negativas para matrices 3×3."""
+    lineas = _encabezado(
+        "PASO A PASO - det(A) POR LA REGLA DE SARRUS (3×3)",
+        "det = (a11a22a33 + a12a23a31 + a13a21a32)"
+        " - (a31a22a13 + a32a23a11 + a33a21a12)",
+        "Solo válida para matrices 3×3.")
+
+    lineas.append("  Matriz A:")
+    for fila in A:
+        lineas.append("  [ {} ]".format("   ".join(str(v) for v in fila)))
+    lineas.append("")
+
+    p1 = A[0][0] * A[1][1] * A[2][2]
+    p2 = A[0][1] * A[1][2] * A[2][0]
+    p3 = A[0][2] * A[1][0] * A[2][1]
+    n1 = A[2][0] * A[1][1] * A[0][2]
+    n2 = A[2][1] * A[1][2] * A[0][0]
+    n3 = A[2][2] * A[1][0] * A[0][1]
+
+    lineas.append("  Diagonales positivas (↘):")
+    lineas.append("    d₊₁ = a₁₁·a₂₂·a₃₃ = {}·{}·{} = {}".format(
+        _valor(A[0][0]), _valor(A[1][1]), _valor(A[2][2]), str(p1)))
+    lineas.append("    d₊₂ = a₁₂·a₂₃·a₃₁ = {}·{}·{} = {}".format(
+        _valor(A[0][1]), _valor(A[1][2]), _valor(A[2][0]), str(p2)))
+    lineas.append("    d₊₃ = a₁₃·a₂₁·a₃₂ = {}·{}·{} = {}".format(
+        _valor(A[0][2]), _valor(A[1][0]), _valor(A[2][1]), str(p3)))
+    lineas.append("")
+    lineas.append("  Diagonales negativas (↗):")
+    lineas.append("    d₋₁ = a₃₁·a₂₂·a₁₃ = {}·{}·{} = {}".format(
+        _valor(A[2][0]), _valor(A[1][1]), _valor(A[0][2]), str(n1)))
+    lineas.append("    d₋₂ = a₃₂·a₂₃·a₁₁ = {}·{}·{} = {}".format(
+        _valor(A[2][1]), _valor(A[1][2]), _valor(A[0][0]), str(n2)))
+    lineas.append("    d₋₃ = a₃₃·a₂₁·a₁₂ = {}·{}·{} = {}".format(
+        _valor(A[2][2]), _valor(A[1][0]), _valor(A[0][1]), str(n3)))
+    lineas.append("")
+
+    pos = p1 + p2 + p3
+    neg = n1 + n2 + n3
+    resultado = pos - neg
+    lineas.append("  Suma positiva:  {} + {} + {} = {}".format(
+        _valor(p1), _valor(p2), _valor(p3), str(pos)))
+    lineas.append("  Suma negativa:  {} + {} + {} = {}".format(
+        _valor(n1), _valor(n2), _valor(n3), str(neg)))
+    lineas.append("  det(A) = {} - {} = {}".format(
+        _valor(pos), _valor(neg), str(resultado)))
+    lineas.append("")
+    return lineas
+
+
+# ---------------------------------------------------------------------------
+# Determinante por reducción triangular
+# ---------------------------------------------------------------------------
+
+def pasos_determinante_triangular(A):
+    """Reducción a triangular superior: muestra cada intercambio y eliminación de fila."""
+    from core.fraccion import Fraccion
+    n = len(A)
+
+    lineas = _encabezado(
+        "PASO A PASO - det(A) POR REDUCCIÓN TRIANGULAR",
+        "Se reduce A a triangular superior. det = signo · a₁₁·a₂₂·····aₙₙ",
+        "Cada intercambio invierte el signo; las eliminaciones no cambian det.")
+
+    if n == 1:
+        lineas.append("  Para 1×1: det = {}".format(str(A[0][0])))
+        lineas.append("")
+        return lineas
+
+    M = [[A[i][j] for j in range(n)] for i in range(n)]
+    signo = Fraccion(1)
+    paso = [0]
+
+    def mostrar(lineas, M):
+        for fila in M:
+            lineas.append("  [ {} ]".format("   ".join(str(v) for v in fila)))
+        lineas.append("")
+
+    lineas.append("  Matriz inicial:")
+    mostrar(lineas, M)
+
+    for col in range(n):
+        pivote_fila = next(
+            (f for f in range(col, n) if not M[f][col].es_cero()), None)
+
+        if pivote_fila is None:
+            lineas.append("  Columna {}: todos los valores son cero → det(A) = 0".format(
+                col + 1))
+            lineas.append("")
+            return lineas
+
+        if pivote_fila != col:
+            paso[0] += 1
+            lineas.append("  Paso {}: Intercambio F{} ↔ F{}  (el signo se invierte)".format(
+                paso[0], col + 1, pivote_fila + 1))
+            M[col], M[pivote_fila] = M[pivote_fila], M[col]
+            signo = signo * Fraccion(-1)
+            mostrar(lineas, M)
+
+        for fila in range(col + 1, n):
+            if not M[fila][col].es_cero():
+                factor = M[fila][col] / M[col][col]
+                paso[0] += 1
+                lineas.append("  Paso {}: F{} ← F{} − ({}) · F{}".format(
+                    paso[0], fila + 1, fila + 1, str(factor), col + 1))
+                for k in range(col, n):
+                    M[fila][k] = M[fila][k] - factor * M[col][k]
+                mostrar(lineas, M)
+
+    diag = [M[i][i] for i in range(n)]
+    lineas.append("  Matriz triangular superior final:")
+    mostrar(lineas, M)
+    lineas.append("  Diagonal: {}".format(
+        " · ".join(str(d) for d in diag)))
+
+    producto = diag[0]
+    for k in range(1, n):
+        producto = producto * diag[k]
+
+    sig_str = "+1" if not str(signo).startswith("-") else "−1"
+    resultado = signo * producto
+    lineas.append("  det(A) = signo * prod. diagonal = {} * {} = {}".format(
+        sig_str, str(producto), str(resultado)))
+    lineas.append("")
+    return lineas
+
+
+# ---------------------------------------------------------------------------
+# Inversa por Gauss-Jordan
+# ---------------------------------------------------------------------------
+
+def pasos_inversa_gauss_jordan(A):
+    """[A|I] → [I|A⁻¹] con Gauss-Jordan: muestra cada operación elemental de fila."""
+    from core.fraccion import Fraccion
+    from core.formato import ancho_columna
+    n = len(A)
+
+    lineas = _encabezado(
+        "PASO A PASO - A⁻¹ POR GAUSS-JORDAN",
+        "Se construye [A | I] y se aplica Gauss-Jordan hasta obtener [I | A⁻¹].",
+        "Cada op. elemental aplicada a la derecha transforma I en A⁻¹.")
+
+    cer = Fraccion(0)
+    uno = Fraccion(1)
+    M = [
+        [A[i][j] for j in range(n)] + [uno if i == k else cer for k in range(n)]
+        for i in range(n)
+    ]
+
+    def mostrar_aug(lineas, M):
+        ancho = max(len(str(M[i][j])) for i in range(n) for j in range(2 * n))
+        ancho = max(ancho, 1)
+        for i in range(n):
+            izq = "   ".join("{:>{a}}".format(str(M[i][j]), a=ancho) for j in range(n))
+            der = "   ".join("{:>{a}}".format(str(M[i][n+j]), a=ancho) for j in range(n))
+            lineas.append("  [ {} | {} ]".format(izq, der))
+        lineas.append("")
+
+    lineas.append("  Matriz aumentada inicial  [A | I]:")
+    mostrar_aug(lineas, M)
+
+    paso = 0
+    for col in range(n):
+        pivote = next(
+            (f for f in range(col, n) if not M[f][col].es_cero()), None)
+
+        if pivote is None:
+            lineas.append("  Sin pivote en columna {} → A es singular.".format(col + 1))
+            return lineas
+
+        if pivote != col:
+            paso += 1
+            lineas.append("  Paso {}: F{} ↔ F{}".format(
+                paso, col + 1, pivote + 1))
+            M[col], M[pivote] = M[pivote], M[col]
+            mostrar_aug(lineas, M)
+
+        p = M[col][col]
+        if not p.es_uno():
+            paso += 1
+            lineas.append("  Paso {}: F{} ← F{} / {}   (pivote → 1)".format(
+                paso, col + 1, col + 1, str(p)))
+            M[col] = [v / p for v in M[col]]
+            mostrar_aug(lineas, M)
+
+        for fila in range(n):
+            if fila != col and not M[fila][col].es_cero():
+                factor = M[fila][col]
+                paso += 1
+                lineas.append("  Paso {}: F{} ← F{} − {} · F{}".format(
+                    paso, fila + 1, fila + 1, str(factor), col + 1))
+                M[fila] = [M[fila][k] - factor * M[col][k]
+                           for k in range(2 * n)]
+                mostrar_aug(lineas, M)
+
+    A_inv = [[M[i][n + j] for j in range(n)] for i in range(n)]
+    lineas.append("  Resultado final  [I | A⁻¹]:")
+    mostrar_aug(lineas, M)
+    return lineas
+
+
+# ---------------------------------------------------------------------------
+# Inversa por la fórmula de la adjunta
+# ---------------------------------------------------------------------------
+
+def pasos_inversa_adjunta(A):
+    """A⁻¹ = (1/det(A))·adj(A): muestra cada cofactor, la adjunta y la fórmula final."""
+    from modulos.modulo_matrices import submatriz, determinante
+    from core.fraccion import Fraccion
+    import core.algebra as alg_local
+    n = len(A)
+
+    lineas = _encabezado(
+        "PASO A PASO - A⁻¹ POR LA FÓRMULA DE LA ADJUNTA",
+        "A⁻¹ = (1/det(A)) · adj(A)   donde   adj(A) = (matriz de cofactores)ᵀ",
+        "Cᵢⱼ = (-1)^(i+j) · det(Mᵢⱼ)   con Mᵢⱼ = submatriz sin fila i y columna j.")
+
+    if n == 1:
+        lineas.append("  Para 1×1: A⁻¹ = [[1/{}]] = [[{}]]".format(
+            str(A[0][0]), str(Fraccion(1) / A[0][0])))
+        lineas.append("")
+        return lineas
+
+    det = determinante(A)
+    lineas.append("  det(A) = {}".format(str(det)))
+    lineas.append("")
+
+    C = []
+    lineas.append("  ── Matriz de cofactores C (entrada a entrada):")
+    lineas.append("")
+    for i in range(n):
+        fila_c = []
+        for j in range(n):
+            signo_f = Fraccion(1) if (i + j) % 2 == 0 else Fraccion(-1)
+            sig_str = "+" if (i + j) % 2 == 0 else "-"
+            Sub = submatriz(A, i, j)
+            det_sub = determinante(Sub)
+            c_ij = signo_f * det_sub
+            fila_c.append(c_ij)
+            lineas.append("    C{} = (-1)^({}+{}) · det(M{}) = {} · {} = {}".format(
+                _ind(i, j), i + 1, j + 1, _ind(i, j),
+                sig_str, _valor(det_sub), str(c_ij)))
+            lineas.append("    Submatriz M{}:".format(_ind(i, j)))
+            for fila_s in Sub:
+                lineas.append("      [ {} ]".format("   ".join(str(v) for v in fila_s)))
+            lineas.append("")
+        C.append(fila_c)
+
+    lineas.extend(texto_resultado("  Matriz de cofactores  C =", C))
+    lineas.append("")
+
+    adj = alg_local.transponer(C)
+    lineas.extend(texto_resultado("  adj(A) = Cᵀ =", adj))
+    lineas.append("")
+
+    inv = alg_local.multiplicar_escalar(Fraccion(1) / det, adj)
+    lineas.append("  A⁻¹ = (1/{}) · adj(A)".format(str(det)))
+    lineas.extend(texto_resultado("     =", inv))
+    lineas.append("")
+    return lineas
+
+
+# ---------------------------------------------------------------------------
+# Regla de Cramer
+# ---------------------------------------------------------------------------
+
+def pasos_cramer(A, b):
+    """Cramer: muestra det(A), cada Aᵢ con su det y la fórmula xᵢ = det(Aᵢ)/det(A)."""
+    from modulos.modulo_matrices import determinante
+    from core.fraccion import Fraccion
+    n = len(A)
+
+    lineas = _encabezado(
+        "PASO A PASO - REGLA DE CRAMER",
+        "xᵢ = det(Aᵢ) / det(A)   donde Aᵢ = A con columna i reemplazada por b.",
+        "A es {}×{}; b tiene {} componentes.".format(n, n, n))
+
+    det_A = determinante(A)
+    lineas.append("  det(A) = {}".format(str(det_A)))
+    lineas.append("")
+
+    sol = []
+    for i in range(n):
+        Ai = [[A[fila][col] if col != i else b[fila]
+               for col in range(n)]
+              for fila in range(n)]
+        det_Ai = determinante(Ai)
+        xi = det_Ai / det_A
+        sol.append(xi)
+
+        lineas.append("  ── Variable x{}:".format(i + 1))
+        lineas.append("     A{} (columna {} reemplazada por b):".format(
+            i + 1, i + 1))
+        for fila in Ai:
+            lineas.append("     [ {} ]".format("   ".join(str(v) for v in fila)))
+        lineas.append("     det(A{}) = {}".format(i + 1, str(det_Ai)))
+        lineas.append("     x{} = det(A{}) / det(A) = {} / {} = {}".format(
+            i + 1, i + 1, _valor(det_Ai), _valor(det_A), str(xi)))
+        lineas.append("")
+
+    sol_mat = [[v] for v in sol]
+    lineas.extend(texto_resultado("  Solución  x =", sol_mat))
     lineas.append("")
     return lineas
 

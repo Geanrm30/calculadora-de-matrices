@@ -1,27 +1,11 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: solver/independencia.py
-#  Dependencia e independencia lineal de un conjunto de vectores.
-#
-#  Definicion: v1, v2, ..., vk son linealmente DEPENDIENTES si existen
-#  escalares c1, ..., ck NO TODOS CERO tales que
-#
-#        c1.v1 + c2.v2 + ... + ck.vk = 0
-#
-#  Si la unica manera de obtener el vector cero es con todos los escalares
-#  iguales a cero (solucion trivial), el conjunto es INDEPENDIENTE.
-#
-#  Esa ecuacion es el sistema homogeneo A.c = 0 con los vk como columnas de
-#  A, de modo que la respuesta sale de la misma eliminacion de Gauss que usa
-#  el resto del programa:
-#
-#        solucion unica (la trivial)  ->  linealmente independiente
-#        infinitas soluciones         ->  linealmente dependiente
-#
-#  Ademas de resolver, este modulo aplica los criterios que permiten
-#  responder POR INSPECCION en algunos casos, y construye una relacion de
-#  dependencia explicita cuando el conjunto resulta dependiente.
-# =============================================================================
+"""
+Analiza dependencia e independencia lineal de vectores resolviendo el sistema
+homogéneo A·c = 0 con los vectores como columnas de A; incluye criterios
+por inspección. MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 from core.fraccion import Fraccion, mcd
 from core.formato import subindice, texto_coeficiente

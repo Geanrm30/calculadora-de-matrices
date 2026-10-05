@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: solver/eliminacion.py
-#  Reduccion de la matriz aumentada mediante operaciones elementales por filas.
-#
-#  Dos niveles:
-#    1. escalonar()       -> forma escalonada (ceros DEBAJO de cada pivote).
-#    2. reducir_jordan()  -> forma escalonada reducida (ceros ENCIMA tambien).
-# =============================================================================
+"""
+Reducción de la matriz aumentada a forma escalonada (Gauss) y escalonada
+reducida (Gauss-Jordan) mediante operaciones elementales por filas.
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 from core.fraccion import Fraccion
 from core.matriz import copiar, intercambiar_filas, escalar_fila, sumar_multiplo

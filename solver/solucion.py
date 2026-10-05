@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: solver/solucion.py
-#  Obtencion de los valores de las variables a partir de la matriz escalonada.
-#
-#  Dos sustituciones regresivas:
-#    - numerica  : devuelve un valor concreto por variable.
-#    - simbolica : devuelve cada variable pivote escrita en funcion de las
-#                  variables libres.
-# =============================================================================
+"""
+Obtiene los valores de las variables a partir de la forma escalonada, tanto en
+forma numérica como simbólica (pivotes expresados en función de variables libres).
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 from core.fraccion import Fraccion
 from solver.clasificacion import variables_libres

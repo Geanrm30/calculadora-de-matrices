@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+Solucionador gráfico (tkinter) para sistemas lineales A·x = b mediante
+eliminación de Gauss y Gauss-Jordan con aritmética exacta de fracciones.
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
 

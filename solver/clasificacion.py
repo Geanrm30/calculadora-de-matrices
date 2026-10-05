@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: solver/clasificacion.py
-#  Clasificacion del sistema a partir de la matriz escalonada.
-#
-#  Criterio (teorema de Rouche-Frobenius):
-#      rango(A) < rango([A|b])       -> INCONSISTENTE      (sin solucion)
-#      rango(A) = rango([A|b]) = n   -> CONSISTENTE DETERMINADO   (unica)
-#      rango(A) = rango([A|b]) < n   -> CONSISTENTE INDETERMINADO (infinitas)
-# =============================================================================
+"""
+Clasifica el sistema lineal aplicando el teorema de Rouché-Frobenius sobre la
+matriz escalonada: inconsistente, determinado o indeterminado.
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 from core.matriz import fila_de_coeficientes_nulos
 

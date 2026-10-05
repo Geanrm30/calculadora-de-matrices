@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  Punto de entrada principal.
-#
-#  python main.py
-#
-#  Muestra el menu y abre la herramienta elegida. Cada herramienta vive en su
-#  propia ventana; al cerrarse, este modulo lee en core/estado.py cual es la
-#  siguiente y la abre. De esa manera se navega sin anidar ventanas y los
-#  datos escritos en cada herramienta se conservan (los guarda core/estado.py).
-# =============================================================================
+"""
+Punto de entrada del Proyecto Integrador: Calculadora de Álgebra Lineal.
+Muestra el menú principal y abre cada herramienta en su propia ventana tkinter.
+La navegación entre módulos y el estado persistente se gestionan en core/estado.py.
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 import sys
 import os
