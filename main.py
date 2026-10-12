@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  Punto de entrada principal.
-#
-#  python main.py
-#
-#  Muestra el menu y abre la herramienta elegida. Cada herramienta vive en su
-#  propia ventana; al cerrarse, este modulo lee en core/estado.py cual es la
-#  siguiente y la abre. De esa manera se navega sin anidar ventanas y los
-#  datos escritos en cada herramienta se conservan (los guarda core/estado.py).
-# =============================================================================
+"""
+Punto de entrada del Proyecto Integrador: Calculadora de Álgebra Lineal.
+Muestra el menú principal y abre cada herramienta en su propia ventana tkinter.
+La navegación entre módulos y el estado persistente se gestionan en core/estado.py.
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 import sys
 import os
@@ -53,14 +51,24 @@ def mostrar_menu():
     """Ventana de seleccion de herramienta."""
     menu = tk.Tk()
     menu.title("Algebra Lineal - Menu Principal")
-    menu.geometry("470x400")
+    menu.geometry("470x490")
     menu.configure(bg=FONDO)
 
-    tk.Label(menu, text="Calculadora de Algebra Lineal",
+    _UAM = (
+        " ██╗   ██╗ █████╗ ███╗   ███╗\n"
+        " ██║   ██║██╔══██╗████╗ ████║\n"
+        " ██║   ██║███████║██╔████╔██║\n"
+        " ██║   ██║██╔══██║██║╚██╔╝██║\n"
+        " ╚██████╔╝██║  ██║██║ ╚═╝ ██║\n"
+        "  ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝"
+    )
+    tk.Label(menu, text=_UAM, fg=NARANJA, bg=FONDO,
+             font=("Consolas", 9), justify="center").pack(pady=(18, 4))
+    tk.Label(menu, text="Calculadora de Álgebra Lineal",
              fg=TEXTO, bg=FONDO,
-             font=("Segoe UI", 15, "bold")).pack(pady=(26, 2))
-    tk.Label(menu, text="Unidad I  ·  Ecuaciones lineales en algebra lineal",
-             fg=MUTED, bg=FONDO, font=("Segoe UI", 9)).pack(pady=(0, 20))
+             font=("Segoe UI", 13, "bold")).pack()
+    tk.Label(menu, text="MTM0120  ·  Universidad Americana",
+             fg=MUTED, bg=FONDO, font=("Segoe UI", 9)).pack(pady=(2, 16))
 
     def abrir(destino):
         estado.ir_a(destino)
@@ -73,6 +81,10 @@ def mostrar_menu():
     _boton(menu, "2.  Operaciones con matrices y vectores",
            "Suma, resta, escalar, producto y transpuesta, con paso a paso.",
            AZUL, lambda: abrir("matrices"))
+
+    _boton(menu, "0.  Ver Teoremas Clave",
+           "Catálogo de teoremas y criterios del curso (Sesiones 1–11).",
+           MUTED, lambda: abrir("teoremas"))
 
     _boton(menu, "Cerrar programa", "", ROJO, menu.destroy)
 

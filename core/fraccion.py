@@ -1,18 +1,11 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: core/fraccion.py
-#  Aritmetica exacta con numeros racionales.
-#
-#  Motivo: la eliminacion gaussiana requiere determinar si un elemento es
-#  exactamente cero para seleccionar pivotes y detectar inconsistencias. La
-#  representacion en punto flotante introduce error de redondeo, de modo que
-#  un valor teoricamente nulo puede quedar en el orden de 1e-17 y obligar a
-#  comparar contra una tolerancia arbitraria. Con aritmetica racional la
-#  comparacion es exacta y el resultado se expresa en fracciones irreducibles.
-#
-#  Implementado sobre enteros de Python. No se emplea el modulo fractions,
-#  math.gcd ni ninguna libreria externa.
-# =============================================================================
+"""
+Aritmética exacta con números racionales implementada sobre enteros de Python.
+Permite comparaciones exactas (sin tolerancia de punto flotante) necesarias para
+la eliminación gaussiana. MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 
 def mcd(a, b):

@@ -1,18 +1,11 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: core/estado.py
-#  Memoria compartida entre las herramientas del programa.
-#
-#  Cada herramienta (menu, solucionador, operaciones con matrices) vive en su
-#  propia ventana Tk: al cambiar de herramienta la ventana anterior se
-#  destruye y con ella se pierden sus casillas de entrada. Este modulo guarda
-#  esos datos en variables de modulo, que sobreviven mientras el programa este
-#  en ejecucion, de manera que al volver a una herramienta se reconstruye la
-#  cuadricula tal como se dejo.
-#
-#  Se guarda el TEXTO escrito por el usuario, no la Fraccion ya convertida,
-#  para que "3/4" siga viendose como "3/4" y no como "0.75".
-# =============================================================================
+"""
+Memoria compartida entre las herramientas del programa; persiste cuadrículas y
+resultados en variables de módulo mientras el proceso esté en ejecución.
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -22,7 +15,9 @@
 _matrices = {
     "A": None,          # lista de listas de texto
     "B": None,
+    "C": None,          # tercera matriz (propiedades asociativas/distributivas)
     "escalar": "2",
+    "escalar_s": "3",   # segundo escalar para propiedades (r+s)A y r(sA)
     "salida": "",       # ultimo resultado mostrado (texto ya formateado)
     "paso_a_paso": True,
 }
@@ -67,14 +62,17 @@ def tomar_destino():
 # Operaciones con matrices
 # ---------------------------------------------------------------------------
 
-def guardar_matrices(texto_A, texto_B, escalar, salida="", paso_a_paso=True):
+def guardar_matrices(texto_A, texto_B, escalar, salida="", paso_a_paso=True,
+                     texto_C=None, escalar_s="3"):
     """
-    Conserva las cuadriculas A y B, el escalar y el ultimo resultado mostrado,
+    Conserva las cuadriculas A, B y C, los escalares y el ultimo resultado,
     todo tal como se escribio o se calculo.
     """
     _matrices["A"] = texto_A
     _matrices["B"] = texto_B
+    _matrices["C"] = texto_C
     _matrices["escalar"] = escalar
+    _matrices["escalar_s"] = escalar_s
     _matrices["salida"] = salida
     _matrices["paso_a_paso"] = paso_a_paso
 

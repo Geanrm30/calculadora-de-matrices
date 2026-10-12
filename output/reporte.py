@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: output/reporte.py
-#  Convierte el diccionario devuelto por resolutor.resolver() en un informe
-#  de texto completo.
-#
-#  Al estar desacoplado de la interfaz, mantiene separadas la logica de
-#  presentacion y la interfaz grafica.
-# =============================================================================
+"""
+Convierte el diccionario de resolutor.resolver() en un informe de texto completo,
+desacoplado de la interfaz gráfica. MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 from core.formato import (texto_matriz, texto_sistema, separador, subtitulo,
                            nombre_variable, subindice)

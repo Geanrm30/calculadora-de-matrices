@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: core/formato.py
-#  Construccion de las cadenas de texto que se muestran al usuario.
-#
-#  Ninguna funcion de este modulo imprime: todas DEVUELVEN cadenas. El
-#  destino final del texto (pantalla, archivo u otro) queda a cargo del
-#  modulo que lo consuma.
-# =============================================================================
+"""
+Construcción de cadenas de texto para el usuario: matrices, ecuaciones y subíndices.
+Ninguna función imprime; todas devuelven cadenas para que el destino quede a cargo
+del módulo que las consuma. MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 _SUBSCRIPTS = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
 

@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: solver/resolutor.py
-#  Coordina el procedimiento completo y devuelve un unico diccionario con
-#  todos los resultados intermedios y finales.
-#
-#  No realiza entrada ni salida: recibe una matriz y devuelve datos. Esta
-#  separacion permite que la interfaz, el informe y cualquier consumidor
-#  futuro operen sobre el mismo resultado, sin duplicar la logica de calculo.
-# =============================================================================
+"""
+Coordina el proceso completo de resolución y devuelve un diccionario con todos
+los resultados intermedios; sin entrada ni salida directa.
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 from core.fraccion import Fraccion
 from core.matriz import copiar

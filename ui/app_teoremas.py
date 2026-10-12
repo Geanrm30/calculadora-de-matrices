@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+Visor de teoremas del curso (tkinter): muestra el catálogo de core/teoremas.py
+en una ventana desplazable organizada por sesión y tema.
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 import tkinter as tk
 from tkinter import ttk
 

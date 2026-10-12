@@ -1,18 +1,10 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: core/vector.py
-#  Operaciones vectoriales en R^n.
-#
-#  Un vector de R^n es, algebraicamente, una matriz de una sola columna
-#  (n x 1). Por eso este modulo NO reimplementa la aritmetica: reutiliza las
-#  funciones de core/algebra.py cambiando el tamano de la matriz. Cada
-#  funcion documenta la equivalencia:
-#
-#      u + v            <->   suma de dos matrices n x 1
-#      u - v            <->   resta de dos matrices n x 1
-#      r * v            <->   producto de un escalar por una matriz n x 1
-#      c1.v1+...+ck.vk  <->   producto A.c, con los vk como columnas de A
-# =============================================================================
+"""
+Operaciones vectoriales en Rⁿ reutilizando core/algebra.py, ya que un vector
+es algebraicamente una matriz n×1. MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 import core.algebra as algebra
 

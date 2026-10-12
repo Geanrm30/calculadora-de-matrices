@@ -1,15 +1,11 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: solver/verificacion.py
-#  Comprobacion automatica de la solucion obtenida.
-#
-#  La sustitucion se hace SIEMPRE en el sistema original (la copia guardada
-#  antes de escalonar). Verificar contra la matriz ya reducida no probaria
-#  nada: es el resultado del mismo proceso que se quiere comprobar.
-#
-#  Como la aritmetica es exacta, la comparacion es una igualdad real y no
-#  una comparacion con tolerancia.
-# =============================================================================
+"""
+Comprueba la solución sustituyendo en el sistema original con aritmética exacta;
+siempre verifica contra el sistema sin reducir para que la prueba sea independiente.
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 from core.fraccion import Fraccion
 

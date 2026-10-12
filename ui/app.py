@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+Solucionador gráfico (tkinter) para sistemas lineales A·x = b mediante
+eliminación de Gauss y Gauss-Jordan con aritmética exacta de fracciones.
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
 
@@ -147,13 +154,17 @@ class Aplicacion:
         btn_volver.pack(side="right", padx=20)
         self._hover(btn_volver, MUTED, BORDE)
 
-        btn_teo = tk.Button(barra, text="Ver teoremas", font=F_BTN_SM,
+        btn_teo = tk.Button(barra, text="Ver Teoremas", font=F_BTN_SM,
                             bg=BORDE, fg=TEXTO,
                             activebackground=MUTED, activeforeground=PANEL,
                             relief="flat", padx=15, pady=4, cursor="hand2",
                             command=lambda: self._navegar("teoremas"))
         btn_teo.pack(side="right", padx=(0, 4))
         self._hover(btn_teo, MUTED, BORDE)
+
+        _ART = " ┌─────┐   ┌──┐   ┌──┐\n │  A  │ · │ x│ = │ b│\n └─────┘   └──┘   └──┘"
+        tk.Label(barra, text=_ART, fg=AZUL, bg=PANEL,
+                 font=("Consolas", 8), justify="left").pack(side="left", padx=(16, 0))
 
     def _construir_cuerpo(self):
         self.paned = ttk.PanedWindow(self.raiz, orient="horizontal")

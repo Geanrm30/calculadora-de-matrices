@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
-# =============================================================================
-#  MODULO: core/matriz.py
-#  Estructura de la matriz aumentada y las tres operaciones elementales
-#  por filas.
-#
-#  La matriz aumentada [A | b] se representa como una lista de listas de
-#  objetos Fraccion. Cada sublista es una ecuacion y su ultimo elemento es
-#  el termino independiente.
-# =============================================================================
+"""
+Estructura de la matriz aumentada [A|b] y las tres operaciones elementales
+por filas: intercambio, escalado y suma de múltiplo de fila.
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 
 from core.fraccion import Fraccion
 
