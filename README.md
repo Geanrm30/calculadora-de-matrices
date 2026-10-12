@@ -12,10 +12,12 @@ Geanfranco Alexander Rodriguez Mendieta
 ## Ejecución
 
 ```
+pip install -r requirements.txt
 python main.py
 ```
 
-Se abre el menú principal con dos herramientas:
+Se abre una única ventana (PySide6) con menú lateral —atajos `Ctrl+1` a
+`Ctrl+4`— que da acceso a:
 
 1. **Solucionador (Gauss / Gauss-Jordan)** — ecuación matricial `A·x = b`,
    combinación lineal e independencia lineal.
@@ -26,18 +28,22 @@ Se abre el menú principal con dos herramientas:
      Sesiones 9–11 con aritmética exacta de fracciones.
    - *Solucionador*: envía el sistema al solucionador o resuelve
      `A·x = b` por la Regla de Cramer.
+3. **Teoremas clave** — catálogo de los teoremas del curso con buscador.
 
-Lo que se escribe en una herramienta **no se pierde** al pasar a la otra:
-`core/estado.py` conserva las cuadrículas mientras el programa esté abierto.
+Lo que se escribe **no se pierde**: al pasar de una herramienta a otra cada
+página se conserva, y al cerrar el programa se guardan las cuadrículas, las
+opciones, el último resultado, el tamaño de la ventana y el tema, que se
+recuperan al volver a abrirlo.
+
+---
 
 ---
 
 ## Dependencias
 
 No se utiliza **NumPy**, **SciPy** ni funciones de álgebra lineal de **math**.
-El proyecto no declara ninguna dependencia externa: las únicas importaciones
-corresponden a módulos propios y a `tkinter`, incluido en la biblioteca
-estándar de Python.
+La única dependencia externa es **PySide6** (interfaz gráfica y exportación a
+PDF); toda la parte matemática usa solo módulos propios.
 
 La implementación se apoya en estructuras nativas del lenguaje: listas
 anidadas, condicionales, bucles y funciones. El máximo común divisor se
@@ -49,7 +55,7 @@ implementa mediante el algoritmo de Euclides en lugar de `math.gcd`.
 
 ```
 calculadora-de-matrices/
-├── main.py               ← menú y navegación entre herramientas
+├── main.py               ← punto de entrada: crea la ventana PySide6
 │
 ├── core/                 ← estructuras de datos y álgebra básica
 │   ├── fraccion.py       Aritmética exacta con números racionales.
@@ -59,7 +65,6 @@ calculadora-de-matrices/
 │   ├── procedimiento.py  Paso a paso escrito de cada operación.
 │   ├── propiedades.py    Verificador de las 29 propiedades algebraicas.
 │   ├── teoremas.py       Catálogo de teoremas del curso.
-│   ├── estado.py         Memoria compartida entre las herramientas.
 │   └── formato.py        Construcción de cadenas (matrices, ecuaciones).
 │
 ├── modulos/              ← operaciones sobre matrices cuadradas
@@ -77,18 +82,28 @@ calculadora-de-matrices/
 ├── output/               ← presentación
 │   └── reporte.py        Arma el informe de texto completo.
 │
-└── ui/                   ← interfaz gráfica
-    ├── app.py            Solucionador de sistemas.
-    ├── app_matrices.py   Operaciones con matrices y vectores.
-    └── app_teoremas.py   Visor de teoremas del curso.
+└── qt/                   ← interfaz gráfica (PySide6)
+    ├── ventana_principal.py   Ventana, menú lateral, tema y sesión.
+    ├── pagina_inicio.py       Pantalla de bienvenida.
+    ├── pagina_solucionador.py Solucionador de sistemas.
+    ├── pagina_matrices.py     Operaciones con matrices y vectores.
+    ├── pagina_teoremas.py     Catálogo de teoremas con buscador.
+    ├── componentes.py         Botones, interruptores, tarjetas y cuadrícula
+    │                          de matriz (deshacer, copiar y pegar).
+    ├── render.py              HTML de matrices, vectores e informe.
+    ├── visor.py               Ventana aparte para leer un resultado.
+    ├── exportar.py            Exportación a PDF.
+    ├── ejemplos.py            Ejemplos precargados.
+    ├── persistencia.py        Guardado de la sesión y el tema.
+    └── tema.py                Paletas (oscuro, claro, impreso) y estilos.
 ```
 
 Dependencias entre paquetes (sin ciclos):
 
 ```
-ui/  →  output/  →  solver/   →  core/
-ui/  →             modulos/   →  core/
-ui/  →                           core/
+qt/  →  output/  →  solver/   →  core/
+qt/  →             modulos/   →  core/
+qt/  →                           core/
 ```
 
 `solver/resolutor.py` y `modulos/modulo_matrices.py` no imprimen ni piden
@@ -176,19 +191,39 @@ la **regla fila-vector**.
 
 | Acción | Cómo |
 |--------|------|
+| Cambiar de herramienta | Menú lateral o `Ctrl+1` … `Ctrl+4` |
+| Tema claro / oscuro | Botón al pie del menú lateral (se recuerda) |
 | Resolver el sistema | Botón **RESOLVER** o `Ctrl+Enter` |
+| Cargar un ejemplo | Botón **Probar un ejemplo** (Solucionador y Operaciones) |
+| Moverse por la cuadrícula | `Enter` / `↓` / `↑` o `Tab` |
+| Deshacer / rehacer en una matriz | `Ctrl+Z` / `Ctrl+Y`, o los botones ↶ ↷ de la tarjeta |
+| Copiar una matriz | Menú **Tabla → Copiar como tabla** (se pega en Excel) |
+| Pegar una matriz | `Ctrl+V` sobre una celda, o **Tabla → Pegar** |
 | Limpiar la cuadrícula | Botón **Limpiar** |
-| Copiar el informe | Botón **Copiar informe** |
-| Incluir forma reducida | Casilla **Gauss-Jordan** |
-| Análisis en Rⁿ completo | Casilla **Incluir análisis en Rⁿ** |
+| Reproducir los pasos solos | Botón **Reproducir** (velocidad lenta, normal o rápida) |
+| Recorrer los pasos a mano | **Inicio / Anterior / Siguiente / Final** o `←` `→` |
+| Copiar el informe | Botón **Copiar informe** / **Copiar** |
+| Guardar el informe | **Guardar informe → Texto (.txt)** o **PDF (.pdf)** |
+| Leer el resultado en grande | Botón **Abrir en ventana** (con zoom) |
+| Volver a un resultado anterior | Botón **Historial** (Operaciones) |
+| Incluir forma reducida | Interruptor **Gauss-Jordan** |
+| Análisis en Rⁿ completo | Interruptor **Incluir análisis en Rⁿ** |
 | Mandar `[A \| b]` a operaciones | Botón **Enviar [A \| b] a Operaciones** |
 | Mandar `A·x = b` al solucionador | Botón **Resolver la ecuación A·x = b** |
 | Preguntar por combinación lineal | Botón **¿Es b combinación lineal…?** |
 | Preguntar por independencia | Botón **¿Son las columnas… independientes?** |
 | Resolver por Cramer | Botón **Resolver A·x = b (Regla de Cramer)** |
-| Ver el desarrollo de una operación | Casilla **Mostrar el paso a paso** |
-| Usar el resultado en otra operación | Botones **Resultado → A** / **→ B** / **→ C** |
+| Ver el desarrollo de una operación | Interruptor **Mostrar el paso a paso** |
+| Usar el resultado en otra operación | **Usar como → A / B / C** |
 | Intercambiar matrices | Botón **Intercambiar A ↔ B** |
+| Quitar o volver a poner B o C | Botones **Quitar / Agregar matriz B** y **C** |
+
+En el paso a paso del Solucionador, las filas que cambian en cada operación
+se resaltan para seguir el procedimiento con la vista.
+
+Al pegar una tabla se aceptan los formatos de Excel (columnas separadas por
+tabulador), `1 2; 3 4`, `[[1,2],[3,4]]` y filas separadas por saltos de línea;
+la cuadrícula crece sola hasta su tamaño máximo.
 
 ---
 
@@ -277,6 +312,9 @@ ecuaciones, filas de ceros, coeficientes fraccionarios y sistemas hasta 20×20.
 
 - Al ejecutar, Python genera una carpeta `__pycache__` en cada paquete con
   los módulos compilados. Es normal y no forma parte de la entrega.
-- El programa admite sistemas de hasta **20×20** variables.
+- El programa admite sistemas de hasta **20×20** variables y matrices de hasta
+  **10×10** en Operaciones.
+- Las preferencias y la última sesión se guardan en la configuración del
+  usuario del sistema (en Windows, el registro, bajo `UAM`).
 - La casilla **Incluir forma escalonada reducida** decide si el programa
   continúa hasta la matriz identidad y muestra esos pasos en el informe.

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Punto de entrada del Proyecto Integrador: Calculadora de Álgebra Lineal.
-Muestra el menú principal y abre cada herramienta en su propia ventana tkinter.
-La navegación entre módulos y el estado persistente se gestionan en core/estado.py.
+Interfaz gráfica en PySide6: una sola ventana con menú lateral que da acceso
+al solucionador, a las operaciones con matrices y al catálogo de teoremas.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
@@ -10,126 +10,38 @@ Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
 
 import sys
 import os
-import tkinter as tk
 
 # Garantiza que el directorio raiz del proyecto este en sys.path para que
-# los paquetes core/, solver/, output/ y ui/ sean importables sin importar
+# los paquetes core/, solver/, output/ y qt/ sean importables sin importar
 # desde que directorio se ejecute el script.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import core.estado as estado
-from ui.app import Aplicacion
-from ui.app_matrices import AppMatrices
-from ui.app_teoremas import AppTeoremas
-
-# Paleta (la misma de las dos herramientas)
-FONDO   = "#1E1E2E"
-PANEL   = "#181825"
-TEXTO   = "#CDD6F4"
-MUTED   = "#7F849C"
-NARANJA = "#FAB387"
-AZUL    = "#89B4FA"
-ROJO    = "#F38BA8"
-
-
-def _boton(padre, texto, detalle, color, comando):
-    """Boton del menu con una linea de titulo y una de descripcion."""
-    marco = tk.Frame(padre, bg=FONDO)
-    marco.pack(fill="x", padx=40, pady=6)
-
-    b = tk.Button(marco, text=texto, bg=color, fg=PANEL,
-                  font=("Segoe UI", 11, "bold"), relief="flat",
-                  cursor="hand2", pady=8, command=comando)
-    b.pack(fill="x")
-
-    tk.Label(marco, text=detalle, bg=FONDO, fg=MUTED,
-             font=("Segoe UI", 8), justify="left").pack(anchor="w", pady=(2, 0))
-    return b
-
-
-def mostrar_menu():
-    """Ventana de seleccion de herramienta."""
-    menu = tk.Tk()
-    menu.title("Algebra Lineal - Menu Principal")
-    menu.geometry("470x490")
-    menu.configure(bg=FONDO)
-
-    _UAM = (
-        " ██╗   ██╗ █████╗ ███╗   ███╗\n"
-        " ██║   ██║██╔══██╗████╗ ████║\n"
-        " ██║   ██║███████║██╔████╔██║\n"
-        " ██║   ██║██╔══██║██║╚██╔╝██║\n"
-        " ╚██████╔╝██║  ██║██║ ╚═╝ ██║\n"
-        "  ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝"
-    )
-    tk.Label(menu, text=_UAM, fg=NARANJA, bg=FONDO,
-             font=("Consolas", 9), justify="center").pack(pady=(18, 4))
-    tk.Label(menu, text="Calculadora de Álgebra Lineal",
-             fg=TEXTO, bg=FONDO,
-             font=("Segoe UI", 13, "bold")).pack()
-    tk.Label(menu, text="MTM0120  ·  Universidad Americana",
-             fg=MUTED, bg=FONDO, font=("Segoe UI", 9)).pack(pady=(2, 16))
-
-    def abrir(destino):
-        estado.ir_a(destino)
-        menu.destroy()
-
-    _boton(menu, "1.  Solucionador  (Gauss / Gauss-Jordan)",
-           "Ecuacion matricial A·x = b, combinacion lineal e independencia.",
-           NARANJA, lambda: abrir("gauss"))
-
-    _boton(menu, "2.  Operaciones con matrices y vectores",
-           "Suma, resta, escalar, producto y transpuesta, con paso a paso.",
-           AZUL, lambda: abrir("matrices"))
-
-    _boton(menu, "0.  Ver Teoremas Clave",
-           "Catálogo de teoremas y criterios del curso (Sesiones 1–11).",
-           MUTED, lambda: abrir("teoremas"))
-
-    _boton(menu, "Cerrar programa", "", ROJO, menu.destroy)
-
-    menu.mainloop()
-
-
-def _abrir_ventana(constructor):
-    """Crea una ventana Tk nueva, monta la herramienta y espera a que cierre."""
-    raiz = tk.Tk()
-    constructor(raiz)
-    raiz.mainloop()
-
 
 def iniciar():
-    """
-    Bucle de navegacion.
+    from PySide6.QtGui import QFont
+    from PySide6.QtWidgets import QApplication
 
-    Se repite mientras alguna herramienta pida abrir otra. Cuando una ventana
-    se cierra sin dejar destino (boton Cerrar o la X), el bucle termina y el
-    programa finaliza.
-    """
-    estado.ir_a("menu")
+    from qt import persistencia, tema
+    from qt.ventana_principal import VentanaPrincipal
 
-    while True:
-        destino = estado.tomar_destino()
+    app = QApplication(sys.argv)
+    app.setApplicationName("Calculadora de Álgebra Lineal")
+    app.setFont(QFont(tema.FUENTE, 10))
+    tema.aplicar(persistencia.leer("tema", "oscuro"))
+    app.setStyleSheet(tema.hoja_de_estilos())
 
-        if destino is None:
-            break
-        elif destino == "menu":
-            mostrar_menu()
-        elif destino == "gauss":
-            _abrir_ventana(Aplicacion)
-        elif destino == "matrices":
-            _abrir_ventana(AppMatrices)
-        elif destino == "teoremas":
-            _abrir_ventana(AppTeoremas)
-        else:
-            break
+    ventana = VentanaPrincipal()
+    ventana.restaurar_sesion()
+    ventana.show()
+    app._ventana_principal = ventana
+    return app.exec()
 
 
 # Nombre conservado por compatibilidad con versiones anteriores del programa.
 def iniciar_menu():
-    """Alias de iniciar(): arranca el programa desde el menu."""
-    iniciar()
+    """Alias de iniciar()."""
+    return iniciar()
 
 
 if __name__ == "__main__":
-    iniciar()
+    sys.exit(iniciar())
