@@ -12,9 +12,14 @@ Geanfranco Alexander Rodriguez Mendieta
 ## Ejecución
 
 ```
-pip install -r requirements.txt
 python main.py
 ```
+
+La **primera vez** el programa descarga e instala solo el componente gráfico
+(PySide6-Essentials, unos 80 MB) y muestra una ventana de espera con una barra
+de progreso; hace falta conexión a internet y después ya no. Si la instalación
+fallara, la propia ventana lo explica y se puede hacer a mano con
+`pip install -r requirements.txt`.
 
 Se abre una única ventana (PySide6) con menú lateral —atajos `Ctrl+1` a
 `Ctrl+4`— que da acceso a:
@@ -30,6 +35,12 @@ Se abre una única ventana (PySide6) con menú lateral —atajos `Ctrl+1` a
      `A·x = b` por la Regla de Cramer.
 3. **Teoremas clave** — catálogo de los teoremas del curso con buscador.
 
+La primera vez que se abre aparece un **recorrido guiado** que explica las
+partes principales; se puede repetir desde **Ayuda** (`F1`). Los errores de
+datos no abren ventanas: la celda inválida se pone en **rojo** mientras
+escribes (con el motivo al pasar el cursor) y una franja bajo el título explica
+el problema. La letra de cuadrículas e informes se ajusta con **A− / A+**.
+
 Lo que se escribe **no se pierde**: al pasar de una herramienta a otra cada
 página se conserva, y al cerrar el programa se guardan las cuadrículas, las
 opciones, el último resultado, el tamaño de la ventana y el tema, que se
@@ -42,8 +53,9 @@ recuperan al volver a abrirlo.
 ## Dependencias
 
 No se utiliza **NumPy**, **SciPy** ni funciones de álgebra lineal de **math**.
-La única dependencia externa es **PySide6** (interfaz gráfica y exportación a
-PDF); toda la parte matemática usa solo módulos propios.
+La única dependencia externa es **PySide6** (en su versión ligera
+`PySide6-Essentials`: interfaz gráfica y exportación a PDF); toda la parte
+matemática usa solo módulos propios.
 
 La implementación se apoya en estructuras nativas del lenguaje: listas
 anidadas, condicionales, bucles y funciones. El máximo común divisor se
@@ -56,6 +68,7 @@ implementa mediante el algoritmo de Euclides en lugar de `math.gcd`.
 ```
 calculadora-de-matrices/
 ├── main.py               ← punto de entrada: crea la ventana PySide6
+├── instalador.py         ← instala PySide6 la primera vez (con ventana de espera)
 │
 ├── core/                 ← estructuras de datos y álgebra básica
 │   ├── fraccion.py       Aritmética exacta con números racionales.
@@ -93,6 +106,9 @@ calculadora-de-matrices/
     ├── render.py              HTML de matrices, vectores e informe.
     ├── visor.py               Ventana aparte para leer un resultado.
     ├── exportar.py            Exportación a PDF.
+    ├── ayuda.py               Ayuda: atajos de teclado y «Acerca de».
+    ├── tour.py                Recorrido guiado de la primera vez.
+    ├── icono.py               Icono de la aplicación (dibujado por código).
     ├── ejemplos.py            Ejemplos precargados.
     ├── persistencia.py        Guardado de la sesión y el tema.
     └── tema.py                Paletas (oscuro, claro, impreso) y estilos.
@@ -191,15 +207,21 @@ la **regla fila-vector**.
 
 | Acción | Cómo |
 |--------|------|
+| Ver todos los atajos y repetir el recorrido | `F1` o botón **Ayuda** |
 | Cambiar de herramienta | Menú lateral o `Ctrl+1` … `Ctrl+4` |
-| Tema claro / oscuro | Botón al pie del menú lateral (se recuerda) |
+| Tema claro / oscuro | `Ctrl+Shift+T` o botón al pie del menú (se recuerda) |
+| Tamaño de letra de cuadrículas e informes | `Ctrl++` / `Ctrl+−` / `Ctrl+0` o botones **A− A+** |
+| Salir guardando la sesión | `Ctrl+Q` |
 | Resolver el sistema | Botón **RESOLVER** o `Ctrl+Enter` |
+| Limpiar | `Ctrl+L` o botón **Limpiar** |
+| Reproducir / pausar los pasos | `Ctrl+R` o botón **Reproducir** |
+| Guardar el informe (.txt) / exportar a PDF | `Ctrl+S` / `Ctrl+P` |
+| Operaciones rápidas (A = cuadrada) | `Ctrl+D` det(A) · `Ctrl+I` A⁻¹ · `Ctrl+M` A × B |
 | Cargar un ejemplo | Botón **Probar un ejemplo** (Solucionador y Operaciones) |
 | Moverse por la cuadrícula | `Enter` / `↓` / `↑` o `Tab` |
 | Deshacer / rehacer en una matriz | `Ctrl+Z` / `Ctrl+Y`, o los botones ↶ ↷ de la tarjeta |
 | Copiar una matriz | Menú **Tabla → Copiar como tabla** (se pega en Excel) |
 | Pegar una matriz | `Ctrl+V` sobre una celda, o **Tabla → Pegar** |
-| Limpiar la cuadrícula | Botón **Limpiar** |
 | Reproducir los pasos solos | Botón **Reproducir** (velocidad lenta, normal o rápida) |
 | Recorrer los pasos a mano | **Inicio / Anterior / Siguiente / Final** o `←` `→` |
 | Copiar el informe | Botón **Copiar informe** / **Copiar** |
@@ -314,6 +336,8 @@ ecuaciones, filas de ceros, coeficientes fraccionarios y sistemas hasta 20×20.
   los módulos compilados. Es normal y no forma parte de la entrega.
 - El programa admite sistemas de hasta **20×20** variables y matrices de hasta
   **10×10** en Operaciones.
+- Si una celda se ve en rojo, el valor no es válido: pasa el cursor para ver
+  el motivo. Se corrige al escribir un valor válido.
 - Las preferencias y la última sesión se guardan en la configuración del
   usuario del sistema (en Windows, el registro, bajo `UAM`).
 - La casilla **Incluir forma escalonada reducida** decide si el programa

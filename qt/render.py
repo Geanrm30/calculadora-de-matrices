@@ -21,7 +21,7 @@ def _mezcla(c0, c1, t):
 def css(impreso=False):
     # En el PDF las líneas largas deben ajustarse al ancho de la página.
     ajuste = "white-space: pre-wrap;" if impreso else ""
-    tam = "9pt" if impreso else "10.5pt"
+    tam = "9pt" if impreso else "{}pt".format(T.tam(10.5))
     return """
 <style>
 body {{ background-color: {FONDO}; color: {TEXTO};

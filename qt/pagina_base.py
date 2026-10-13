@@ -1,6 +1,26 @@
 # -*- coding: utf-8 -*-
-"""Base común de las páginas: título, subtítulo y área de contenido."""
-from PySide6.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
+"""Base común de las páginas: título, subtítulo, aviso de error y contenido."""
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+
+from qt.componentes import aparecer, mostrar_aviso
+
+
+class BannerError(QLabel):
+    """Franja roja bajo el título con el motivo del error. Clic para cerrarla."""
+
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("errorBanner")
+        self.setWordWrap(True)
+        self.setTextFormat(Qt.PlainText)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setToolTip("Clic para cerrar")
+        self.hide()
+
+    def mousePressEvent(self, e):
+        self.hide()
 
 
 class PaginaBase(QWidget):
@@ -23,9 +43,27 @@ class PaginaBase(QWidget):
         cab.addWidget(sub)
         self.raiz.addLayout(cab)
 
-    # Mensajes de error / información con el aspecto del tema
+        self.banner = BannerError()
+        self.raiz.addWidget(self.banner)
+
+    def atajo(self, secuencia, funcion):
+        """Atajo de teclado activo solo mientras esta página está visible."""
+        QShortcut(QKeySequence(secuencia), self, activated=funcion,
+                  context=Qt.WindowShortcut)
+
+    # ── Errores e información ─────────────────────────────────
+    # Los errores se muestran en una franja dentro de la página (sin ventana
+    # emergente que interrumpa); la celda culpable queda en rojo.
+
     def error(self, titulo, texto):
-        QMessageBox.warning(self, titulo, texto)
+        detalle = " ".join(texto.split())
+        self.banner.setText("⚠  {}: {}".format(titulo, detalle))
+        self.banner.show()
+        aparecer(self.banner, 220)
+
+    def ocultar_error(self, *_):
+        if not self.banner.isHidden():
+            self.banner.hide()
 
     def info(self, titulo, texto):
-        QMessageBox.information(self, titulo, texto)
+        mostrar_aviso(self, texto, "info")

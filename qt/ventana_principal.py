@@ -4,14 +4,18 @@ Ventana principal: menú lateral con indicador animado y páginas que se
 conservan entre cambios (lo escrito en cada herramienta no se pierde).
 """
 from PySide6.QtCore import (QByteArray, QEasingCurve, QPoint,
-                            QPropertyAnimation, QRect, Qt, QVariantAnimation)
+                            QPropertyAnimation, QRect, Qt, QTimer,
+                            QVariantAnimation)
 from PySide6.QtGui import QColor, QFont, QKeySequence, QPainter, QShortcut
 from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
                                QMainWindow, QPushButton, QVBoxLayout, QWidget)
 
 from qt import tema as T
 from qt import persistencia
-from qt.componentes import BotonAnimado, PilaAnimada, mezclar
+from qt.ayuda import DialogoAyuda
+from qt.componentes import (BotonAnimado, PilaAnimada, mezclar,
+                            mostrar_aviso)
+from qt.tour import PasoTour, Tour
 from qt.pagina_inicio import PaginaInicio
 from qt.pagina_matrices import PaginaMatrices
 from qt.pagina_solucionador import PaginaSolucionador
@@ -117,6 +121,7 @@ class VentanaPrincipal(QMainWindow):
         self.setMinimumSize(1240, 720)
         self._secciones = secciones()
         self._cambiando_tema = False
+        self._tour = None
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -140,6 +145,17 @@ class VentanaPrincipal(QMainWindow):
         for i in range(len(self._secciones)):
             QShortcut(QKeySequence("Ctrl+{}".format(i + 1)), self,
                       activated=lambda k=self._claves[i]: self.ir_a(k))
+
+        QShortcut(QKeySequence("F1"), self, activated=lambda: self.abrir_ayuda(0))
+        QShortcut(QKeySequence("Ctrl+Shift+T"), self, activated=self.alternar_tema)
+        QShortcut(QKeySequence("Ctrl+Q"), self, activated=self.close)
+        for tecla in ("Ctrl++", "Ctrl+="):
+            QShortcut(QKeySequence(tecla), self,
+                      activated=lambda: self.cambiar_escala(1))
+        QShortcut(QKeySequence("Ctrl+-"), self,
+                  activated=lambda: self.cambiar_escala(-1))
+        QShortcut(QKeySequence("Ctrl+0"), self,
+                  activated=lambda: self.cambiar_escala(0))
 
         self._boton_de = dict(zip(self._claves, self.botones))
         self.botones[0].setChecked(True)
@@ -183,15 +199,48 @@ class VentanaPrincipal(QMainWindow):
 
         v.addStretch(1)
 
+        # Tamaño de letra de cuadrículas y resultados
+        fila_escala = QHBoxLayout()
+        fila_escala.setContentsMargins(14, 0, 14, 6)
+        fila_escala.setSpacing(4)
+        self.btn_menos = BotonAnimado("A−", "fantasma", pequeno=True)
+        self.btn_menos.setToolTip("Reducir la letra de cuadrículas y resultados (Ctrl+−)")
+        self.btn_menos.clicked.connect(lambda: self.cambiar_escala(-1))
+        self.lbl_escala = QLabel("")
+        self.lbl_escala.setAlignment(Qt.AlignCenter)
+        self.lbl_escala.setToolTip("Tamaño de letra (Ctrl+0 para restablecer)")
+        self.lbl_escala.setStyleSheet(
+            "color: {}; font-weight: 600; background: transparent;".format(T.MUTED))
+        self.btn_mas = BotonAnimado("A+", "fantasma", pequeno=True)
+        self.btn_mas.setToolTip("Agrandar la letra de cuadrículas y resultados (Ctrl++)")
+        self.btn_mas.clicked.connect(lambda: self.cambiar_escala(1))
+        fila_escala.addWidget(self.btn_menos)
+        fila_escala.addWidget(self.lbl_escala, 1)
+        fila_escala.addWidget(self.btn_mas)
+        v.addLayout(fila_escala)
+        self._refrescar_escala()
+
         nombre_btn = ("☀   Tema claro" if T.NOMBRE_TEMA == "oscuro"
                       else "☾   Tema oscuro")
         self.btn_tema = BotonAnimado(nombre_btn, "fantasma", pequeno=True)
-        self.btn_tema.setToolTip("Cambiar entre tema claro y oscuro")
+        self.btn_tema.setToolTip("Cambiar entre tema claro y oscuro (Ctrl+Shift+T)")
         self.btn_tema.clicked.connect(self.alternar_tema)
         marco_tema = QHBoxLayout()
-        marco_tema.setContentsMargins(14, 0, 14, 8)
+        marco_tema.setContentsMargins(14, 0, 14, 6)
         marco_tema.addWidget(self.btn_tema)
         v.addLayout(marco_tema)
+
+        fila_ayuda = QHBoxLayout()
+        fila_ayuda.setContentsMargins(14, 0, 14, 8)
+        fila_ayuda.setSpacing(4)
+        self.btn_ayuda = BotonAnimado("?  Ayuda", "fantasma", pequeno=True)
+        self.btn_ayuda.setToolTip("Atajos de teclado y recorrido guiado (F1)")
+        self.btn_ayuda.clicked.connect(lambda: self.abrir_ayuda(0))
+        self.btn_acerca = BotonAnimado("Acerca de", "fantasma", pequeno=True)
+        self.btn_acerca.clicked.connect(lambda: self.abrir_ayuda(1))
+        fila_ayuda.addWidget(self.btn_ayuda)
+        fila_ayuda.addWidget(self.btn_acerca)
+        v.addLayout(fila_ayuda)
 
         pie = QLabel("MTM0120\nUniversidad Americana")
         pie.setStyleSheet("color: {}; font-size: 8pt; background: transparent;"
@@ -280,6 +329,8 @@ class VentanaPrincipal(QMainWindow):
     def alternar_tema(self):
         """Cambia entre claro y oscuro sin perder nada de lo escrito."""
         nuevo = "claro" if T.NOMBRE_TEMA == "oscuro" else "oscuro"
+        if self._tour is not None:
+            self._tour.terminar()
         estado = self.estado()
         geometria = self.saveGeometry()
         self._guardar_sesion(estado)
@@ -297,3 +348,90 @@ class VentanaPrincipal(QMainWindow):
 
         self._cambiando_tema = True
         self.close()
+
+    # ──────────────────────────────────────────────────────────
+    # Ayuda, recorrido guiado y tamaño de letra
+    # ──────────────────────────────────────────────────────────
+
+    def abrir_ayuda(self, pestana=0):
+        d = DialogoAyuda(self, pestana)
+        d.repetir_tour.connect(self.iniciar_tour)
+        d.exec()
+
+    def mostrar_tour_si_corresponde(self):
+        """El recorrido se muestra solo la primera vez que se abre el programa."""
+        if not persistencia.leer("tour_visto", False):
+            QTimer.singleShot(800, self.iniciar_tour)
+
+    def iniciar_tour(self):
+        if self._tour is not None:
+            return
+        s, m = self.pagina_solucionador, self.pagina_matrices
+        pasos = [
+            PasoTour("Menú lateral",
+                     "Cambia de herramienta aquí o con Ctrl+1 … Ctrl+4. Al pie "
+                     "tienes el tema, la letra, la ayuda (F1) y «Acerca de».",
+                     lambda: self._barra, "inicio"),
+            PasoTour("Prueba un ejemplo",
+                     "Carga un sistema ya armado y lo resuelve al instante: "
+                     "con solución única, infinitas soluciones o sin solución.",
+                     lambda: s.b_ej, "solucionador"),
+            PasoTour("Escribe tu sistema",
+                     "Acepta enteros, fracciones (3/4), decimales y raíces. "
+                     "Enter baja de fila, Ctrl+V pega tablas de Excel y Ctrl+Z "
+                     "deshace. Las celdas inválidas se ponen en rojo.",
+                     lambda: s.tarjeta_cuadricula),
+            PasoTour("Resolver",
+                     "Pulsa RESOLVER o usa Ctrl+Enter. Verás el proceso de "
+                     "Gauss y Gauss-Jordan, la clasificación y la verificación.",
+                     lambda: s.btn_resolver),
+            PasoTour("Reproduce los pasos",
+                     "Recorre el procedimiento a mano o en automático. La fila "
+                     "que cambia en cada operación se resalta.",
+                     lambda: s.b_play),
+            PasoTour("Operaciones con matrices",
+                     "Suma, producto, determinante, inversa, Cramer y "
+                     "propiedades. Activa «Mostrar el paso a paso» para ver el "
+                     "desarrollo.",
+                     lambda: m.marco_tabs, "matrices"),
+            PasoTour("Resultado e informes",
+                     "Aquí aparece el resultado. Puedes abrirlo en una ventana "
+                     "aparte, volver a uno anterior con Historial o guardarlo "
+                     "como texto o PDF.",
+                     lambda: m.tarjeta_resultado),
+            PasoTour("Tema claro u oscuro",
+                     "Cambia el aspecto cuando quieras. No pierdes nada de lo "
+                     "que escribiste y el programa lo recuerda.",
+                     lambda: self.btn_tema),
+            PasoTour("Ayuda siempre a mano",
+                     "Aquí están todos los atajos y puedes repetir este "
+                     "recorrido cuando quieras. ¡Listo para empezar!",
+                     lambda: self.btn_ayuda),
+        ]
+        self._tour = Tour(self, pasos, al_terminar=self._tour_terminado)
+
+    def _tour_terminado(self):
+        self._tour = None
+        persistencia.escribir("tour_visto", True)
+        self.ir_a("inicio")
+
+    def _refrescar_escala(self):
+        self.lbl_escala.setText("{}%".format(round(T.ESCALA * 100)))
+
+    def cambiar_escala(self, paso):
+        """paso = +1 / -1 para subir o bajar un nivel; 0 para restablecer."""
+        escalas = T.ESCALAS
+        if paso == 0:
+            nuevo = 1.0
+        else:
+            i = escalas.index(T.ESCALA) + paso
+            nuevo = escalas[max(0, min(len(escalas) - 1, i))]
+        if nuevo == T.ESCALA:
+            return
+        T.poner_escala(nuevo)
+        persistencia.escribir("escala", nuevo)
+        QApplication.instance().setStyleSheet(T.hoja_de_estilos())
+        self.pagina_solucionador.aplicar_escala()
+        self.pagina_matrices.aplicar_escala()
+        self._refrescar_escala()
+        mostrar_aviso(self, "Tamaño de letra: {}%".format(round(nuevo * 100)), "info")

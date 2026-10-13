@@ -66,6 +66,12 @@ class PaginaMatrices(PaginaBase):
         self.raiz.addWidget(split, 1)
 
         self.generar_cuadriculas()
+        self.atajo("Ctrl+D", lambda: self.ejecutar_operacion("det"))
+        self.atajo("Ctrl+I", lambda: self.ejecutar_operacion("inversa_gj"))
+        self.atajo("Ctrl+M", lambda: self.ejecutar_operacion("multiplicacion"))
+        self.atajo("Ctrl+L", self.limpiar)
+        self.atajo("Ctrl+S", self.guardar_informe)
+        self.atajo("Ctrl+P", self.exportar_pdf)
 
     # ──────────────────────────────────────────────────────────
     # Construcción
@@ -149,6 +155,7 @@ class PaginaMatrices(PaginaBase):
             g = CuadriculaMatriz(corchetes=True, max_filas=LIMITE, max_cols=LIMITE)
             g.forma_cambiada.connect(
                 lambda f, c, n=nombre: self._forma_cambiada(n, f, c))
+            g.cambiado.connect(self.ocultar_error)
             agregar_acciones_grid(t, g)
             t.agregar(g, 1)
             lay.addWidget(t, 1)
@@ -173,7 +180,7 @@ class PaginaMatrices(PaginaBase):
         self.tabs.addTab(self._tab_operaciones(), "Operaciones")
         self.tabs.addTab(self._tab_propiedades(), "Propiedades")
         self.tabs.addTab(self._tab_solucionador(), "Solucionador")
-        marco = QFrame()
+        marco = self.marco_tabs = QFrame()
         marco.setObjectName("tarjeta")
         ml = QVBoxLayout(marco)
         ml.setContentsMargins(12, 6, 12, 12)
@@ -301,7 +308,7 @@ class PaginaMatrices(PaginaBase):
         return w
 
     def _tarjeta_resultado(self):
-        t = Tarjeta("Resultado")
+        t = self.tarjeta_resultado = Tarjeta("Resultado")
         acc = QHBoxLayout()
         acc.setSpacing(5)
         l = QLabel("Usar como")
@@ -338,7 +345,7 @@ class PaginaMatrices(PaginaBase):
         self.txt = QPlainTextEdit()
         self.txt.setReadOnly(True)
         self.txt.setLineWrapMode(QPlainTextEdit.NoWrap)
-        self.txt.setStyleSheet("font-family: '{}'; font-size: 11pt;".format(T.MONO))
+        self._estilo_resultado()
         self.txt.setPlaceholderText("El resultado aparecerá aquí.")
         t.agregar(self.txt, 1)
         return t
@@ -521,6 +528,7 @@ class PaginaMatrices(PaginaBase):
     # ──────────────────────────────────────────────────────────
 
     def ejecutar_operacion(self, operacion):
+        self.ocultar_error()
         necesita_B = operacion in ("suma", "resta", "multiplicacion",
                                    "prop_suma", "prop_escalar",
                                    "prop", "prop_todas")
@@ -626,6 +634,7 @@ class PaginaMatrices(PaginaBase):
         return None, "", []
 
     def _mostrar_cramer(self):
+        self.ocultar_error()
         A = self._leer_matriz(self.grid_A, "A")
         if A is None:
             return
@@ -858,6 +867,7 @@ class PaginaMatrices(PaginaBase):
     # ──────────────────────────────────────────────────────────
 
     def enviar_al_solucionador(self, modo):
+        self.ocultar_error()
         """
         "matricial"     -> [A | b], el sistema A·x = b
         "combinacion"   -> [A | b], leído como «¿es b combinación lineal de A?»
@@ -970,3 +980,17 @@ class PaginaMatrices(PaginaBase):
                                        registrar=False)
         except (KeyError, IndexError, TypeError, ValueError, ZeroDivisionError):
             pass                      # datos viejos o dañados: se ignoran
+
+    # ──────────────────────────────────────────────────────────
+    # Tamaño de letra
+    # ──────────────────────────────────────────────────────────
+
+    def _estilo_resultado(self):
+        self.txt.setStyleSheet("font-family: '{}'; font-size: {}pt;".format(
+            T.MONO, T.tam(11)))
+
+    def aplicar_escala(self):
+        """Redibuja las cuadrículas y el resultado con la letra actual."""
+        for g in self.grids.values():
+            g.reconstruir(g.filas(), g.columnas(), registrar=False)
+        self._estilo_resultado()

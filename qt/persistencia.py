@@ -5,14 +5,12 @@ sesiones (tema, tamaño y posición de la ventana, cuadrículas, opciones).
 Usa QSettings, así que vive en el registro de Windows / en el perfil del usuario.
 """
 import json
-import os
 
 from PySide6.QtCore import QSettings
 
 
 def _ajustes():
-    nombre = os.environ.get("CALCULADORA_AJUSTES", "CalculadoraAlgebraLineal")
-    return QSettings("UAM", nombre)
+    return QSettings("UAM", "CalculadoraAlgebraLineal")
 
 
 def leer(clave, defecto=None):

@@ -39,6 +39,21 @@ PALETAS = {
 
 NOMBRE_TEMA = "oscuro"
 
+# Factor de tamaño de letra de cuadrículas y resultados (1.0 = 100 %).
+ESCALAS = (0.8, 0.9, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0)
+ESCALA = 1.0
+
+
+def poner_escala(valor):
+    """Fija el factor de escala (se ajusta al valor permitido más cercano)."""
+    global ESCALA
+    ESCALA = min(ESCALAS, key=lambda e: abs(e - float(valor)))
+
+
+def tam(base):
+    """Tamaño en puntos de una fuente base, multiplicado por la escala."""
+    return round(base * ESCALA, 1)
+
 
 def aplicar(nombre):
     """Cambia los colores de todo el programa (los módulos leen T.COLOR)."""
@@ -124,6 +139,11 @@ QLabel#contexto {{
     border-left: 3px solid {AZUL}; border-radius: 6px;
     padding: 8px 12px; font-weight: 600;
 }}
+QLabel#errorBanner {{
+    background-color: {ERROR_BG}; color: {TEXTO};
+    border: 1px solid {ROJO}; border-left: 4px solid {ROJO};
+    border-radius: 8px; padding: 9px 14px; font-weight: 600;
+}}
 QFrame#barra {{
     background-color: {PANEL}; border: 1px solid {SUPERF};
     border-radius: 12px;
@@ -141,7 +161,7 @@ QLineEdit:hover {{ border-color: {MUTED}; }}
 QLineEdit:focus {{ border: 1px solid {NARANJA}; background-color: {SUPERF2}; }}
 QLineEdit[error="true"] {{ border: 1px solid {ROJO}; background-color: {ERROR_BG}; }}
 QLineEdit#celda {{
-    font-family: "{MONO}"; font-size: 11pt; padding: 2px 4px;
+    font-family: "{MONO}"; font-size: {CELDA}pt; padding: 2px 4px;
 }}
 
 QSpinBox {{
@@ -249,4 +269,5 @@ QFileDialog QWidget {{ background-color: {FONDO}; }}
            SUPERF2=SUPERF2, BORDE=BORDE, TEXTO=TEXTO, MUTED=MUTED,
            NARANJA=NARANJA, AZUL=AZUL, ROJO=ROJO, HDR_BG=HDR_BG,
            ERROR_BG=ERROR_BG, SELECCION=SELECCION, TEXTO_BOTON=TEXTO_BOTON,
-           FUENTE=FUENTE, MONO=MONO, arriba=arriba, abajo=abajo)
+           FUENTE=FUENTE, MONO=MONO, arriba=arriba, abajo=abajo,
+           CELDA=tam(11))

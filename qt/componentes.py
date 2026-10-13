@@ -16,7 +16,11 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame,
                                QScrollArea, QStackedWidget, QVBoxLayout,
                                QWidget)
 
+from core.fraccion import desde_texto
 from qt import tema as T
+
+MENSAJE_INVALIDO = ("Valor no válido. Usa un entero (-7), una fracción (3/4), "
+                    "un decimal (2.5) o una raíz (√4).")
 
 
 def mezclar(c0, c1, t):
@@ -42,10 +46,19 @@ def aparecer(widget, duracion=260, retraso=0):
     anim.setEasingCurve(QEasingCurve.OutCubic)
 
     def limpiar():
-        widget.setGraphicsEffect(None)
+        try:
+            widget.setGraphicsEffect(None)
+        except RuntimeError:
+            pass                          # el widget ya se destruyó
+
+    def iniciar():
+        try:
+            anim.start()
+        except RuntimeError:
+            pass                          # la ventana se cerró antes de tiempo
 
     anim.finished.connect(limpiar)
-    QTimer.singleShot(retraso, anim.start)
+    QTimer.singleShot(retraso, iniciar)
     widget._anim_aparecer = anim          # evita que se recolecte
     return anim
 
@@ -305,8 +318,36 @@ class Celda(QLineEdit):
         super().__init__(texto, parent)
         self.setObjectName("celda")
         self.setAlignment(Qt.AlignCenter)
-        self.setFixedSize(66, 36)
+        self.setFixedSize(round(66 * T.ESCALA), round(36 * T.ESCALA))
         self.setProperty("error", False)
+
+        # Validación en vivo: se revisa cuando dejas de teclear.
+        self._revision = QTimer(self)
+        self._revision.setSingleShot(True)
+        self._revision.setInterval(500)
+        self._revision.timeout.connect(self.validar)
+        self.textChanged.connect(lambda _: self._revision.start())
+        self.validar()
+
+    def es_valida(self):
+        try:
+            desde_texto(self.text())
+            return True
+        except (ValueError, ZeroDivisionError):
+            return False
+
+    def marcar(self, invalida):
+        """Pinta la celda en rojo (o la deja normal) y explica el motivo."""
+        if bool(self.property("error")) == invalida:
+            return
+        self.setProperty("error", invalida)
+        self.setToolTip(MENSAJE_INVALIDO if invalida else "")
+        self.style().unpolish(self)
+        self.style().polish(self)
+
+    def validar(self):
+        self.marcar(not self.es_valida())
+        return not self.property("error")
 
     @staticmethod
     def _es_rehacer(e):
@@ -576,20 +617,14 @@ class CuadriculaMatriz(QScrollArea):
         return True
 
     def marcar_error(self, i, j):
+        """Deja la celda en rojo hasta que se corrija y le da el foco."""
         c = self.celdas[i][j]
-        c.setProperty("error", True)
-        c.style().unpolish(c)
-        c.style().polish(c)
+        c._revision.stop()
+        c.marcar(True)
         c.setFocus()
 
-        def quitar():
-            try:
-                c.setProperty("error", False)
-                c.style().unpolish(c)
-                c.style().polish(c)
-            except RuntimeError:
-                pass                  # la celda ya se destruyó
-        QTimer.singleShot(2500, quitar)
+    def hay_invalidas(self):
+        return any(not c.es_valida() for fila in self.celdas for c in fila)
 
 
 def agregar_acciones_grid(tarjeta, grid):
@@ -652,7 +687,13 @@ class PilaAnimada(QStackedWidget):
 
         grupo = QParallelAnimationGroup(w)
         grupo.addAnimation(fade)
-        grupo.finished.connect(lambda: w.setGraphicsEffect(None))
+        def limpiar():
+            try:
+                w.setGraphicsEffect(None)
+            except RuntimeError:
+                pass
+
+        grupo.finished.connect(limpiar)
         grupo.start()
         self._grupo = grupo
 
@@ -701,7 +742,12 @@ class Aviso(QLabel):
         salida.setStartValue(1.0)
         salida.setEndValue(0.0)
         salida.finished.connect(self.deleteLater)
-        QTimer.singleShot(2400, salida.start)
+        def iniciar_salida():
+            try:
+                salida.start()
+            except RuntimeError:
+                pass
+        QTimer.singleShot(2400, iniciar_salida)
         self._anims = (entrada, salida)
 
 

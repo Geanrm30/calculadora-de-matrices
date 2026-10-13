@@ -53,6 +53,7 @@ class PaginaSolucionador(PaginaBase):
         self._idx = 0
         self._r = None
         self._reproduciendo = False
+        self._cuerpo_sol = ""
         self._reloj = QTimer(self)
         self._reloj.timeout.connect(self._tick)
 
@@ -66,10 +67,12 @@ class PaginaSolucionador(PaginaBase):
         self.raiz.addWidget(split, 1)
 
         self.generar_casillas()
-        QShortcut(QKeySequence("Ctrl+Return"), self, activated=self.resolver,
-                  context=Qt.WidgetWithChildrenShortcut)
-        QShortcut(QKeySequence("Ctrl+Enter"), self, activated=self.resolver,
-                  context=Qt.WidgetWithChildrenShortcut)
+        self.atajo("Ctrl+Return", self.resolver)
+        self.atajo("Ctrl+Enter", self.resolver)
+        self.atajo("Ctrl+L", self.limpiar)
+        self.atajo("Ctrl+R", self._alternar_reproduccion)
+        self.atajo("Ctrl+S", self.guardar_informe)
+        self.atajo("Ctrl+P", self.exportar_pdf)
 
     # ──────────────────────────────────────────────────────────
     # Construcción
@@ -83,7 +86,7 @@ class PaginaSolucionador(PaginaBase):
         lay.setContentsMargins(0, 0, 8, 0)
         lay.setSpacing(12)
 
-        b_ej = BotonAnimado("Probar un ejemplo", "azul")
+        b_ej = self.b_ej = BotonAnimado("Probar un ejemplo", "azul")
         b_ej.con_menu([(nombre, lambda _=False, i=i: self.cargar_ejemplo(i))
                        for i, (nombre, *_r) in enumerate(SISTEMAS)])
         lay.addWidget(b_ej)
@@ -109,10 +112,11 @@ class PaginaSolucionador(PaginaBase):
         lay.addWidget(t)
 
         # Matriz aumentada
-        t2 = Tarjeta("Matriz [A | b]", T.AZUL)
+        t2 = self.tarjeta_cuadricula = Tarjeta("Matriz [A | b]", T.AZUL)
         self.cuadricula = CuadriculaMatriz(corchetes=True, aumentada=True,
                                            max_filas=LIMITE, max_cols=LIMITE)
         self.cuadricula.forma_cambiada.connect(self._forma_cambiada)
+        self.cuadricula.cambiado.connect(self.ocultar_error)
         agregar_acciones_grid(t2, self.cuadricula)
         t2.agregar(self.cuadricula, 1)
         nota = QLabel("Enteros (-7), fracciones (3/4), decimales (2.5), raíces (√4).")
@@ -129,6 +133,7 @@ class PaginaSolucionador(PaginaBase):
 
         self.btn_resolver = BotonAnimado("RESOLVER", "primario")
         self.btn_resolver.setMinimumHeight(46)
+        self.btn_resolver.setToolTip("Resolver el sistema (Ctrl+Enter)")
         self.btn_resolver.clicked.connect(self.resolver)
         lay.addWidget(self.btn_resolver)
         atajo = QLabel("Ctrl + Enter para resolver rápidamente")
@@ -322,6 +327,7 @@ class PaginaSolucionador(PaginaBase):
 
     def resolver(self):
         self._parar()
+        self.ocultar_error()
         matriz = self.construir_matriz()
         if matriz is None:
             return
@@ -349,8 +355,8 @@ class PaginaSolucionador(PaginaBase):
             "color: {}; font-weight: 700; background: transparent;".format(color))
 
         self._poblar_proceso(resultado)
-        self.vista_sol.setHtml(render.pagina(
-            self._html_solucion(resultado, jordan, vectores)))
+        self._cuerpo_sol = self._html_solucion(resultado, jordan, vectores)
+        self.vista_sol.setHtml(render.pagina(self._cuerpo_sol))
         self.tabs.setCurrentIndex(0)
 
     def limpiar(self):
@@ -371,6 +377,7 @@ class PaginaSolucionador(PaginaBase):
         self.lbl_nav.setText("")
         self.vista.clear()
         self.vista_sol.clear()
+        self._cuerpo_sol = ""
         self._pasos = []
         for b in (self.b_ini, self.b_prev, self.b_next, self.b_fin, self.b_play):
             b.setEnabled(False)
@@ -714,3 +721,16 @@ class PaginaSolucionador(PaginaBase):
                 self.resolver()
         except (KeyError, IndexError, TypeError, ValueError):
             pass                      # datos viejos o dañados: se ignoran
+
+    # ──────────────────────────────────────────────────────────
+    # Tamaño de letra
+    # ──────────────────────────────────────────────────────────
+
+    def aplicar_escala(self):
+        """Redibuja cuadrícula e informes con el tamaño de letra actual."""
+        g = self.cuadricula
+        g.reconstruir(g.filas(), g.columnas(), registrar=False)
+        if self._resultado is not None and self._pasos:
+            self._actualizar_proceso()
+        if self._cuerpo_sol:
+            self.vista_sol.setHtml(render.pagina(self._cuerpo_sol))
