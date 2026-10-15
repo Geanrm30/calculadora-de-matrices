@@ -705,47 +705,63 @@ class PaginaMatrices(PaginaBase):
         self.mostrar_resultado("\n".join(lineas), "Regla de Cramer")
 
     def _ejecutar_factorizacion_lu(self):
+        """Factoriza A = L·U y, si hay B (vector b), resuelve A·x = b."""
         self.ocultar_error()
         A = self._leer_matriz(self.grid_A, "A")
         if A is None:
             return
+ 
         if len(A) != len(A[0]):
-            self.error("Matriz no cuadrada", "La factorización LU requiere que A sea cuadrada.")
+            self.error("A no es cuadrada",
+                       "La factorización LU requiere A cuadrada "
+                       "(A es {}×{}).".format(len(A), len(A[0])))
             return
-
-        B = self._leer_B()
-        if B is None or len(B[0]) != 1:
-            self.error("Vector b requerido", "La matriz B debe ser un vector columna b (1 columna).")
-            return
-
-        b_vec = [B[i][0] for i in range(len(B))]
-        if len(b_vec) != len(A):
-            self.error("Dimensiones incompatibles", "El tamaño de b no coincide con las filas de A.")
-            return
-
-        from modulos.factorizacion_lu import resolver_sistema_lu
-        from core.procedimiento import pasos_factorizacion_lu
-
+ 
+        # Si la matriz B está activa se usa como vector b para resolver A·x = b;
+        # si no, solo se factoriza A.
+        b_vec = None
+        if self.usa_B:
+            B = self._leer_matriz(self.grid_B, "B")
+            if B is None:
+                return
+            if len(B[0]) != 1:
+                self.error("B no es un vector",
+                           "B tiene {} columnas. Para resolver A·x = b, B debe ser "
+                           "el vector b (1 columna).".format(len(B[0])))
+                return
+            if len(B) != len(A):
+                self.error("Dimensiones incompatibles",
+                           "A tiene {} filas y b tiene {} componentes.".format(
+                               len(A), len(B)))
+                return
+            b_vec = [B[i][0] for i in range(len(B))]
+ 
+        from modulos.factorizacion_lu import ejecutar_modulo_lu
         try:
-            y, x, L, U, verificado = resolver_sistema_lu(A, b_vec)
+            res = ejecutar_modulo_lu(A, b_vec)
         except ValueError as ex:
-            self.error("Error en Factorización LU", str(ex))
+            self.error("Factorización LU", str(ex))
             return
-
+ 
         lineas = []
         if self.sw_pasos.isChecked():
-            lineas.extend(pasos_factorizacion_lu(A, L, U, y, x, b_vec))
+            lineas.append(res["informe"])
             lineas.append("─" * 52)
             lineas.append("")
-        
-        lineas.append(f"Verificación L·U = A: {'CORRECTA (Exacta)' if verificado else 'FALLÓ'}")
+        lineas.extend(proc.texto_resultado("L =", res["L"]))
         lineas.append("")
-        
-        sol_mat = [[v] for v in x]
-        lineas.extend(proc.texto_resultado("Solución x =", sol_mat))
-
-        self._con_resultado(sol_mat)
+        lineas.extend(proc.texto_resultado("U =", res["U"]))
+        if res["x"] is not None:
+            lineas.append("")
+            lineas.extend(proc.texto_resultado("x =", [[v] for v in res["x"]]))
+        lineas.append("")
+        lineas.append("Verificación exacta: " + ("CUMPLE" if res["valido"] else "FALLA"))
+ 
+        # El resultado reutilizable es x (si se resolvió) o, si no, la matriz U
+        self._con_resultado([[v] for v in res["x"]] if res["x"] is not None
+                            else res["U"])
         self.mostrar_resultado("\n".join(lineas), "Factorización LU")
+ 
 
     def _mostrar_inversa(self, operacion, A):
         from modulos.modulo_matrices import (determinante, inversa_gauss_jordan,
