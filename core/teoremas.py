@@ -177,4 +177,12 @@ TEOREMAS = [
         "   Si A es invertible: det(A⁻¹) = 1/det(A)",
         "Operaciones con matrices: 'Propiedades' (categoría Determinante).",
     ),
+    (
+        "Factorización LU",
+    "Si una matriz cuadrada A se puede reducir a su forma escalonada U "
+    "mediante operaciones de reemplazo de filas sin intercambios, entonces A = L·U, "
+    "donde L es una matriz triangular inferior unitaria y U es escalonada. El sistema "
+    "Ax = b se resuelve eficientemente resolviendo Ly = b y Ux = y.",
+    "Operaciones con matrices: botón 'Factorización LU (A = L·U)'.",
+    ),
 ]

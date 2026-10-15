@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QFileDialog, QFrame,
                                QSplitter, QTabWidget, QVBoxLayout, QWidget)
 
 from core.fraccion import desde_texto
-import core.algebra as alg
+import core.algebra as alg  
 import core.procedimiento as proc
 import core.propiedades as prop
 
@@ -250,6 +250,15 @@ class PaginaMatrices(PaginaBase):
         n.setObjectName("nota")
         n.setWordWrap(True)
         lay.addWidget(n)
+
+        bc_lu = BotonAnimado("Factorización LU (A = L·U) y Ax = b", "verde")
+        bc_lu.clicked.connect(self._ejecutar_factorizacion_lu)
+        lay.addWidget(bc_lu)
+        n_lu = QLabel("A cuadrada n×n; B debe ser el vector b (1 columna, sin pivotes cero).")
+        n_lu.setObjectName("nota")
+        n_lu.setWordWrap(True)
+        lay.addWidget(n_lu)
+
         return w
 
     def _tab_propiedades(self):
@@ -688,6 +697,49 @@ class PaginaMatrices(PaginaBase):
 
         self._con_resultado(sol_mat)
         self.mostrar_resultado("\n".join(lineas), "Regla de Cramer")
+
+    def _ejecutar_factorizacion_lu(self):
+        self.ocultar_error()
+        A = self._leer_matriz(self.grid_A, "A")
+        if A is None:
+            return
+        if len(A) != len(A[0]):
+            self.error("Matriz no cuadrada", "La factorización LU requiere que A sea cuadrada.")
+            return
+
+        B = self._leer_B()
+        if B is None or len(B[0]) != 1:
+            self.error("Vector b requerido", "La matriz B debe ser un vector columna b (1 columna).")
+            return
+
+        b_vec = [B[i][0] for i in range(len(B))]
+        if len(b_vec) != len(A):
+            self.error("Dimensiones incompatibles", "El tamaño de b no coincide con las filas de A.")
+            return
+
+        from modulos.factorizacion_lu import resolver_sistema_lu
+        from core.procedimiento import pasos_factorizacion_lu
+
+        try:
+            y, x, L, U, verificado = resolver_sistema_lu(A, b_vec)
+        except ValueError as ex:
+            self.error("Error en Factorización LU", str(ex))
+            return
+
+        lineas = []
+        if self.sw_pasos.isChecked():
+            lineas.extend(pasos_factorizacion_lu(A, L, U, y, x, b_vec))
+            lineas.append("─" * 52)
+            lineas.append("")
+        
+        lineas.append(f"Verificación L·U = A: {'CORRECTA (Exacta)' if verificado else 'FALLÓ'}")
+        lineas.append("")
+        
+        sol_mat = [[v] for v in x]
+        lineas.extend(proc.texto_resultado("Solución x =", sol_mat))
+
+        self._con_resultado(sol_mat)
+        self.mostrar_resultado("\n".join(lineas), "Factorización LU")
 
     def _mostrar_inversa(self, operacion, A):
         from modulos.modulo_matrices import (determinante, inversa_gauss_jordan,
