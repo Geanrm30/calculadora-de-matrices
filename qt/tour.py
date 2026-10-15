@@ -9,8 +9,8 @@ from typing import Callable, Optional
 from PySide6.QtCore import (QEasingCurve, QEvent, QPoint, QRectF, Qt, QTimer,
                             QVariantAnimation)
 from PySide6.QtGui import QColor, QKeyEvent, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QScrollArea,
+                               QVBoxLayout, QWidget)
 
 from qt import tema as T
 from qt.componentes import BotonAnimado
@@ -119,6 +119,12 @@ class Tour(QWidget):
 
     def _rect_objetivo(self):
         w = self._pasos[self._i].objetivo()
+        # Si la página tiene desplazamiento, se lleva el elemento a la vista.
+        padre = w.parentWidget()
+        while padre is not None:
+            if isinstance(padre, QScrollArea):
+                padre.ensureWidgetVisible(w, 20, 20)
+            padre = padre.parentWidget()
         origen = w.mapTo(self._ventana, QPoint(0, 0))
         m = self.MARGEN
         return QRectF(origen.x() - m, origen.y() - m,

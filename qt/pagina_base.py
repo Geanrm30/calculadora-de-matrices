@@ -51,6 +51,17 @@ class PaginaBase(QWidget):
         QShortcut(QKeySequence(secuencia), self, activated=funcion,
                   context=Qt.WindowShortcut)
 
+    @staticmethod
+    def respetar_minimos(splitter):
+        """
+        Evita que un panel del divisor se aplaste por debajo de lo que su
+        contenido necesita (los títulos se cortaban y los botones se montaban).
+        Si la ventana es más estrecha, la página se desplaza en horizontal.
+        """
+        for i in range(splitter.count()):
+            w = splitter.widget(i)
+            w.setMinimumWidth(max(w.minimumWidth(), w.minimumSizeHint().width()))
+
     # ── Errores e información ─────────────────────────────────
     # Los errores se muestran en una franja dentro de la página (sin ventana
     # emergente que interrumpa); la celda culpable queda en rojo.

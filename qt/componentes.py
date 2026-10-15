@@ -33,33 +33,79 @@ def mezclar(c0, c1, t):
         int(a.alpha() + (b.alpha() - a.alpha()) * t))
 
 
-def aparecer(widget, duracion=260, retraso=0):
-    """Desvanece un widget al mostrarse."""
-    efecto = QGraphicsOpacityEffect(widget)
-    efecto.setOpacity(0.0)
-    widget.setGraphicsEffect(efecto)
+class _Cortina(QWidget):
+    """Capa lisa que cubre un widget y se vuelve transparente (fundido de entrada)."""
 
-    anim = QPropertyAnimation(efecto, b"opacity", widget)
+    def __init__(self, widget, color):
+        super().__init__(widget)
+        self._color = QColor(color)
+        self._alfa = 255
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setGeometry(widget.rect())
+
+    def poner_alfa(self, alfa):
+        self._alfa = alfa
+        self.update()
+
+    def paintEvent(self, _):
+        c = QColor(self._color)
+        c.setAlpha(self._alfa)
+        p = QPainter(self)
+        p.fillRect(self.rect(), c)
+
+
+def aparecer(widget, duracion=260, retraso=0, color=None):
+    """
+    Hace aparecer un widget con un fundido. Encima se coloca una cortina del
+    color del fondo (`color`, por defecto el del tema) que se desvanece.
+
+    No se usa QGraphicsOpacityEffect porque falla con las QScrollArea (las
+    cuadrículas de matriz, los cuadros de texto): su interior se pinta aparte
+    y durante la animación mostraba restos de la pantalla anterior.
+    """
+    previa = getattr(widget, "_cortina_aparecer", None)
+    if previa is not None:
+        try:
+            previa.hide()
+            previa.deleteLater()
+        except RuntimeError:
+            pass
+
+    cortina = _Cortina(widget, color or T.FONDO)
+    cortina.show()
+    cortina.raise_()
+    widget._cortina_aparecer = cortina
+
+    anim = QVariantAnimation(widget)
     anim.setDuration(duracion)
-    anim.setStartValue(0.0)
-    anim.setEndValue(1.0)
+    anim.setStartValue(1.0)
+    anim.setEndValue(0.0)
     anim.setEasingCurve(QEasingCurve.OutCubic)
 
-    def limpiar():
+    def paso(v):
         try:
-            widget.setGraphicsEffect(None)
+            cortina.setGeometry(widget.rect())       # por si cambió de tamaño
+            cortina.poner_alfa(int(255 * v))
         except RuntimeError:
-            pass                          # el widget ya se destruyó
+            pass                                     # el widget ya se destruyó
+
+    def fin():
+        try:
+            cortina.hide()
+            cortina.deleteLater()
+        except RuntimeError:
+            pass
 
     def iniciar():
         try:
             anim.start()
         except RuntimeError:
-            pass                          # la ventana se cerró antes de tiempo
+            pass                                     # la ventana se cerró antes
 
-    anim.finished.connect(limpiar)
+    anim.valueChanged.connect(paso)
+    anim.finished.connect(fin)
     QTimer.singleShot(retraso, iniciar)
-    widget._anim_aparecer = anim          # evita que se recolecte
+    widget._anim_aparecer = anim                     # evita que se recolecte
     return anim
 
 
@@ -644,6 +690,7 @@ def agregar_acciones_grid(tarjeta, grid):
 
     b_tabla = BotonAnimado("Tabla", "fantasma", pequeno=True)
     b_tabla.setMinimumHeight(28)
+    b_tabla.setFixedWidth(78)
     b_tabla.setToolTip("Copiar o pegar como tabla (compatible con Excel)")
     b_tabla.con_menu([("Copiar como tabla", grid.copiar),
                       ("Pegar tabla (Excel o texto)", grid.pegar)])
@@ -666,36 +713,93 @@ def _sub(n):
 # Pila de páginas con transición
 # ─────────────────────────────────────────────────────────────
 
+class _Instantanea(QWidget):
+    """
+    Capa de transición entre páginas. Primera mitad: la foto de la página que
+    se va se apaga hacia el color de fondo. Segunda mitad: el fondo se aclara y
+    deja ver la página nueva. Las dos páginas nunca se ven mezcladas (al
+    mezclar dos páginas con mucho texto se superponen y parece un defecto).
+    """
+
+    def __init__(self, padre, foto, color):
+        super().__init__(padre)
+        self._foto = foto
+        self._color = QColor(color)
+        self._progreso = 0.0
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setGeometry(padre.rect())
+
+    def poner_progreso(self, valor):
+        self._progreso = valor
+        self.update()
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        t = self._progreso
+        if t < 0.5:
+            p.fillRect(self.rect(), self._color)
+            p.setOpacity(1.0 - 2.0 * t)
+            p.drawPixmap(0, 0, self._foto)
+        else:
+            fondo = QColor(self._color)
+            fondo.setAlpha(int(255 * (1.0 - (2.0 * t - 1.0))))
+            p.fillRect(self.rect(), fondo)
+
+
 class PilaAnimada(QStackedWidget):
-    """QStackedWidget que al cambiar de página la desvanece y la sube."""
+    """
+    QStackedWidget que al cambiar de página apaga la anterior y enciende la
+    nueva (fundido a través del fondo, en unos 230 ms).
+
+    Se saca una foto de la página que se va; la nueva se dibuja normal por
+    debajo. Así no se aplica ningún efecto gráfico a las páginas
+    (QGraphicsOpacityEffect dejaba las cuadrículas en blanco y mostraba restos
+    de la página anterior).
+    """
+
+    DURACION = 230
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._capa = None
+        self._anim = None
+
+    def _terminar_transicion(self):
+        if self._anim is not None:
+            self._anim.stop()
+            self._anim = None
+        if self._capa is not None:
+            try:
+                self._capa.hide()
+                self._capa.deleteLater()
+            except RuntimeError:
+                pass
+            self._capa = None
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        if self._capa is not None:
+            self._capa.setGeometry(self.rect())
 
     def ir(self, indice):
         if indice == self.currentIndex():
             return
+        self._terminar_transicion()
+        foto = self.grab()                     # cómo se ve ahora la página que se va
         self.setCurrentIndex(indice)
-        w = self.currentWidget()
 
-        efecto = QGraphicsOpacityEffect(w)
-        efecto.setOpacity(0.0)
-        w.setGraphicsEffect(efecto)
-
-        fade = QPropertyAnimation(efecto, b"opacity", w)
-        fade.setDuration(280)
-        fade.setStartValue(0.0)
-        fade.setEndValue(1.0)
-        fade.setEasingCurve(QEasingCurve.OutCubic)
-
-        grupo = QParallelAnimationGroup(w)
-        grupo.addAnimation(fade)
-        def limpiar():
-            try:
-                w.setGraphicsEffect(None)
-            except RuntimeError:
-                pass
-
-        grupo.finished.connect(limpiar)
-        grupo.start()
-        self._grupo = grupo
+        capa = _Instantanea(self, foto, T.FONDO)
+        capa.show()
+        capa.raise_()
+        anim = QVariantAnimation(self)
+        anim.setDuration(self.DURACION)
+        anim.setStartValue(0.0)
+        anim.setEndValue(1.0)
+        anim.setEasingCurve(QEasingCurve.Linear)
+        anim.valueChanged.connect(capa.poner_progreso)
+        anim.finished.connect(self._terminar_transicion)
+        self._capa, self._anim = capa, anim
+        anim.start()
 
 
 # ─────────────────────────────────────────────────────────────

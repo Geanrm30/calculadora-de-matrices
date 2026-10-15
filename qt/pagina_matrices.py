@@ -66,6 +66,11 @@ class PaginaMatrices(PaginaBase):
         self.raiz.addWidget(split, 1)
 
         self.generar_cuadriculas()
+        # El panel del centro (las matrices) no puede ser más estrecho que el
+        # encabezado de sus tarjetas; los demás, que su propio contenido.
+        self._area_centro.setMinimumWidth(
+            self.tarjetas["A"].minimumSizeHint().width() + 40)
+        self.respetar_minimos(split)
         self.atajo("Ctrl+D", lambda: self.ejecutar_operacion("det"))
         self.atajo("Ctrl+I", lambda: self.ejecutar_operacion("inversa_gj"))
         self.atajo("Ctrl+M", lambda: self.ejecutar_operacion("multiplicacion"))
@@ -87,7 +92,7 @@ class PaginaMatrices(PaginaBase):
     def _panel_izquierdo(self):
         w = QWidget()
         w.setMinimumWidth(230)
-        w.setMaximumWidth(300)
+        w.setMaximumWidth(360)
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 0, 8, 0)
         lay.setSpacing(10)
@@ -168,6 +173,7 @@ class PaginaMatrices(PaginaBase):
         area.setWidgetResizable(True)
         area.setFrameShape(QFrame.NoFrame)
         area.setWidget(cont)
+        self._area_centro = area
         return area
 
     def _panel_derecho(self):
@@ -840,7 +846,7 @@ class PaginaMatrices(PaginaBase):
         self._etiqueta_res = etiqueta
         self.txt.setPlainText(("\n" + texto + "\n") if texto else "")
         if texto:
-            aparecer(self.txt, 200)
+            aparecer(self.txt, 200, color=T.PANEL)
         if texto and etiqueta and registrar:
             matriz = None
             if self.resultado_actual is not None:

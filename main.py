@@ -40,7 +40,6 @@ def iniciar():
 
     app = QApplication(sys.argv)
     app.setApplicationName(NOMBRE)
-    app.setApplicationDisplayName(NOMBRE)
     app.setWindowIcon(crear_icono())
     app.setFont(QFont(tema.FUENTE, 10))
     tema.aplicar(persistencia.leer("tema", "oscuro"))

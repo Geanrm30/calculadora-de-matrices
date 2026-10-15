@@ -8,7 +8,8 @@ from PySide6.QtCore import (QByteArray, QEasingCurve, QPoint,
                             QVariantAnimation)
 from PySide6.QtGui import QColor, QFont, QKeySequence, QPainter, QShortcut
 from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
-                               QMainWindow, QPushButton, QVBoxLayout, QWidget)
+                               QMainWindow, QPushButton, QScrollArea,
+                               QVBoxLayout, QWidget)
 
 from qt import tema as T
 from qt import persistencia
@@ -118,7 +119,7 @@ class VentanaPrincipal(QMainWindow):
         super().__init__()
         self.setWindowTitle("Calculadora de Álgebra Lineal — MTM0120")
         self.resize(1480, 920)
-        self.setMinimumSize(1240, 720)
+        self.setMinimumSize(980, 600)
         self._secciones = secciones()
         self._cambiando_tema = False
         self._tour = None
@@ -137,7 +138,7 @@ class VentanaPrincipal(QMainWindow):
         self._claves = [s[0] for s in self._secciones]
         for pag in (self.pagina_inicio, self.pagina_solucionador,
                     self.pagina_matrices, self.pagina_teoremas):
-            self.pila.addWidget(pag)
+            self.pila.addWidget(self._con_desplazamiento(pag))
 
         lay.addWidget(self._crear_barra_lateral())
         lay.addWidget(self.pila, 1)
@@ -162,6 +163,19 @@ class VentanaPrincipal(QMainWindow):
         self._mover_indicador(0, animar=False)
 
     # ──────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _con_desplazamiento(pagina):
+        """
+        Mete la página en un área con desplazamiento. Si la ventana es más
+        pequeña de lo que la página necesita, aparecen barras en lugar de que
+        el contenido se apriete (botones montados, textos cortados).
+        """
+        area = QScrollArea()
+        area.setWidgetResizable(True)
+        area.setFrameShape(QFrame.NoFrame)
+        area.setWidget(pagina)
+        return area
 
     def _crear_barra_lateral(self):
         barra = QFrame()

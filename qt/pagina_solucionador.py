@@ -67,6 +67,7 @@ class PaginaSolucionador(PaginaBase):
         self.raiz.addWidget(split, 1)
 
         self.generar_casillas()
+        self.respetar_minimos(split)
         self.atajo("Ctrl+Return", self.resolver)
         self.atajo("Ctrl+Enter", self.resolver)
         self.atajo("Ctrl+L", self.limpiar)
