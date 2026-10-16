@@ -20,7 +20,7 @@ from output.reporte import (generar, seccion_clasificacion, seccion_solucion,
 
 from qt import tema as T
 from qt import render
-from qt.componentes import (BotonAnimado, CuadriculaMatriz, Interruptor,
+from qt.componentes import (PestanasAnimadas, Barra, BotonAnimado, CuadriculaMatriz, Interruptor,
                             Tarjeta, agregar_acciones_grid, aparecer,
                             mostrar_aviso)
 from qt.ejemplos import SISTEMAS
@@ -49,6 +49,7 @@ class PaginaSolucionador(PaginaBase):
 
         self._contexto = None
         self._resultado = None
+        self.botones_informe = {}
         self._informe = ""
         self._pasos = []
         self._idx = 0
@@ -94,7 +95,7 @@ class PaginaSolucionador(PaginaBase):
         lay.addWidget(b_ej)
 
         # Tamaño
-        t = Tarjeta("Tamaño del sistema")
+        t = self.tarjeta_tamano = Tarjeta("Tamaño del sistema")
         fila = QHBoxLayout()
         fila.setSpacing(10)
         self.sp_m = self._spin(3)
@@ -135,6 +136,7 @@ class PaginaSolucionador(PaginaBase):
 
         self.btn_resolver = BotonAnimado("RESOLVER", "primario")
         self.btn_resolver.setMinimumHeight(46)
+        self.btn_resolver.activar_brillo()
         self.btn_resolver.setToolTip("Resolver el sistema (Ctrl+Enter)")
         self.btn_resolver.clicked.connect(self.resolver)
         lay.addWidget(self.btn_resolver)
@@ -162,8 +164,7 @@ class PaginaSolucionador(PaginaBase):
         lay.setSpacing(10)
 
         # Barra de estado y acciones
-        barra = QFrame()
-        barra.setObjectName("barra")
+        barra = Barra()
         bv = QVBoxLayout(barra)
         bv.setContentsMargins(16, 12, 12, 10)
         bv.setSpacing(8)
@@ -180,6 +181,7 @@ class PaginaSolucionador(PaginaBase):
             b = BotonAnimado(texto, "suave", pequeno=True)
             b.clicked.connect(cmd)
             bl.addWidget(b)
+            self.botones_informe[texto] = b
         b_copiar = BotonAnimado("Copiar informe", "suave", pequeno=True)
         b_copiar.con_menu([("Copiar como texto", self.copiar_informe),
                            ("Copiar como imagen", self.copiar_informe_imagen)])
@@ -198,7 +200,7 @@ class PaginaSolucionador(PaginaBase):
         self.lbl_contexto.hide()
         lay.addWidget(self.lbl_contexto)
 
-        self.tabs = QTabWidget()
+        self.tabs = PestanasAnimadas(T.FONDO)
         self.tabs.addTab(self._tab_proceso(), "Sistema y eliminación")
         self.tabs.addTab(self._tab_solucion(), "Solución y verificación")
         lay.addWidget(self.tabs, 1)
@@ -363,6 +365,11 @@ class PaginaSolucionador(PaginaBase):
         self._cuerpo_sol = self._html_solucion(resultado, jordan, vectores)
         self.vista_sol.setHtml(render.pagina(self._cuerpo_sol))
         self.tabs.setCurrentIndex(0)
+        tarjeta = self.lbl_estado.parentWidget()
+        while tarjeta is not None and not hasattr(tarjeta, "pulso"):
+            tarjeta = tarjeta.parentWidget()
+        if tarjeta is not None:
+            tarjeta.pulso(color)
 
     def limpiar(self):
         self._parar()
@@ -765,7 +772,7 @@ class PaginaSolucionador(PaginaBase):
     def aplicar_escala(self):
         """Redibuja cuadrícula e informes con el tamaño de letra actual."""
         g = self.cuadricula
-        g.reconstruir(g.filas(), g.columnas(), registrar=False)
+        g.reconstruir(g.filas(), g.columnas(), registrar=False, animar=False)
         if self._resultado is not None and self._pasos:
             self._actualizar_proceso()
         if self._cuerpo_sol:

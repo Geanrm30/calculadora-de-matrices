@@ -48,8 +48,14 @@ def iniciar():
 
     ventana = VentanaPrincipal()
     ventana.restaurar_sesion()
+    # La ventana aparece con un fundido; el resto de las páginas se construyen
+    # después, de una en una, sin que se note.
+    from qt.componentes import fundido_de_ventana
+    ventana.setWindowOpacity(0.0)
     ventana.show()
+    fundido_de_ventana(ventana, 520)
     ventana.mostrar_tour_si_corresponde()
+    ventana.precargar_paginas()
     app._ventana_principal = ventana
     return app.exec()
 

@@ -223,8 +223,12 @@ la **regla fila-vector**.
 | Acción | Cómo |
 |--------|------|
 | Ver todos los atajos y repetir el recorrido | `F1` o botón **Ayuda** |
+| Rendimiento | Las páginas (Solucionador, Operaciones, Teoremas) se construyen cuando se usan y el resto se prepara en segundo plano solo cuando no estás usando el programa: la ventana abre en menos de un segundo y el cambio de tema es rápido. El tamaño de letra se cambia al instante. En Teoremas, «Expandir todo» anima solo lo que se ve y, si el equipo va justo, el despliegue termina de golpe en vez de arrastrarse |
+| Recorrido guiado | 26 pasos que recorren el Solucionador, Operaciones (matrices, operaciones, Cramer, LU, propiedades, historial), Teoremas y los controles del menú. Se repite desde **Ayuda**; no pisa lo que tengas escrito |
 | Volver a los valores por defecto | **Ayuda → Acerca de → Borrar todos los datos** (pide confirmación; borra matrices, resultados, historial, sesión, tema y tamaño de letra) |
 | Cambiar de herramienta | Menú lateral o `Ctrl+1` … `Ctrl+4` |
+| Animaciones | Inicio con fondo de color en movimiento y tarjetas con foco de luz; transición vertical entre secciones y horizontal entre pestañas; al quitar o agregar una matriz la tarjeta se encoge o crece; al limpiar, un barrido azul recorre las celdas; ola de luz solo en la cuadrícula que cambia; anillo de luz al enfocar una celda; onda al pulsar un botón y destello en RESOLVER; pulso en el borde del resultado; avisos con barra; el icono del menú salta al elegirse; la ventana abre y el cambio de tema se hacen con fundido, y las ventanas de Ayuda y «Acerca de» entran y salen con animación |
+| Consultar teoremas | Pestaña **Teoremas**: tarjetas plegables con vista previa, filtros por categoría, búsqueda con `Ctrl+F` que resalta lo encontrado, «Expandir todo» y **Copiar**. **Abrir en…** te lleva a la herramienta y marca el botón exacto con anillos y una burbuja que dice qué hacer |
 | Tema claro / oscuro | `Ctrl+Shift+T` o botón al pie del menú (se recuerda) |
 | Tamaño de letra de cuadrículas e informes | `Ctrl++` / `Ctrl+−` / `Ctrl+0` o botones **A− A+** |
 | Salir guardando la sesión | `Ctrl+Q` |

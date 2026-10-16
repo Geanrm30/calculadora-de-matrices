@@ -8,7 +8,7 @@ botón en la barra de tareas; se cierra junto con la calculadora (ver cerrar_tod
 """
 import re
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import QEasingCurve, Qt, QTimer, QVariantAnimation, Signal
 from PySide6.QtGui import (QColor, QKeySequence, QShortcut, QTextCursor,
                            QTextDocument)
 from PySide6.QtWidgets import (QApplication, QFileDialog, QFrame, QHBoxLayout,
@@ -436,6 +436,17 @@ class VisorTexto(QWidget):
     def showEvent(self, e):
         super().showEvent(e)
         aparecer(self.edit, 300)
+        if not getattr(self, "_ya_aparecio", False):
+            self._ya_aparecio = True
+            self.setWindowOpacity(0.0)
+            anim = QVariantAnimation(self)
+            anim.setDuration(280)
+            anim.setStartValue(0.0)
+            anim.setEndValue(1.0)
+            anim.setEasingCurve(QEasingCurve.OutCubic)
+            anim.valueChanged.connect(self.setWindowOpacity)
+            anim.start()
+            self._anim_ventana = anim
 
     def closeEvent(self, e):
         if self in _ABIERTAS:

@@ -22,6 +22,7 @@ class PasoTour:
     texto: str
     objetivo: Callable[[], QWidget]      # widget que se ilumina
     pagina: Optional[str] = None         # página a mostrar antes (clave)
+    antes: Optional[Callable] = None     # acción previa (cambiar de pestaña, cargar un ejemplo…)
 
 
 class Tour(QWidget):
@@ -88,6 +89,8 @@ class Tour(QWidget):
         paso = self._pasos[i]
         if paso.pagina:
             self._ventana.ir_a(paso.pagina)
+        if paso.antes:
+            QTimer.singleShot(60, paso.antes)
 
         self.lbl_num.setText("PASO {} DE {}".format(i + 1, len(self._pasos)))
         self.lbl_titulo.setText(paso.titulo)
@@ -95,7 +98,7 @@ class Tour(QWidget):
         self.b_ant.setEnabled(i > 0)
         self.b_sig.setText("Finalizar" if i == len(self._pasos) - 1 else "Siguiente")
         # Espera a que termine la transición de página y se acomode el diseño.
-        QTimer.singleShot(380 if paso.pagina else 40,
+        QTimer.singleShot(520 if paso.pagina else (160 if paso.antes else 40),
                           lambda: self._ubicar_seguro(animar))
 
     def siguiente(self):

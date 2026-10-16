@@ -10,7 +10,8 @@ from PySide6.QtWidgets import (QDialog, QFrame, QGridLayout, QHBoxLayout,
 
 from qt import NOMBRE, VERSION
 from qt import tema as T
-from qt.componentes import BotonAnimado, Tarjeta
+from qt.componentes import (BotonAnimado, CajaAnimada, DialogoAnimado,
+                            PestanasAnimadas, Tarjeta)
 from qt.icono import dibujar
 
 # Única fuente de verdad de los atajos: la ayuda los lista tal cual.
@@ -48,7 +49,7 @@ ATAJOS = [
 ]
 
 
-class DialogoAyuda(QDialog):
+class DialogoAyuda(DialogoAnimado):
     """
     Pestañas «Atajos» y «Acerca de». Las señales `repetir_tour` y `borrar_datos`
     se emiten desde sus botones (esta última, solo si el usuario lo confirma).
@@ -67,7 +68,7 @@ class DialogoAyuda(QDialog):
         raiz.setContentsMargins(20, 18, 20, 16)
         raiz.setSpacing(12)
 
-        self.tabs = QTabWidget()
+        self.tabs = PestanasAnimadas(T.FONDO)
         self.tabs.addTab(self._pestana_atajos(), "Atajos de teclado")
         self.tabs.addTab(self._pestana_acerca(), "Acerca de")
         self.tabs.setCurrentIndex(pestana)
@@ -84,12 +85,12 @@ class DialogoAyuda(QDialog):
         raiz.addLayout(pie)
 
     def _pedir_tour(self):
+        self._al_cerrar = self.repetir_tour.emit    # cuando ya se cerró
         self.accept()
-        self.repetir_tour.emit()
 
     def _confirmar_borrado(self):
         """Pregunta si de verdad se quiere borrar todo; True solo si se confirma."""
-        caja = QMessageBox(self)
+        caja = CajaAnimada(self)
         caja.setIcon(QMessageBox.Warning)
         caja.setWindowTitle("Borrar todos los datos")
         caja.setText("¿Seguro que quieres borrar todos los datos?")
@@ -106,8 +107,8 @@ class DialogoAyuda(QDialog):
 
     def _pedir_borrado(self):
         if self._confirmar_borrado():
+            self._al_cerrar = self.borrar_datos.emit
             self.accept()
-            self.borrar_datos.emit()
 
     # ── Atajos ────────────────────────────────────────────────
 

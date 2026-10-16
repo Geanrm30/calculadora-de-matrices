@@ -8,14 +8,15 @@ import re
 from html.parser import HTMLParser
 
 from PySide6.QtCore import (Qt, QEasingCurve, QEvent, QParallelAnimationGroup,
-                            QPoint, QPropertyAnimation, QRectF, QSize, QTimer,
-                            QVariantAnimation, Signal)
-from PySide6.QtGui import QColor, QFont, QKeySequence, QPainter, QPen
-from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame,
+                            QPoint, QPointF, QPropertyAnimation, QRectF, QSize,
+                            QTimer, QVariantAnimation, Signal)
+from PySide6.QtGui import (QColor, QFont, QKeySequence, QLinearGradient,
+                           QPainter, QPainterPath, QPen)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QDialog, QFrame,
                                QGraphicsOpacityEffect, QGridLayout, QHBoxLayout,
-                               QLabel, QLineEdit, QMenu, QPushButton,
-                               QScrollArea, QStackedWidget, QVBoxLayout,
-                               QWidget)
+                               QLabel, QLineEdit, QMenu, QMessageBox, QPushButton,
+                               QScrollArea, QStackedWidget, QTabWidget,
+                               QVBoxLayout, QWidget)
 
 from core.fraccion import desde_texto, normalizar_texto_numerico
 from qt import tema as T
@@ -110,6 +111,161 @@ def aparecer(widget, duracion=260, retraso=0, color=None):
     return anim
 
 
+def desvanecer(widget, duracion=260, color=None):
+    """Lo contrario de `aparecer`: una cortina lisa lo va tapando. Devuelve la cortina."""
+    previa = getattr(widget, "_cortina_aparecer", None)
+    if previa is not None:
+        try:
+            previa.hide()
+            previa.deleteLater()
+        except RuntimeError:
+            pass
+    cortina = _Cortina(widget, color or T.FONDO)
+    cortina.poner_alfa(0)
+    cortina.show()
+    cortina.raise_()
+    widget._cortina_aparecer = cortina
+
+    anim = QVariantAnimation(widget)
+    anim.setDuration(duracion)
+    anim.setStartValue(0.0)
+    anim.setEndValue(1.0)
+    anim.setEasingCurve(QEasingCurve.InCubic)
+
+    def paso(v):
+        try:
+            cortina.setGeometry(widget.rect())
+            cortina.poner_alfa(int(255 * v))
+        except RuntimeError:
+            pass
+
+    anim.valueChanged.connect(paso)
+    anim.start()
+    widget._anim_desvanecer = anim
+    return cortina
+
+
+def mostrar_animado(widget, mostrar, duracion=360, color=None):
+    """
+    Muestra u oculta un widget con animación: crece o se encoge en altura mientras
+    se funde, y los vecinos se acomodan suavemente.
+    """
+    maximo = 16777215
+    previa = getattr(widget, "_anim_altura", None)
+    if previa is not None:
+        previa.stop()
+
+    if mostrar:
+        if widget.isVisible() and widget.maximumHeight() >= maximo:
+            return
+        inicio = widget.height() if widget.isVisible() else 0
+        # Se prueba cómo quedará el diseño ya con el widget y se lee su altura final:
+        # así la animación llega justo a donde el diseño lo va a dejar (sin salto).
+        padre = widget.parentWidget()
+        widget.setMaximumHeight(maximo)
+        widget.show()
+        if padre is not None and padre.layout() is not None:
+            padre.layout().activate()
+        fin = widget.height() if widget.height() > 60 else max(widget.sizeHint().height(), 60)
+        widget.setMaximumHeight(inicio)
+        aparecer(widget, duracion, color=color)
+    else:
+        if not widget.isVisible():
+            return
+        inicio, fin = widget.height(), 0
+        cortina = desvanecer(widget, int(duracion * 0.9), color)
+
+    anim = QVariantAnimation(widget)
+    anim.setDuration(duracion)
+    anim.setStartValue(inicio)
+    anim.setEndValue(fin)
+    anim.setEasingCurve(QEasingCurve.OutCubic)
+
+    def paso(v):
+        try:
+            widget.setMaximumHeight(max(0, int(v)))
+        except RuntimeError:
+            pass
+
+    def fin_anim():
+        try:
+            widget.setMaximumHeight(maximo)
+            if not mostrar:
+                widget.hide()
+                c = getattr(widget, "_cortina_aparecer", None)
+                if c is not None:
+                    c.hide()
+                    c.deleteLater()
+        except RuntimeError:
+            pass
+
+    anim.valueChanged.connect(paso)
+    anim.finished.connect(fin_anim)
+    anim.start()
+    widget._anim_altura = anim
+
+
+def fundido_de_ventana(ventana, duracion=360):
+    """Hace aparecer una ventana de primer nivel con un fundido (opacidad 0 → 1)."""
+    anim = QVariantAnimation(ventana)
+    anim.setDuration(duracion)
+    anim.setStartValue(0.0)
+    anim.setEndValue(1.0)
+    anim.setEasingCurve(QEasingCurve.OutCubic)
+
+    def paso(v):
+        try:
+            ventana.setWindowOpacity(v)
+        except RuntimeError:
+            pass
+
+    anim.valueChanged.connect(paso)
+    anim.start()
+    ventana._anim_fundido = anim
+
+
+def entrada_suave(widget, retraso=0, duracion=650):
+    """
+    Fundido de entrada de un widget con QGraphicsOpacityEffect. Sirve para
+    etiquetas y botones (no para áreas con desplazamiento, ver `aparecer`).
+    """
+    previa = getattr(widget, "_anim_entrada", None)
+    if previa is not None:
+        previa.stop()
+    efecto = QGraphicsOpacityEffect(widget)
+    efecto.setOpacity(0.0)
+    widget.setGraphicsEffect(efecto)
+
+    anim = QVariantAnimation(widget)
+    anim.setDuration(duracion)
+    anim.setStartValue(0.0)
+    anim.setEndValue(1.0)
+    anim.setEasingCurve(QEasingCurve.OutCubic)
+
+    def paso(v):
+        try:
+            efecto.setOpacity(v)
+        except RuntimeError:
+            pass                                     # el widget ya se destruyó
+
+    def fin():
+        try:
+            widget.setGraphicsEffect(None)
+        except RuntimeError:
+            pass
+
+    def iniciar():
+        try:
+            anim.start()
+        except RuntimeError:
+            pass
+
+    anim.valueChanged.connect(paso)
+    anim.finished.connect(fin)
+    QTimer.singleShot(retraso, iniciar)
+    widget._anim_entrada = anim
+
+
 # ─────────────────────────────────────────────────────────────
 # Botón animado
 # ─────────────────────────────────────────────────────────────
@@ -130,8 +286,10 @@ class BotonAnimado(QPushButton):
             "fantasma": (T.PANEL,   T.SUPERF,  T.TEXTO),
         }[nombre]
 
-    def __init__(self, texto, estilo="suave", pequeno=False, parent=None):
+    def __init__(self, texto, estilo="suave", pequeno=False, parent=None,
+                 borde=False):
         super().__init__(texto, parent)
+        self._borde = borde
         self._c0, self._c1, self._ct = self._estilo(estilo)
         self._t = 0.0
         self._pequeno = pequeno
@@ -146,6 +304,23 @@ class BotonAnimado(QPushButton):
         self._anim.setDuration(150)
         self._anim.setEasingCurve(QEasingCurve.OutCubic)
         self._anim.valueChanged.connect(self._paso)
+
+        # Onda al pulsar (centro, avance 0→1) y destello periódico (-1 = apagado)
+        self._onda = None
+        self._brillo = -1.0
+        self._ciclo = None
+        self._anim_onda = QVariantAnimation(self)
+        self._anim_onda.setDuration(520)
+        self._anim_onda.setEasingCurve(QEasingCurve.OutCubic)
+        self._anim_onda.valueChanged.connect(self._paso_onda)
+        self._anim_onda.finished.connect(self._fin_onda)
+        self._anim_brillo = QVariantAnimation(self)
+        self._anim_brillo.setDuration(950)
+        self._anim_brillo.setStartValue(0.0)
+        self._anim_brillo.setEndValue(1.0)
+        self._anim_brillo.setEasingCurve(QEasingCurve.InOutSine)
+        self._anim_brillo.valueChanged.connect(self._paso_brillo)
+        self._anim_brillo.finished.connect(self._fin_brillo)
 
     def _paso(self, v):
         self._t = v
@@ -171,6 +346,55 @@ class BotonAnimado(QPushButton):
         self._anim.setStartValue(self._t)
         self._anim.setEndValue(destino)
         self._anim.start()
+
+    def activar_brillo(self):
+        """Un destello recorre el botón cada pocos segundos (para el botón principal)."""
+        if self._ciclo is None:
+            self._ciclo = QTimer(self)
+            self._ciclo.setInterval(4200)
+            self._ciclo.timeout.connect(self._lanzar_brillo)
+            if self.isVisible():
+                self._ciclo.start()
+
+    def _lanzar_brillo(self):
+        if self.isVisible() and self.isEnabled():
+            self._anim_brillo.start()
+
+    def _paso_brillo(self, v):
+        self._brillo = v
+        self.update()
+
+    def _fin_brillo(self):
+        self._brillo = -1.0
+        self.update()
+
+    def _paso_onda(self, v):
+        if self._onda is not None:
+            self._onda = (self._onda[0], v)
+            self.update()
+
+    def _fin_onda(self):
+        self._onda = None
+        self.update()
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.LeftButton and self.isEnabled():
+            self._onda = (QPointF(e.position()), 0.0)
+            self._anim_onda.stop()
+            self._anim_onda.setStartValue(0.0)
+            self._anim_onda.setEndValue(1.0)
+            self._anim_onda.start()
+        super().mousePressEvent(e)
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        if self._ciclo is not None:
+            self._ciclo.start()
+
+    def hideEvent(self, e):
+        super().hideEvent(e)
+        if self._ciclo is not None:
+            self._ciclo.stop()
 
     def enterEvent(self, e):
         self._ir(1.0)
@@ -204,11 +428,36 @@ class BotonAnimado(QPushButton):
         p.setPen(Qt.NoPen)
         p.setBrush(fondo)
         p.drawRoundedRect(r, 9, 9)
+        if self._borde and activo:
+            p.setBrush(Qt.NoBrush)
+            p.setPen(QPen(mezclar(T.BORDE, T.MUTED, self._t), 1.2))
+            p.drawRoundedRect(r, 9, 9)
 
         if self.hasFocus() and activo:
             p.setBrush(Qt.NoBrush)
             p.setPen(QPen(QColor(T.AZUL), 1.5))
             p.drawRoundedRect(r.adjusted(1.5, 1.5, -1.5, -1.5), 8, 8)
+
+        if activo and (self._onda is not None or self._brillo >= 0):
+            ruta = QPainterPath()
+            ruta.addRoundedRect(r, 3, 3)
+            p.save()
+            p.setClipPath(ruta)
+            if self._onda is not None:
+                centro, avance = self._onda
+                radio = avance * max(self.width(), self.height()) * 1.25
+                p.setPen(Qt.NoPen)
+                p.setBrush(QColor(255, 255, 255, int(85 * (1.0 - avance))))
+                p.drawEllipse(centro, radio, radio)
+            if self._brillo >= 0:
+                ancho = self.width()
+                x = -0.45 * ancho + self._brillo * 1.9 * ancho
+                banda = QLinearGradient(x, 0, x + 0.45 * ancho, 0)
+                banda.setColorAt(0.0, QColor(255, 255, 255, 0))
+                banda.setColorAt(0.5, QColor(255, 255, 255, 70))
+                banda.setColorAt(1.0, QColor(255, 255, 255, 0))
+                p.fillRect(self.rect(), banda)
+            p.restore()
 
         p.setPen(texto)
         p.setFont(self.font())
@@ -278,7 +527,56 @@ class Interruptor(QCheckBox):
 # Tarjeta
 # ─────────────────────────────────────────────────────────────
 
-class Tarjeta(QFrame):
+class _ConPulso:
+    """Pieza común: el borde del marco se ilumina un instante (`pulso`)."""
+
+    def _iniciar_pulso(self):
+        self._pulso = 0.0
+        self._color_pulso = QColor(T.AZUL)
+        self._anim_pulso = QVariantAnimation(self)
+        self._anim_pulso.setDuration(1100)
+        self._anim_pulso.setKeyValueAt(0.0, 0.0)
+        self._anim_pulso.setKeyValueAt(0.22, 1.0)
+        self._anim_pulso.setKeyValueAt(1.0, 0.0)
+        self._anim_pulso.valueChanged.connect(self._paso_pulso)
+
+    def pulso(self, color=None):
+        """Ilumina el borde un instante (aviso de que hay algo nuevo)."""
+        self._color_pulso = QColor(color or T.AZUL)
+        self._anim_pulso.stop()
+        self._anim_pulso.start()
+
+    def _paso_pulso(self, v):
+        self._pulso = v
+        self.update()
+
+    def _pintar_pulso(self):
+        if self._pulso <= 0.01:
+            return
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setBrush(Qt.NoBrush)
+        for grosor, alfa in ((5.0, 40), (2.0, 200)):
+            c = QColor(self._color_pulso)
+            c.setAlpha(int(alfa * self._pulso))
+            p.setPen(QPen(c, grosor))
+            p.drawRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), 12, 12)
+
+
+class Barra(_ConPulso, QFrame):
+    """Franja con borde redondeado (estilo «barra») que puede iluminar su borde."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("barra")
+        self._iniciar_pulso()
+
+    def paintEvent(self, e):
+        super().paintEvent(e)
+        self._pintar_pulso()
+
+
+class Tarjeta(_ConPulso, QFrame):
     """Contenedor redondeado con título pequeño en mayúsculas."""
 
     def __init__(self, titulo="", color=None, parent=None):
@@ -296,9 +594,16 @@ class Tarjeta(QFrame):
         if color:
             self.lbl_titulo.setStyleSheet(
                 "color: {}; background: transparent;".format(color))
-        self.lbl_titulo.setVisible(bool(titulo))
         self.cabecera.addWidget(self.lbl_titulo)
         self.cuerpo.addLayout(self.cabecera)
+        # Se muestra DESPUÉS de meterla en la tarjeta: antes de eso es un widget sin
+        # padre y mostrarlo abre, por un instante, una ventana suelta.
+        self.lbl_titulo.setVisible(bool(titulo))
+        self._iniciar_pulso()
+
+    def paintEvent(self, e):
+        super().paintEvent(e)
+        self._pintar_pulso()
 
     def poner_titulo(self, texto):
         self.lbl_titulo.setText(texto.upper())
@@ -445,9 +750,26 @@ class Celda(QLineEdit):
     def __init__(self, texto="0", parent=None):
         super().__init__(texto, parent)
         self.setObjectName("celda")
+        self.setProperty("escala", str(T.ESCALA))
         self.setAlignment(Qt.AlignCenter)
         self.setFixedSize(round(66 * T.ESCALA), round(36 * T.ESCALA))
         self.setProperty("error", False)
+        self._destello = 0.0
+        self._anim_destello = QVariantAnimation(self)
+        self._anim_destello.setDuration(700)
+        self._anim_destello.setStartValue(1.0)
+        self._anim_destello.setEndValue(0.0)
+        self._anim_destello.setEasingCurve(QEasingCurve.OutCubic)
+        self._anim_destello.valueChanged.connect(self._paso_destello)
+        self._intensidad = 1.0
+        self._color_destello = QColor(T.NARANJA)
+        self._foco = 0.0
+        self._texto_al_entrar = texto
+        self._anim_foco = QVariantAnimation(self)
+        self._anim_foco.setDuration(200)
+        self._anim_foco.setEasingCurve(QEasingCurve.OutCubic)
+        self._anim_foco.valueChanged.connect(self._paso_foco)
+        self.editingFinished.connect(self._confirmado)
 
         # Validación en vivo: se revisa cuando dejas de teclear.
         self._revision = QTimer(self)
@@ -456,6 +778,54 @@ class Celda(QLineEdit):
         self._revision.timeout.connect(self.validar)
         self.textChanged.connect(lambda _: self._revision.start())
         self.validar()
+
+    def destellar(self, retraso=0, intensidad=1.0, color=None):
+        """Un resplandor de color cruza la celda (se usa en la ola de la cuadrícula)."""
+        def iniciar():
+            try:
+                self._intensidad = intensidad
+                self._color_destello = QColor(color or T.NARANJA)
+                self._anim_destello.start()
+            except RuntimeError:
+                pass                                 # la celda ya no existe
+        QTimer.singleShot(retraso, iniciar)
+
+    def _paso_destello(self, v):
+        self._destello = v
+        self.update()
+
+    def paintEvent(self, e):
+        super().paintEvent(e)
+        if self._destello <= 0.01 and self._foco <= 0.01:
+            return
+        p = QPainter(self)                           # un solo pintor para ambos efectos
+        p.setRenderHint(QPainter.Antialiasing)
+        if self._destello > 0.01:
+            color = QColor(self._color_destello)
+            color.setAlpha(int(110 * self._destello * self._intensidad))
+            p.setPen(Qt.NoPen)
+            p.setBrush(color)
+            p.drawRoundedRect(self.rect().adjusted(1, 1, -1, -1), 3, 3)
+        if self._foco > 0.01:
+            anillo = QColor(T.NARANJA)
+            anillo.setAlpha(int(150 * self._foco))
+            p.setBrush(Qt.NoBrush)
+            p.setPen(QPen(anillo, 2.2))
+            p.drawRoundedRect(QRectF(self.rect()).adjusted(1.5, 1.5, -1.5, -1.5), 3, 3)
+            suave = QColor(T.NARANJA)
+            suave.setAlpha(int(45 * self._foco))
+            p.setPen(QPen(suave, 2.2))
+            p.drawRoundedRect(QRectF(self.rect()).adjusted(0.4, 0.4, -0.4, -0.4), 3.5, 3.5)
+
+    def _paso_foco(self, v):
+        self._foco = v
+        self.update()
+
+    def _confirmado(self):
+        """Si el valor cambió al salir de la celda, un destello suave lo confirma."""
+        if self.text() != self._texto_al_entrar:
+            self._texto_al_entrar = self.text()
+            self.destellar(0, 0.5)
 
     def es_valida(self):
         try:
@@ -515,7 +885,19 @@ class Celda(QLineEdit):
 
     def focusInEvent(self, e):
         super().focusInEvent(e)
+        self._texto_al_entrar = self.text()
+        self._anim_foco.stop()
+        self._anim_foco.setStartValue(self._foco)
+        self._anim_foco.setEndValue(1.0)
+        self._anim_foco.start()
         QTimer.singleShot(0, self.selectAll)
+
+    def focusOutEvent(self, e):
+        super().focusOutEvent(e)
+        self._anim_foco.stop()
+        self._anim_foco.setStartValue(self._foco)
+        self._anim_foco.setEndValue(0.0)
+        self._anim_foco.start()
 
 
 class _Lienzo(QWidget):
@@ -589,8 +971,15 @@ class CuadriculaMatriz(QScrollArea):
 
     # ── Construcción ──────────────────────────────────────────
 
-    def reconstruir(self, filas, columnas, anteriores=None, registrar=True):
-        """Dibuja de nuevo conservando lo que ya estaba escrito."""
+    def reconstruir(self, filas, columnas, anteriores=None, registrar=True,
+                    animar=None):
+        """
+        Dibuja de nuevo conservando lo que ya estaba escrito. La ola de luz se
+        lanza solo si cambió el tamaño o el contenido (`animar` la fuerza o la
+        evita: p. ej. al cambiar el tamaño de letra no debe haber ola).
+        """
+        previas = getattr(self, "celdas", None)
+        antes = (len(previas), len(previas[0]), self.textos()) if previas else None
         if anteriores is None:
             anteriores = self.textos()
 
@@ -642,6 +1031,20 @@ class CuadriculaMatriz(QScrollArea):
 
         if registrar:
             self._registrar()
+        if animar is None:
+            animar = (antes is not None and
+                      (antes[0] != filas or antes[1] != columnas
+                       or antes[2] != self.textos()))
+        if animar:
+            self.ola()
+
+    def ola(self, color=None):
+        """Una ola de luz recorre las celdas en diagonal (no en cuadrículas enormes)."""
+        if not getattr(self, "celdas", None) or self.filas() * self.columnas() > 80:
+            return
+        for i, fila in enumerate(self.celdas):
+            for j, celda in enumerate(fila):
+                celda.destellar(60 + 55 * (i + j), 1.0, color)
 
     @staticmethod
     def _valor(anteriores, i, j):
@@ -674,10 +1077,13 @@ class CuadriculaMatriz(QScrollArea):
         self.reconstruir(len(textos), len(textos[0]), textos)
 
     def limpiar(self):
+        habia_datos = any(c.text() != "0" for fila in self.celdas for c in fila)
         for fila in self.celdas:
             for c in fila:
                 c.setText("0")
         self._registrar()
+        if habia_datos:
+            self.ola(T.AZUL)                 # barrido azul: todo vuelve a cero
 
     # ── Historial ─────────────────────────────────────────────
 
@@ -807,6 +1213,7 @@ def agregar_acciones_grid(tarjeta, grid):
                       None,
                       ("Pegar tabla (Excel, PowerPoint o texto)", grid.pegar_con_aviso)])
     tarjeta.cabecera.addWidget(b_tabla)
+    tarjeta.btn_tabla = b_tabla
 
     def actualizar(puede_des, puede_reh):
         b_des.setEnabled(puede_des)
@@ -833,10 +1240,12 @@ class _Instantanea(QWidget):
     mezclar dos páginas con mucho texto se superponen y parece un defecto).
     """
 
-    def __init__(self, padre, foto, color):
+    def __init__(self, padre, foto, color, direccion=1, eje="v"):
         super().__init__(padre)
         self._foto = foto
         self._color = QColor(color)
+        self._direccion = direccion            # +1: la nueva entra desde abajo / la derecha
+        self._eje = eje                        # "v" vertical, "h" horizontal
         self._progreso = 0.0
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.setGeometry(padre.rect())
@@ -848,14 +1257,88 @@ class _Instantanea(QWidget):
     def paintEvent(self, _):
         p = QPainter(self)
         t = self._progreso
+        vertical = self._eje == "v"
+        largo = self.height() if vertical else self.width()
         if t < 0.5:
+            # La foto de la página que se va se desliza y se apaga
+            u = 2.0 * t
+            salida = u * u * (3 - 2 * u)
+            desp = int(-self._direccion * 60 * salida)
             p.fillRect(self.rect(), self._color)
-            p.setOpacity(1.0 - 2.0 * t)
-            p.drawPixmap(0, 0, self._foto)
+            p.setOpacity(1.0 - u)
+            p.drawPixmap(0 if vertical else desp, desp if vertical else 0, self._foto)
         else:
-            fondo = QColor(self._color)
-            fondo.setAlpha(int(255 * (1.0 - (2.0 * t - 1.0))))
-            p.fillRect(self.rect(), fondo)
+            # El telón se retira con un borde difuminado y deja ver la página nueva
+            u = 2.0 * t - 1.0
+            avance = 1.0 - (1.0 - u) ** 3
+            blando = 130.0
+            transparente = QColor(self._color)
+            transparente.setAlpha(0)
+            if self._direccion >= 0:
+                borde = largo * (1.0 - avance) + blando * (1.0 - avance)
+                ini, fin = borde - blando, borde
+            else:
+                borde = largo * avance - blando * (1.0 - avance)
+                ini, fin = borde + blando, borde
+            g = QLinearGradient(0, ini, 0, fin) if vertical else QLinearGradient(ini, 0, fin, 0)
+            g.setColorAt(0.0, self._color)
+            g.setColorAt(1.0, transparente)
+            p.fillRect(self.rect(), g)
+
+
+class PestanasAnimadas(QTabWidget):
+    """QTabWidget que desliza el contenido (en horizontal) al cambiar de pestaña."""
+
+    DURACION = 340
+
+    def __init__(self, color_fondo=None, parent=None):
+        super().__init__(parent)
+        self._color = color_fondo
+        self._foto = None
+        self._previo = 0
+        self._capa = None
+        self._anim = None
+        self.tabBar().tabBarClicked.connect(self._antes)
+        self.currentChanged.connect(self._despues)
+
+    def _antes(self, indice):
+        """Se llama al pulsar una pestaña, antes de que cambie el contenido."""
+        if indice != self.currentIndex() and self.currentWidget() is not None:
+            self._foto = self.currentWidget().grab()
+            self._previo = self.currentIndex()
+
+    def _terminar(self):
+        if self._anim is not None:
+            self._anim.stop()
+            self._anim = None
+        if self._capa is not None:
+            try:
+                self._capa.hide()
+                self._capa.deleteLater()
+            except RuntimeError:
+                pass
+            self._capa = None
+
+    def _despues(self, indice):
+        foto, self._foto = self._foto, None
+        if foto is None:
+            return
+        pila = self.findChild(QStackedWidget, options=Qt.FindDirectChildrenOnly)
+        if pila is None:
+            return
+        self._terminar()
+        capa = _Instantanea(pila, foto, self._color or T.FONDO,
+                            1 if indice > self._previo else -1, "h")
+        capa.show()
+        capa.raise_()
+        anim = QVariantAnimation(self)
+        anim.setDuration(self.DURACION)
+        anim.setStartValue(0.0)
+        anim.setEndValue(1.0)
+        anim.valueChanged.connect(capa.poner_progreso)
+        anim.finished.connect(self._terminar)
+        self._capa, self._anim = capa, anim
+        anim.start()
 
 
 class PilaAnimada(QStackedWidget):
@@ -869,7 +1352,7 @@ class PilaAnimada(QStackedWidget):
     de la página anterior).
     """
 
-    DURACION = 230
+    DURACION = 460
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -897,10 +1380,11 @@ class PilaAnimada(QStackedWidget):
         if indice == self.currentIndex():
             return
         self._terminar_transicion()
+        direccion = 1 if indice > self.currentIndex() else -1
         foto = self.grab()                     # cómo se ve ahora la página que se va
         self.setCurrentIndex(indice)
 
-        capa = _Instantanea(self, foto, T.FONDO)
+        capa = _Instantanea(self, foto, T.FONDO, direccion)
         capa.show()
         capa.raise_()
         anim = QVariantAnimation(self)
@@ -912,6 +1396,92 @@ class PilaAnimada(QStackedWidget):
         anim.finished.connect(self._terminar_transicion)
         self._capa, self._anim = capa, anim
         anim.start()
+
+
+# ─────────────────────────────────────────────────────────────
+# Diálogos con entrada y salida animadas
+# ─────────────────────────────────────────────────────────────
+
+class _AparicionDeDialogo:
+    """
+    Pieza común: el diálogo entra con un fundido y un pequeño deslizamiento hacia
+    arriba, y sale con un fundido. `_al_cerrar` (opcional) se ejecuta cuando ya
+    terminó de cerrarse (útil para lanzar algo que no debe ocurrir con él abierto).
+    """
+
+    DESPLAZAMIENTO = 26
+
+    def _preparar_animacion(self):
+        self._ya_aparecio = False
+        self._cerrando = False
+        self._al_cerrar = None
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        if self._ya_aparecio:
+            return
+        self._ya_aparecio = True
+        destino = self.pos()
+        desp = self.DESPLAZAMIENTO
+        self.setWindowOpacity(0.0)
+        self.move(destino.x(), destino.y() + desp)
+
+        anim = QVariantAnimation(self)
+        anim.setDuration(340)
+        anim.setStartValue(0.0)
+        anim.setEndValue(1.0)
+        anim.setEasingCurve(QEasingCurve.OutCubic)
+
+        def paso(v):
+            self.setWindowOpacity(v)
+            self.move(destino.x(), destino.y() + int(desp * (1.0 - v)))
+
+        anim.valueChanged.connect(paso)
+        anim.start()
+        self._anim_entrada_dialogo = anim
+
+    def _terminar_cierre(self, resultado):
+        super().done(resultado)
+        pendiente, self._al_cerrar = self._al_cerrar, None
+        if pendiente:
+            pendiente()
+
+    def done(self, resultado):
+        if self._cerrando or not self.isVisible():
+            self._terminar_cierre(resultado)
+            return
+        self._cerrando = True
+        origen = self.pos()
+        anim = QVariantAnimation(self)
+        anim.setDuration(200)
+        anim.setStartValue(1.0)
+        anim.setEndValue(0.0)
+        anim.setEasingCurve(QEasingCurve.InCubic)
+
+        def paso(v):
+            self.setWindowOpacity(v)
+            self.move(origen.x(), origen.y() + int(14 * (1.0 - v)))
+
+        anim.valueChanged.connect(paso)
+        anim.finished.connect(lambda: self._terminar_cierre(resultado))
+        anim.start()
+        self._anim_salida_dialogo = anim
+
+
+class DialogoAnimado(_AparicionDeDialogo, QDialog):
+    """QDialog que entra y sale con animación."""
+
+    def __init__(self, padre=None):
+        super().__init__(padre)
+        self._preparar_animacion()
+
+
+class CajaAnimada(_AparicionDeDialogo, QMessageBox):
+    """QMessageBox que entra y sale con animación."""
+
+    def __init__(self, padre=None):
+        super().__init__(padre)
+        self._preparar_animacion()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -948,7 +1518,7 @@ class Aviso(QLabel):
         a2.setDuration(260)
         a2.setStartValue(QPoint(x, y_final - 20))
         a2.setEndValue(QPoint(x, y_final))
-        a2.setEasingCurve(QEasingCurve.OutCubic)
+        a2.setEasingCurve(QEasingCurve.OutBack)
         entrada.addAnimation(a1)
         entrada.addAnimation(a2)
         entrada.start()
@@ -965,6 +1535,26 @@ class Aviso(QLabel):
                 pass
         QTimer.singleShot(2400, iniciar_salida)
         self._anims = (entrada, salida)
+
+        # Barra inferior que se acorta hasta que el aviso se retira
+        self._color_barra = QColor(color)
+        self._resta = 1.0
+        self._anim_resta = QVariantAnimation(self)
+        self._anim_resta.setDuration(2400)
+        self._anim_resta.setStartValue(1.0)
+        self._anim_resta.setEndValue(0.0)
+        self._anim_resta.valueChanged.connect(self._paso_resta)
+        self._anim_resta.start()
+
+    def _paso_resta(self, v):
+        self._resta = v
+        self.update()
+
+    def paintEvent(self, e):
+        super().paintEvent(e)
+        p = QPainter(self)
+        p.fillRect(QRectF(4, self.height() - 3, (self.width() - 8) * self._resta, 2),
+                   self._color_barra)
 
 
 def mostrar_aviso(ventana, texto, tipo="ok"):

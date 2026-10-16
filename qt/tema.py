@@ -105,6 +105,18 @@ def _icono_flecha(nombre, color, hacia_arriba):
     return ruta.replace("\\", "/")
 
 
+def _reglas_celda():
+    """
+    Una regla por cada tamaño de letra de las celdas. Así, cambiar el tamaño solo
+    cambia la propiedad `escala` de las celdas y no hay que volver a aplicar el
+    estilo de toda la aplicación (que tardaba más de medio segundo).
+    """
+    return "".join(
+        'QLineEdit#celda[escala="{e}"] {{ font-family: "{f}"; font-size: {t}pt;'
+        ' padding: 2px 4px; }}\n'.format(e=e, f=MONO, t=round(11 * e, 1))
+        for e in ESCALAS)
+
+
 def hoja_de_estilos():
     """Devuelve el QSS global. Requiere QApplication ya creada."""
     arriba = _icono_flecha("arriba", MUTED, True)
@@ -165,10 +177,7 @@ QLineEdit {{
 QLineEdit:hover {{ border-color: {MUTED}; }}
 QLineEdit:focus {{ border: 1px solid {NARANJA}; background-color: {SUPERF2}; }}
 QLineEdit[error="true"] {{ border: 1px solid {ROJO}; background-color: {ERROR_BG}; }}
-QLineEdit#celda {{
-    font-family: "{MONO}"; font-size: {CELDA}pt; padding: 2px 4px;
-}}
-
+{REGLAS_CELDA}
 QSpinBox {{
     background-color: {SUPERF}; color: {TEXTO};
     border: 1px solid {BORDE}; border-radius: 8px;
@@ -275,4 +284,4 @@ QFileDialog QWidget {{ background-color: {FONDO}; }}
            NARANJA=NARANJA, AZUL=AZUL, ROJO=ROJO, HDR_BG=HDR_BG,
            ERROR_BG=ERROR_BG, SELECCION=SELECCION, TEXTO_BOTON=TEXTO_BOTON,
            FUENTE=FUENTE, MONO=MONO, arriba=arriba, abajo=abajo,
-           CELDA=tam(11))
+           REGLAS_CELDA=_reglas_celda())

@@ -19,7 +19,7 @@ import core.propiedades as prop
 
 from qt import tema as T
 from qt import render
-from qt.componentes import (BotonAnimado, CuadriculaMatriz, Interruptor,
+from qt.componentes import (PestanasAnimadas, mostrar_animado, BotonAnimado, CuadriculaMatriz, Interruptor,
                             Tarjeta, agregar_acciones_grid, aparecer,
                             mostrar_aviso)
 from qt.ejemplos import MATRICES
@@ -53,6 +53,9 @@ class PaginaMatrices(PaginaBase):
         self._etiqueta_res = ""
         self._historial = []          # resultados anteriores
         self.usa_B = True
+        self.botones_op = {}
+        self.botones_grid = {}
+        self.botones_enviar = {}
         self.usa_C = True
 
         split = QSplitter(Qt.Horizontal)
@@ -134,6 +137,7 @@ class PaginaMatrices(PaginaBase):
             b = BotonAnimado(texto, "suave")
             b.clicked.connect(cmd)
             lay.addWidget(b)
+            self.botones_grid[texto] = b
 
         self.btn_toggle_B = BotonAnimado("Quitar matriz B", "suave")
         self.btn_toggle_B.clicked.connect(lambda: self.alternar_matriz("B"))
@@ -183,7 +187,7 @@ class PaginaMatrices(PaginaBase):
         lay.setContentsMargins(8, 0, 0, 0)
         lay.setSpacing(10)
 
-        self.tabs = QTabWidget()
+        self.tabs = PestanasAnimadas(T.PANEL)
         self.tabs.addTab(self._tab_operaciones(), "Operaciones")
         self.tabs.addTab(self._tab_propiedades(), "Propiedades")
         self.tabs.addTab(self._tab_solucionador(), "Solucionador")
@@ -211,6 +215,7 @@ class PaginaMatrices(PaginaBase):
             b = BotonAnimado(texto, "primario")
             b.clicked.connect(lambda _=False, o=op: self.ejecutar_operacion(o))
             rej.addWidget(b, i // 2, i % 2)
+            self.botones_op[op] = b
         lay.addLayout(rej)
 
         fe = QHBoxLayout()
@@ -242,6 +247,7 @@ class PaginaMatrices(PaginaBase):
             b = BotonAnimado(texto, "primario")
             b.clicked.connect(lambda _=False, o=op: self.ejecutar_operacion(o))
             fd.addWidget(b, 0, i)
+            self.botones_op[op] = b
         lay.addLayout(fd)
 
         fm = QHBoxLayout()
@@ -250,7 +256,7 @@ class PaginaMatrices(PaginaBase):
         fm.addWidget(self.combo_det, 1)
         lay.addLayout(fm)
 
-        bc = BotonAnimado("Resolver A · x = b   (Regla de Cramer)", "verde")
+        bc = self.btn_cramer = BotonAnimado("Resolver A · x = b   (Regla de Cramer)", "verde")
         bc.clicked.connect(self._mostrar_cramer)
         lay.addWidget(bc)
         n = QLabel("B debe ser el vector b (1 columna); A cuadrada n×n con det(A) ≠ 0.")
@@ -258,7 +264,7 @@ class PaginaMatrices(PaginaBase):
         n.setWordWrap(True)
         lay.addWidget(n)
 
-        bc_lu = BotonAnimado("Factorización LU (A = L·U) y Ax = b", "verde")
+        bc_lu = self.btn_lu = BotonAnimado("Factorización LU (A = L·U) y Ax = b", "verde")
         bc_lu.clicked.connect(self._ejecutar_factorizacion_lu)
         lay.addWidget(bc_lu)
         n_lu = QLabel("Factoriza cualquier A (m×n). Si A es cuadrada y B es el vector b "
@@ -297,9 +303,9 @@ class PaginaMatrices(PaginaBase):
         lay.addWidget(self.combo_prop)
 
         fb = QHBoxLayout()
-        b1 = BotonAnimado("Verificar la elegida", "azul")
+        b1 = self.btn_prop = BotonAnimado("Verificar la elegida", "azul")
         b1.clicked.connect(lambda: self.ejecutar_operacion("prop"))
-        b2 = BotonAnimado("Verificar todas", "suave")
+        b2 = self.btn_prop_todas = BotonAnimado("Verificar todas", "suave")
         b2.clicked.connect(lambda: self.ejecutar_operacion("prop_todas"))
         fb.addWidget(b1)
         fb.addWidget(b2)
@@ -321,6 +327,7 @@ class PaginaMatrices(PaginaBase):
             b = BotonAnimado(texto, "azul")
             b.clicked.connect(lambda _=False, m=modo: self.enviar_al_solucionador(m))
             lay.addWidget(b)
+            self.botones_enviar[modo] = b
         lay.addStretch(1)
         return w
 
@@ -449,9 +456,7 @@ class PaginaMatrices(PaginaBase):
             self.usa_C = not self.usa_C
             usa, boton = self.usa_C, self.btn_toggle_C
         tarjeta = self.tarjetas[cual]
-        tarjeta.setVisible(usa)
-        if usa:
-            aparecer(tarjeta, 260)
+        mostrar_animado(tarjeta, usa)
         boton.setText(("Quitar matriz " if usa else "Agregar matriz ") + cual)
 
     def _leer_B(self):
@@ -848,8 +853,9 @@ class PaginaMatrices(PaginaBase):
         self._texto_res = texto.strip()
         self._etiqueta_res = etiqueta
         self.txt.setPlainText(("\n" + texto + "\n") if texto else "")
+        aparecer(self.txt, 240 if texto else 300, color=T.PANEL)
         if texto:
-            aparecer(self.txt, 200, color=T.PANEL)
+            self.tarjeta_resultado.pulso(T.AZUL)
         if texto and etiqueta and registrar:
             matriz = None
             if self.resultado_actual is not None:
@@ -1069,5 +1075,5 @@ class PaginaMatrices(PaginaBase):
     def aplicar_escala(self):
         """Redibuja las cuadrículas y el resultado con la letra actual."""
         for g in self.grids.values():
-            g.reconstruir(g.filas(), g.columnas(), registrar=False)
+            g.reconstruir(g.filas(), g.columnas(), registrar=False, animar=False)
         self._estilo_resultado()
