@@ -25,6 +25,7 @@ from qt.componentes import (BotonAnimado, CuadriculaMatriz, Interruptor,
                             mostrar_aviso)
 from qt.ejemplos import SISTEMAS
 from qt.exportar import escribir_pdf
+from qt.imagen import imagen_de_html
 from qt.pagina_base import PaginaBase
 from qt.visor import abrir_visor
 
@@ -175,11 +176,14 @@ class PaginaSolucionador(PaginaBase):
         bl = QHBoxLayout()
         bl.setSpacing(6)
         for texto, cmd in (("Enviar [A | b] a Operaciones", self.enviar_a_matrices),
-                           ("Abrir en ventana", self.abrir_en_ventana),
-                           ("Copiar informe", self.copiar_informe)):
+                           ("Abrir en ventana", self.abrir_en_ventana)):
             b = BotonAnimado(texto, "suave", pequeno=True)
             b.clicked.connect(cmd)
             bl.addWidget(b)
+        b_copiar = BotonAnimado("Copiar informe", "suave", pequeno=True)
+        b_copiar.con_menu([("Copiar como texto", self.copiar_informe),
+                           ("Copiar como imagen", self.copiar_informe_imagen)])
+        bl.addWidget(b_copiar)
         b_guardar = BotonAnimado("Guardar informe", "suave", pequeno=True)
         b_guardar.con_menu([("Texto (.txt)", self.guardar_informe),
                             ("PDF (.pdf)", self.exportar_pdf)])
@@ -415,11 +419,39 @@ class PaginaSolucionador(PaginaBase):
         QApplication.clipboard().setText(self._informe)
         mostrar_aviso(self, "Informe copiado al portapapeles")
 
+    def copiar_informe_imagen(self):
+        """Copia el informe completo, con sus matrices y colores, como imagen."""
+        if self._resultado is None:
+            return
+        paleta = T.paleta_de_imagen()
+        QApplication.clipboard().setImage(
+            imagen_de_html(self._cuerpo_pdf(paleta), paleta))
+        mostrar_aviso(self, "Informe copiado como imagen")
+
     def abrir_en_ventana(self):
         if not self._informe:
             self.info("Sin resultado", "Primero resuelva un sistema con RESOLVER.")
             return
-        abrir_visor(self, "Solución y verificación", self._informe, "informe.txt")
+        abrir_visor("Solución y verificación", self._informe, "informe",
+                    cuerpo_pdf=self._cuerpo_pdf, resumen=self._resumen_visor())
+
+    def _resumen_visor(self):
+        """Respuesta destacada de la ventana de resultado: tipo, solución y verificación."""
+        r = self._resultado
+        tipo = r["analisis"]["tipo"]
+        nombre = r["analisis"]["nombre"]
+        if tipo == INCONSISTENTE:
+            return {"tipo": nombre, "respuesta": "Sin solución", "estado": "error",
+                    "insignia": ""}
+        if tipo == INDETERMINADO:
+            libres = ", ".join(nombre_variable(c) for c in r["libres"])
+            respuesta = "Infinitas soluciones  ·  libres: {}".format(libres)
+        else:
+            respuesta = "x = ({})".format(", ".join(str(v) for v in r["solucion"]))
+        ok = bool(r["todo_correcto"])
+        return {"tipo": nombre, "respuesta": respuesta,
+                "estado": "ok" if ok else "error",
+                "insignia": "✓ Verificado" if ok else "✗ No verifica"}
 
     def guardar_informe(self):
         if not self._informe:
@@ -672,6 +704,18 @@ class PaginaSolucionador(PaginaBase):
     # Exportar a PDF
     # ──────────────────────────────────────────────────────────
 
+    def _cuerpo_pdf(self, paleta="impreso"):
+        """HTML del informe (pasos y solución); por defecto con colores de impresión."""
+        r = self._resultado
+        with T.paleta_temporal(paleta):
+            return "".join([
+                "<h3>{}</h3>".format(r["analisis"]["nombre"]),
+                self._html_todos(r, r["columnas_pivote"]),
+                "<hr style='color:{}'>".format(T.BORDE),
+                self._html_solucion(r, self.sw_jordan.isChecked(),
+                                    self.sw_vectores.isChecked()),
+            ])
+
     def exportar_pdf(self):
         if self._resultado is None:
             self.info("Sin resultado", "Primero resuelva un sistema con RESOLVER.")
@@ -680,18 +724,9 @@ class PaginaSolucionador(PaginaBase):
             self, "Exportar a PDF", "informe.pdf", "PDF (*.pdf)")
         if not ruta:
             return
-        r = self._resultado
         try:
-            with T.paleta_temporal("impreso"):
-                cuerpo = "".join([
-                    "<h3>{}</h3>".format(r["analisis"]["nombre"]),
-                    self._html_todos(r, r["columnas_pivote"]),
-                    "<hr style='color:{}'>".format(T.BORDE),
-                    self._html_solucion(r, self.sw_jordan.isChecked(),
-                                        self.sw_vectores.isChecked()),
-                ])
             escribir_pdf(ruta, "Solución de un sistema de ecuaciones lineales",
-                         cuerpo)
+                         self._cuerpo_pdf())
             mostrar_aviso(self, "PDF guardado")
         except OSError as ex:
             self.error("Error al guardar", str(ex))

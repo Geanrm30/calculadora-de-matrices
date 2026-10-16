@@ -179,10 +179,12 @@ TEOREMAS = [
     ),
     (
         "Factorización LU",
-    "Si una matriz cuadrada A se puede reducir a su forma escalonada U "
-    "mediante operaciones de reemplazo de filas sin intercambios, entonces A = L·U, "
-    "donde L es una matriz triangular inferior unitaria y U es escalonada. El sistema "
-    "Ax = b se resuelve eficientemente resolviendo Ly = b y Ux = y.",
-    "Operaciones con matrices: botón 'Factorización LU (A = L·U)'.",
+        "Si una matriz A de m×n se puede reducir a una forma escalonada U solo con "
+        "operaciones de reemplazo de filas (sin intercambios), entonces A = L·U, "
+        "donde L es m×m triangular inferior con unos en la diagonal (guarda los "
+        "multiplicadores de la reducción) y U es m×n escalonada. Si hace falta "
+        "intercambiar filas se usa PA = LU. Para A cuadrada, Ax = b se resuelve en "
+        "dos etapas: Ly = b (hacia adelante) y Ux = y (hacia atrás).",
+        "Operaciones con matrices: botón 'Factorización LU (A = L·U) y Ax = b'.",
     ),
 ]

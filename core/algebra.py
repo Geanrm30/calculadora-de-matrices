@@ -67,3 +67,12 @@ def transponer(A):
     filas = len(A)
     cols = len(A[0])
     return [[A[i][j] for i in range(filas)] for j in range(cols)]
+
+
+def son_iguales(X, Y):
+    """Devuelve True si X e Y tienen el mismo tamaño y todas sus entradas son iguales.
+    La comparación es exacta (fracciones), sin tolerancia."""
+    if len(X) != len(Y) or len(X[0]) != len(Y[0]):
+        return False
+    return all(X[i][j] == Y[i][j]
+               for i in range(len(X)) for j in range(len(X[0])))

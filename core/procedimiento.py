@@ -439,10 +439,10 @@ def _comparar(izquierdo, derecho, nombre_izq, nombre_der):
             i + 1, izquierdo[i], "=" if coincide else "≠", derecho[i]))
     lineas.append("")
     if iguales:
-        lineas.append("    [CUMPLE] {} = {}: la propiedad se verifica.".format(
+        lineas.append("    [Se cumple] {} = {}: la propiedad se verifica.".format(
             nombre_izq, nombre_der))
     else:
-        lineas.append("    [FALLA] Los dos lados no coinciden.")
+        lineas.append("    [No se cumple] Los dos lados no coinciden.")
     lineas.append("")
     return lineas
 
@@ -814,38 +814,6 @@ def pasos_cramer(A, b):
     sol_mat = [[v] for v in sol]
     lineas.extend(texto_resultado("  Solución  x =", sol_mat))
     lineas.append("")
-    return lineas
-
-# ---------------------------------------------------------------------------
-# Factorización LU
-# ---------------------------------------------------------------------------
-
-def pasos_factorizacion_lu(A, L, U, y, x, b):
-    """Genera el informe paso a paso de la Factorización LU y resolución de Ax = b."""
-    lineas = _encabezado(
-        "FACTORIZACIÓN LU (A = L·U) Y RESOLUCIÓN DE Ax = b",
-        "Descomposición en matriz triangular inferior L y escalonada U.",
-        "Se verifica L·U = A y se resuelve en dos etapas sustitutivas."
-    )
-    
-    lineas.append("  1. Matriz L (triangular inferior unitaria):")
-    for fila in L:
-        lineas.append("     [ " + "   ".join(str(v) for v in fila) + " ]")
-    lineas.append("")
-
-    lineas.append("  2. Matriz U (forma escalonada de A):")
-    for fila in U:
-        lineas.append("     [ " + "   ".join(str(v) for v in fila) + " ]")
-    lineas.append("")
-
-    lineas.append("  3. Sustitución hacia adelante (L·y = b):")
-    lineas.append("     Vector intermedio y = " + _vector_en_linea(y))
-    lineas.append("")
-
-    lineas.append("  4. Sustitución hacia atrás (U·x = y):")
-    lineas.append("     Solución final x = " + _vector_en_linea(x))
-    lineas.append("")
-    
     return lineas
 
 # ---------------------------------------------------------------------------

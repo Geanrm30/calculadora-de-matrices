@@ -17,6 +17,7 @@ from qt.ayuda import DialogoAyuda
 from qt.componentes import (BotonAnimado, PilaAnimada, mezclar,
                             mostrar_aviso)
 from qt.tour import PasoTour, Tour
+from qt.visor import cerrar_todas as cerrar_ventanas_de_resultado
 from qt.pagina_inicio import PaginaInicio
 from qt.pagina_matrices import PaginaMatrices
 from qt.pagina_solucionador import PaginaSolucionador
@@ -338,6 +339,7 @@ class VentanaPrincipal(QMainWindow):
     def closeEvent(self, e):
         if not self._cambiando_tema:
             self._guardar_sesion()
+            cerrar_ventanas_de_resultado()
         super().closeEvent(e)
 
     def alternar_tema(self):
@@ -345,6 +347,8 @@ class VentanaPrincipal(QMainWindow):
         nuevo = "claro" if T.NOMBRE_TEMA == "oscuro" else "oscuro"
         if self._tour is not None:
             self._tour.terminar()
+        # Sus botones conservarían los colores del tema anterior
+        cerrar_ventanas_de_resultado()
         estado = self.estado()
         geometria = self.saveGeometry()
         self._guardar_sesion(estado)
@@ -370,7 +374,28 @@ class VentanaPrincipal(QMainWindow):
     def abrir_ayuda(self, pestana=0):
         d = DialogoAyuda(self, pestana)
         d.repetir_tour.connect(self.iniciar_tour)
+        # Se espera a que el diálogo termine de cerrarse antes de rehacer la ventana
+        d.borrar_datos.connect(lambda: QTimer.singleShot(0, self.restablecer_todo))
         d.exec()
+
+    def restablecer_todo(self):
+        """Borra todo lo guardado y deja la calculadora como recién instalada."""
+        if self._tour is not None:
+            self._tour.terminar()
+        cerrar_ventanas_de_resultado()
+        persistencia.borrar_todo()
+        T.aplicar("oscuro")
+        T.poner_escala(1.0)
+        app = QApplication.instance()
+        app.setStyleSheet(T.hoja_de_estilos())
+
+        nueva = VentanaPrincipal()
+        nueva.show()
+        app._ventana_principal = nueva        # evita que la recolecte el GC
+
+        self._cambiando_tema = True           # que al cerrar no vuelva a guardar la sesión
+        self.close()
+        mostrar_aviso(nueva, "Calculadora restablecida a sus valores por defecto")
 
     def mostrar_tour_si_corresponde(self):
         """El recorrido se muestra solo la primera vez que se abre el programa."""

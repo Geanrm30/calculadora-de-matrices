@@ -129,6 +129,29 @@ class Fraccion:
 # Lectura de fracciones escritas por el usuario
 # ---------------------------------------------------------------------------
 
+import unicodedata
+
+# Símbolos que traen Excel, Word y los PDF y que no existen en el teclado.
+_EQUIVALENCIAS = {
+    # menos tipográfico, rayas, guiones especiales y menos de ancho completo
+    **{ord(c): "-" for c in "\u2212\u2013\u2014\u2012\u2010\u2011\ufe63\uff0d"},
+    # barra de fracción y barra inclinada de ancho completo
+    **{ord(c): "/" for c in "\u2215\u2044\uff0f"},
+    # caracteres invisibles que se cuelan al copiar
+    **{ord(c): None for c in "\u200b\u200c\u200d\ufeff"},
+}
+
+
+def normalizar_texto_numerico(texto):
+    """
+    Convierte a símbolos de teclado el texto copiado de Excel, Word o un PDF
+    (menos tipográfico, rayas, barra de fracción) y quita todo espacio.
+    """
+    # NFKC: dígitos matemáticos (𝟑 → 3), fracciones (½ → 1⁄2), anchos completos
+    texto = unicodedata.normalize("NFKC", texto)
+    return "".join(texto.translate(_EQUIVALENCIAS).split())
+
+
 def desde_texto(texto):
     """
     Convierte lo que escribe el usuario en una Fraccion exacta.
@@ -137,9 +160,10 @@ def desde_texto(texto):
         fraccion    ->  3/4   -5/2
         decimal     ->  2.5   -0.25   (se convierte a fraccion exacta)
         raiz        ->  sqrt(2)  o  √2
+    También acepta los símbolos de Excel y Word (−, –, ∕).
     Lanza ValueError si el texto no es valido.
     """
-    texto = texto.strip().replace(" ", "")
+    texto = normalizar_texto_numerico(texto)
     if texto == "":
         raise ValueError("Valor vacio.")
 

@@ -64,6 +64,11 @@ def aplicar(nombre):
     globals().update(PALETAS[nombre])
 
 
+def paleta_de_imagen():
+    """Paleta de las imágenes copiadas: oscura con el tema oscuro, blanca con el claro."""
+    return "oscuro" if NOMBRE_TEMA == "oscuro" else "impreso"
+
+
 @contextmanager
 def paleta_temporal(nombre):
     """Usa otra paleta dentro de un bloque `with` y luego restaura la actual."""

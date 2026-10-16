@@ -5,6 +5,7 @@ cuadrícula de matriz, pila de páginas con transición y avisos flotantes.
 MTM0120 Álgebra Lineal — Universidad Americana.
 """
 import re
+from html.parser import HTMLParser
 
 from PySide6.QtCore import (Qt, QEasingCurve, QEvent, QParallelAnimationGroup,
                             QPoint, QPropertyAnimation, QRectF, QSize, QTimer,
@@ -16,7 +17,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame,
                                QScrollArea, QStackedWidget, QVBoxLayout,
                                QWidget)
 
-from core.fraccion import desde_texto
+from core.fraccion import desde_texto, normalizar_texto_numerico
 from qt import tema as T
 
 MENSAJE_INVALIDO = ("Valor no válido. Usa un entero (-7), una fracción (3/4), "
@@ -326,6 +327,8 @@ def parsear_tabla(texto):
         return None
     if re.fullmatch(r"-?\d+,\d+", t):          # decimal con coma: 2,5
         return None
+    if "■(" in t:
+        return _tabla_de_ecuacion_lineal(t)
 
     if "\n" in t or "\t" in t:
         lineas = [l for l in t.splitlines() if l.strip()]
@@ -352,11 +355,90 @@ def parsear_tabla(texto):
     return [f + ["0"] * (ancho - len(f)) for f in filas]
 
 
+def _tabla_de_ecuacion_lineal(texto):
+    """
+    Tabla de una matriz de ecuación de Office copiada como texto: ■(3&−7&−2@−3&5&1).
+    Las columnas se separan con «&» y las filas con «@».
+    """
+    interior = texto[texto.index("■(") + 2:]
+    profundidad, fin = 1, len(interior)
+    for k, caracter in enumerate(interior):
+        profundidad += (caracter == "(") - (caracter == ")")
+        if profundidad == 0:
+            fin = k
+            break
+    filas = [[celda.strip() for celda in fila.split("&")]
+             for fila in interior[:fin].split("@") if fila.strip()]
+    if not filas or (len(filas) == 1 and len(filas[0]) <= 1):
+        return None
+    ancho = max(len(f) for f in filas)
+    return [f + ["0"] * (ancho - len(f)) for f in filas]
+
+
+class _CeldasHTML(HTMLParser):
+    """Recoge las filas y celdas de la primera tabla de un HTML."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.filas, self._fila, self._celda = [], None, None
+        self._tablas = 0
+
+    def handle_starttag(self, etiqueta, atributos):
+        if etiqueta == "table":
+            self._tablas += 1
+        elif self._tablas == 1 and etiqueta == "tr":
+            self._fila = []
+        elif self._tablas == 1 and etiqueta in ("td", "th") and self._fila is not None:
+            self._celda = []
+
+    def handle_data(self, datos):
+        if self._celda is not None:
+            self._celda.append(datos)
+
+    def handle_endtag(self, etiqueta):
+        if etiqueta == "table":
+            self._tablas -= 1
+        elif self._tablas == 1 and etiqueta in ("td", "th") and self._celda is not None:
+            self._fila.append(" ".join("".join(self._celda).split()))
+            self._celda = None
+        elif self._tablas == 1 and etiqueta == "tr" and self._fila is not None:
+            self.filas.append(self._fila)
+            self._fila = None
+
+
+def tabla_desde_html(html):
+    """
+    Filas de texto de la primera tabla de un HTML (lo que PowerPoint, Word y las
+    páginas web dejan en el portapapeles). None si no hay una tabla de varias celdas.
+    """
+    lector = _CeldasHTML()
+    lector.feed(html or "")
+    filas = [f for f in lector.filas if any(celda for celda in f)]
+    if not filas or (len(filas) == 1 and len(filas[0]) <= 1):
+        return None
+    ancho = max(len(f) for f in filas)
+    return [f + ["0"] * (ancho - len(f)) for f in filas]
+
+
+def tabla_del_portapapeles():
+    """
+    Tabla que hay en el portapapeles: primero como texto (Excel, Word, texto) y, si
+    no hay texto, como tabla HTML (PowerPoint copia así una tabla seleccionada).
+    """
+    datos = QApplication.clipboard().mimeData()
+    if datos is None:
+        return None
+    filas = parsear_tabla(datos.text()) if datos.hasText() else None
+    if filas is None and datos.hasHtml():
+        filas = tabla_desde_html(datos.html())
+    return filas
+
+
 class Celda(QLineEdit):
     """Casilla numérica; Enter/↓/↑ mueven el foco, Ctrl+Z/Y deshacen la matriz."""
 
     mover = Signal(int, int)
-    pegar = Signal(str)
+    pegar = Signal(object)
     deshacer = Signal()
     rehacer = Signal()
 
@@ -417,8 +499,9 @@ class Celda(QLineEdit):
             self.rehacer.emit()
             return
         if e.matches(QKeySequence.Paste):
-            if parsear_tabla(QApplication.clipboard().text()) is not None:
-                self.pegar.emit(QApplication.clipboard().text())
+            filas = tabla_del_portapapeles()
+            if filas is not None:
+                self.pegar.emit(filas)
                 return
         if e.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Down):
             if e.modifiers() & Qt.ControlModifier:
@@ -537,7 +620,7 @@ class CuadriculaMatriz(QScrollArea):
                 col = j if (not self._aumentada or j < n_vars) else j + 1
                 c = Celda(self._valor(anteriores, i, j))
                 c.mover.connect(lambda dr, dc, a=i, b=j: self._mover(a, b, dr, dc))
-                c.pegar.connect(lambda txt, a=i, b=j: self.pegar_texto(txt, a, b))
+                c.pegar.connect(lambda filas, a=i, b=j: self.pegar_filas(filas, a, b))
                 c.deshacer.connect(self.deshacer)
                 c.rehacer.connect(self.rehacer)
                 c.textChanged.connect(self._al_editar)
@@ -641,14 +724,40 @@ class CuadriculaMatriz(QScrollArea):
         QApplication.clipboard().setText(
             "\n".join("\t".join(f) for f in self.textos()))
 
+    def copiar_imagen(self):
+        """Copia la matriz como imagen limpia (fondo blanco) para Word o PowerPoint."""
+        from qt.imagen import imagen_de_matriz
+        QApplication.clipboard().setImage(
+            imagen_de_matriz(self.textos(), self._aumentada))
+        mostrar_aviso(self, "Matriz copiada como imagen")
+
     def pegar(self):
-        """Pega el portapapeles desde la primera celda. False si no era tabla."""
-        return self.pegar_texto(QApplication.clipboard().text(), 0, 0)
+        """Pega la tabla del portapapeles desde la primera celda. False si no hay tabla."""
+        filas = tabla_del_portapapeles()
+        if filas is None:
+            return False
+        return self.pegar_filas(filas, 0, 0)
+
+    def pegar_con_aviso(self):
+        """Como pegar(), pero explica qué pasó si no había una tabla."""
+        if self.pegar():
+            return
+        datos = QApplication.clipboard().mimeData()
+        if datos is not None and datos.hasImage():
+            motivo = ("El portapapeles solo tiene una imagen. Copia la tabla de "
+                      "PowerPoint (seleccionándola) o las celdas de Excel, no una captura.")
+        else:
+            motivo = "No hay una tabla en el portapapeles."
+        mostrar_aviso(self, motivo, "info")
 
     def pegar_texto(self, texto, i0=0, j0=0):
         filas = parsear_tabla(texto)
         if filas is None:
             return False
+        return self.pegar_filas(filas, i0, j0)
+
+    def pegar_filas(self, filas, i0=0, j0=0):
+        """Escribe las filas desde la celda (i0, j0); la cuadrícula crece si hace falta."""
         actual = self.textos()
         n_f = min(max(len(actual), i0 + len(filas)), self.max_filas)
         n_c = min(max(self.columnas(), j0 + len(filas[0])), self.max_cols)
@@ -657,7 +766,8 @@ class CuadriculaMatriz(QScrollArea):
         for di, fila in enumerate(filas):
             for dj, valor in enumerate(fila):
                 if i0 + di < n_f and j0 + dj < n_c:
-                    base[i0 + di][j0 + dj] = valor
+                    # Excel/Word traen «−» y celdas vacías: se dejan como 0 y «-»
+                    base[i0 + di][j0 + dj] = normalizar_texto_numerico(valor) or "0"
         self.reconstruir(n_f, n_c, base)
         self.forma_cambiada.emit(n_f, n_c)
         return True
@@ -691,9 +801,11 @@ def agregar_acciones_grid(tarjeta, grid):
     b_tabla = BotonAnimado("Tabla", "fantasma", pequeno=True)
     b_tabla.setMinimumHeight(28)
     b_tabla.setFixedWidth(78)
-    b_tabla.setToolTip("Copiar o pegar como tabla (compatible con Excel)")
-    b_tabla.con_menu([("Copiar como tabla", grid.copiar),
-                      ("Pegar tabla (Excel o texto)", grid.pegar)])
+    b_tabla.setToolTip("Copiar como tabla o imagen, o pegar desde Excel o PowerPoint")
+    b_tabla.con_menu([("Copiar como tabla (Excel)", grid.copiar),
+                      ("Copiar como imagen", grid.copiar_imagen),
+                      None,
+                      ("Pegar tabla (Excel, PowerPoint o texto)", grid.pegar_con_aviso)])
     tarjeta.cabecera.addWidget(b_tabla)
 
     def actualizar(puede_des, puede_reh):

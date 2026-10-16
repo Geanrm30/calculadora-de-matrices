@@ -17,6 +17,15 @@ from core.fraccion import Fraccion
 import core.algebra as alg
 from core.formato import texto_matriz, ancho_columna, subindice
 
+MENSAJE_SIN_PERMUTACION = ("La matriz no admite Factorización LU sin permutación "
+                           "(requiere pivoteo parcial PA = LU)")
+MENSAJE_FACTORIZACION_CORRECTA = "La factorización es correcta (L · U == A)"
+MENSAJE_FACTORIZACION_INCORRECTA = "La factorización es incorrecta (L · U != A)"
+MENSAJE_COMPROBACION_CORRECTA = "Comprobación exitosa: A · x == b"
+MENSAJE_COMPROBACION_INCORRECTA = "La comprobación falló: A · x != b"
+MENSAJE_SINGULAR = ("U tiene un cero en la diagonal: A es singular y el sistema no "
+                    "tiene solución única, así que no se resuelve con L y U.")
+
 
 # ---------------------------------------------------------------------------
 # Utilidades de escritura
@@ -28,29 +37,29 @@ def _sub(n):
 
 
 def _fila(i):
-    """Nombre de la fila i (base 0) en base 1 con subíndice: 0 -> F₁."""
-    return "F" + _sub(i + 1)
+    """Nombre de la fila i (base 0) en base 1, como en la presentación: 0 -> F1."""
+    return "F" + str(i + 1)
 
 
 def _mult(coef, nombre):
     """
-    Escribe 'coef·nombre' como en clase: F₁, −F₁, 2F₁ y (3/2)·F₁
-    (las fracciones van entre paréntesis).
+    Escribe 'coef·nombre' como en clase: F1, −F1, 2F1 y (−3/2)·F1
+    (las fracciones van entre paréntesis y el signo menos es el tipográfico).
     """
     if coef.es_uno():
         return nombre
     if (-coef).es_uno():
         return "−" + nombre
     if coef.den == 1:
-        return str(coef) + nombre
-    return "(" + str(coef) + ")·" + nombre
+        return str(coef).replace("-", "−") + nombre
+    return "(" + str(coef).replace("-", "−") + ")·" + nombre
 
 
 def _op_reemplazo(i, j, k):
     """
-    Operación de reemplazo  F_i → F_i + k·F_j  (flecha de izquierda a derecha:
-    la fila de la izquierda se cambia por la expresión de la derecha).
-    Si k es negativo se escribe como resta: F₃ → F₃ − 2F₁.
+    Operación de reemplazo  F_i ← F_i + k·F_j  (la fila de la izquierda pasa a
+    valer la expresión de la derecha). Si k es negativo se escribe como resta:
+    F3 ← F3 − 2F1.
     """
     if k.es_negativo():
         signo = " − "
@@ -58,12 +67,12 @@ def _op_reemplazo(i, j, k):
     else:
         signo = " + "
         magnitud = k
-    return "{} → {}{}{}".format(_fila(i), _fila(i), signo, _mult(magnitud, _fila(j)))
+    return "{} ← {}{}{}".format(_fila(i), _fila(i), signo, _mult(magnitud, _fila(j)))
 
 
 def _op_escala(i, factor):
-    """Operación de escalamiento  F_i → factor·F_i."""
-    return "{} → {}".format(_fila(i), _mult(factor, _fila(i)))
+    """Operación de escalamiento  F_i ← factor·F_i."""
+    return "{} ← {}".format(_fila(i), _mult(factor, _fila(i)))
 
 
 def _vector(v):
@@ -150,10 +159,7 @@ def factorizar_lu(A):
             # Sin pivote en esta columna si todo lo de abajo también es cero;
             # si no, haría falta intercambiar filas (y eso ya no es A = L·U).
             if any(not U[i][col].es_cero() for i in range(fila + 1, m)):
-                raise ValueError(
-                    "El pivote en la posición ({}, {}) es cero y hay entradas no "
-                    "nulas debajo de él. La factorización LU sin intercambios de "
-                    "filas no es posible para esta matriz.".format(fila + 1, col + 1))
+                raise ValueError(MENSAJE_SIN_PERMUTACION)
             continue
 
         for i in range(fila + 1, m):
@@ -255,11 +261,13 @@ def ejecutar_modulo_lu(A, b=None, con_pasos=True):
     A puede ser m×n: si no es cuadrada solo se factoriza (resolver Ax = b con
     L y U en dos etapas requiere A cuadrada), aunque se entregue b.
 
-    Devuelve un diccionario: L, U, y, x, informe (texto) y valido (bool).
+    Devuelve un diccionario: L, U, y, x, informe (texto), factorizacion_correcta,
+    comprobacion_correcta (None si no hubo b) y valido (bool).
     """
     m = len(A)
     n = len(A[0])
     L, U = factorizar_lu(A)
+    singular = False
     cuadrada = (m == n)
     if not cuadrada:
         b = None
@@ -272,18 +280,18 @@ def ejecutar_modulo_lu(A, b=None, con_pasos=True):
             raise ValueError(
                 "b debe tener {} componentes (una por fila de A), tiene {}.".format(
                     m, len(b_plano)))
-        # Un cero en la diagonal de U significa que A es singular
-        for i in range(n):
-            if U[i][i].es_cero():
-                raise ValueError(
-                    "La matriz A es singular: U tiene un cero en la diagonal "
-                    "(posición ({0}, {0})). El sistema no tiene solución única, "
-                    "así que no se puede resolver con L y U.".format(i + 1))
+        # Un cero en la diagonal de U significa que A es singular: se muestran
+        # L y U, pero no se resuelve el sistema.
+        if any(U[i][i].es_cero() for i in range(n)):
+            singular = True
+            b_plano = None
 
     lineas = []
 
     # ---- DATOS ----------------------------------------------------------
     lineas.append("=== DATOS: A = L·U" + (" y vector b" if b_plano is not None else "") + " ===")
+    if singular:
+        lineas.append(MENSAJE_SINGULAR)
     lineas.append("L y U se calculan automáticamente a partir de A.")
     if not cuadrada:
         lineas.append("A es {0}×{1}: L es {0}×{0} (triangular inferior con unos en la diagonal) "
@@ -337,8 +345,8 @@ def ejecutar_modulo_lu(A, b=None, con_pasos=True):
 
     lineas.append("Comprobación de L·U = A:")
     lineas.append(_lado_a_lado([("L·U", LU, "  =  "), ("A", A, "")]))
-    lineas.append("  " + ("✓ L·U coincide con A entrada por entrada."
-                          if lu_ok else "✗ L·U NO coincide con A."))
+    lineas.append("  " + (MENSAJE_FACTORIZACION_CORRECTA if lu_ok
+                          else MENSAJE_FACTORIZACION_INCORRECTA))
     lineas.append("")
 
     ax_ok = True
@@ -357,8 +365,8 @@ def ejecutar_modulo_lu(A, b=None, con_pasos=True):
                 lineas.append("  {} = {} ✗ (se esperaba {})".format(
                     terminos, obtenido, b_plano[i]))
         lineas.append("")
-        lineas.append("  " + ("✓ La solución x satisface exactamente A·x = b."
-                              if ax_ok else "✗ La solución NO satisface A·x = b."))
+        lineas.append("  " + (MENSAJE_COMPROBACION_CORRECTA if ax_ok
+                              else MENSAJE_COMPROBACION_INCORRECTA))
         lineas.append("")
 
     return {
@@ -367,5 +375,7 @@ def ejecutar_modulo_lu(A, b=None, con_pasos=True):
         "y": y,
         "x": x,
         "informe": "\n".join(lineas),
+        "factorizacion_correcta": lu_ok,
+        "comprobacion_correcta": (ax_ok if b_plano is not None else None),
         "valido": lu_ok and ax_ok
     }

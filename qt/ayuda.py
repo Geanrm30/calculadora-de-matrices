@@ -5,8 +5,8 @@ import platform
 import PySide6
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QDialog, QFrame, QGridLayout, QHBoxLayout,
-                               QLabel, QScrollArea, QTabWidget, QVBoxLayout,
-                               QWidget)
+                               QLabel, QMessageBox, QScrollArea, QTabWidget,
+                               QVBoxLayout, QWidget)
 
 from qt import NOMBRE, VERSION
 from qt import tema as T
@@ -49,9 +49,13 @@ ATAJOS = [
 
 
 class DialogoAyuda(QDialog):
-    """Pestañas «Atajos» y «Acerca de». `repetir_tour` se emite desde el botón."""
+    """
+    Pestañas «Atajos» y «Acerca de». Las señales `repetir_tour` y `borrar_datos`
+    se emiten desde sus botones (esta última, solo si el usuario lo confirma).
+    """
 
     repetir_tour = Signal()
+    borrar_datos = Signal()
 
     def __init__(self, padre, pestana=0):
         super().__init__(padre)
@@ -82,6 +86,28 @@ class DialogoAyuda(QDialog):
     def _pedir_tour(self):
         self.accept()
         self.repetir_tour.emit()
+
+    def _confirmar_borrado(self):
+        """Pregunta si de verdad se quiere borrar todo; True solo si se confirma."""
+        caja = QMessageBox(self)
+        caja.setIcon(QMessageBox.Warning)
+        caja.setWindowTitle("Borrar todos los datos")
+        caja.setText("¿Seguro que quieres borrar todos los datos?")
+        caja.setInformativeText(
+            "Se borrarán las matrices y los resultados, el historial, la sesión "
+            "guardada, el tema y el tamaño de letra, y la calculadora volverá a sus "
+            "valores por defecto. Esta acción no se puede deshacer.")
+        borrar = caja.addButton("Sí, borrar todo", QMessageBox.DestructiveRole)
+        cancelar = caja.addButton("Cancelar", QMessageBox.RejectRole)
+        caja.setDefaultButton(cancelar)
+        caja.setEscapeButton(cancelar)
+        caja.exec()
+        return caja.clickedButton() is borrar
+
+    def _pedir_borrado(self):
+        if self._confirmar_borrado():
+            self.accept()
+            self.borrar_datos.emit()
 
     # ── Atajos ────────────────────────────────────────────────
 
@@ -165,6 +191,15 @@ class DialogoAyuda(QDialog):
         lay.addWidget(autores)
 
         lay.addStretch(1)
+        borrar = BotonAnimado("Borrar todos los datos", "peligro", pequeno=True)
+        borrar.setToolTip("Vuelve la calculadora a sus valores por defecto")
+        borrar.clicked.connect(self._pedir_borrado)
+        lay.addWidget(borrar, 0, Qt.AlignHCenter)
+        nota = QLabel("Devuelve la calculadora a sus valores por defecto.")
+        nota.setObjectName("nota")
+        nota.setAlignment(Qt.AlignCenter)
+        lay.addWidget(nota)
+        lay.addSpacing(8)
         tec = QLabel("Python {}  ·  PySide6 {}".format(
             platform.python_version(), PySide6.__version__))
         tec.setObjectName("nota")

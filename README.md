@@ -28,8 +28,9 @@ Se abre una única ventana (PySide6) con menú lateral —atajos `Ctrl+1` a
    combinación lineal e independencia lineal.
 2. **Operaciones con matrices y vectores** — tres pestañas:
    - *Operaciones*: suma, resta, escalar, producto, transpuesta,
-     determinante e inversa (dos métodos), con desarrollo paso a paso.
-   - *Propiedades*: verifica las 29 propiedades algebraicas de las
+     determinante e inversa (dos métodos), factorización LU y Regla de
+     Cramer, con desarrollo paso a paso.
+   - *Propiedades*: verifica las 31 propiedades algebraicas de las
      Sesiones 9–11 con aritmética exacta de fracciones.
    - *Solucionador*: envía el sistema al solucionador o resuelve
      `A·x = b` por la Regla de Cramer.
@@ -76,13 +77,15 @@ calculadora-de-matrices/
 │   ├── algebra.py        Suma, resta, escalar, producto y transpuesta.
 │   ├── vector.py         Operaciones en Rⁿ (un vector es una matriz n×1).
 │   ├── procedimiento.py  Paso a paso escrito de cada operación.
-│   ├── propiedades.py    Verificador de las 29 propiedades algebraicas.
+│   ├── propiedades.py    Verificador de las 31 propiedades algebraicas.
 │   ├── teoremas.py       Catálogo de teoremas del curso.
 │   └── formato.py        Construcción de cadenas (matrices, ecuaciones).
 │
-├── modulos/              ← operaciones sobre matrices cuadradas
-│   └── modulo_matrices.py  Determinante (3 métodos), inversa (2 métodos),
-│                            cofactores, adjunta y Regla de Cramer.
+├── modulos/              ← operaciones sobre matrices
+│   ├── modulo_matrices.py  Determinante (3 métodos), inversa (2 métodos),
+│   │                        cofactores, adjunta y Regla de Cramer.
+│   └── modulo_lu.py        Factorización LU (m×n) y solución de A·x = b
+│                            con L·y = b y U·x = y.
 │
 ├── solver/               ← lógica de resolución de sistemas
 │   ├── clasificacion.py  Clasifica el sistema (Rouché-Frobenius).
@@ -104,7 +107,7 @@ calculadora-de-matrices/
     ├── componentes.py         Botones, interruptores, tarjetas y cuadrícula
     │                          de matriz (deshacer, copiar y pegar).
     ├── render.py              HTML de matrices, vectores e informe.
-    ├── visor.py               Ventana aparte para leer un resultado.
+    ├── visor.py               Ventana aparte para leer un resultado (índice, búsqueda, zoom).
     ├── exportar.py            Exportación a PDF.
     ├── ayuda.py               Ayuda: atajos de teclado y «Acerca de».
     ├── tour.py                Recorrido guiado de la primera vez.
@@ -161,10 +164,22 @@ donde cada fila queda como `xᵢ = valor`.
 
 **Pestaña Propiedades**
 
-Verifica las 29 propiedades algebraicas de las Sesiones 9–11 (producto
+Verifica las 31 propiedades algebraicas de las Sesiones 9–11 (producto
 matriz-vector, vectores en Rⁿ, suma y escalar de matrices, transpuesta,
 producto de matrices, inversa y determinante). Cada verificación calcula
 los dos lados por caminos distintos y los compara con aritmética exacta.
+
+El diagnóstico de cada propiedad es **[Se cumple]** o **[No se cumple]**.
+
+**Factorización LU** (pestaña Operaciones)
+
+- Factoriza cualquier `A` de m×n como `A = L·U` usando solo reemplazos de
+  fila: `L` (m×m) guarda los multiplicadores y `U` es la forma escalonada.
+  Si hiciera falta intercambiar filas, se detiene y avisa que la matriz no
+  admite LU sin permutación (`PA = LU`).
+- Si `A` es cuadrada y `B` es el vector `b`, resuelve `A·x = b` en dos
+  etapas, reduciendo `[L | b]` a `[I | y]` y `[U | y]` a `[I | x]`, y
+  comprueba `L·U == A` y `A·x == b` con fracciones exactas.
 
 **Pestaña Solucionador**
 
@@ -208,6 +223,7 @@ la **regla fila-vector**.
 | Acción | Cómo |
 |--------|------|
 | Ver todos los atajos y repetir el recorrido | `F1` o botón **Ayuda** |
+| Volver a los valores por defecto | **Ayuda → Acerca de → Borrar todos los datos** (pide confirmación; borra matrices, resultados, historial, sesión, tema y tamaño de letra) |
 | Cambiar de herramienta | Menú lateral o `Ctrl+1` … `Ctrl+4` |
 | Tema claro / oscuro | `Ctrl+Shift+T` o botón al pie del menú (se recuerda) |
 | Tamaño de letra de cuadrículas e informes | `Ctrl++` / `Ctrl+−` / `Ctrl+0` o botones **A− A+** |
@@ -220,13 +236,13 @@ la **regla fila-vector**.
 | Cargar un ejemplo | Botón **Probar un ejemplo** (Solucionador y Operaciones) |
 | Moverse por la cuadrícula | `Enter` / `↓` / `↑` o `Tab` |
 | Deshacer / rehacer en una matriz | `Ctrl+Z` / `Ctrl+Y`, o los botones ↶ ↷ de la tarjeta |
-| Copiar una matriz | Menú **Tabla → Copiar como tabla** (se pega en Excel) |
-| Pegar una matriz | `Ctrl+V` sobre una celda, o **Tabla → Pegar** |
+| Copiar una matriz | Menú **Tabla → Copiar como tabla** (se pega en Excel) o **Copiar como imagen** (se pega en Word o PowerPoint) |
+| Pegar una matriz | `Ctrl+V` sobre una celda, o **Tabla → Pegar tabla**; sirve lo copiado de Excel, de una tabla de PowerPoint o Word, o de texto |
 | Reproducir los pasos solos | Botón **Reproducir** (velocidad lenta, normal o rápida) |
 | Recorrer los pasos a mano | **Inicio / Anterior / Siguiente / Final** o `←` `→` |
-| Copiar el informe | Botón **Copiar informe** / **Copiar** |
+| Copiar el informe o resultado | Botón **Copiar informe** / **Copiar**: como texto, como imagen o, en Operaciones, solo la matriz resultado como imagen |
 | Guardar el informe | **Guardar informe → Texto (.txt)** o **PDF (.pdf)** |
-| Leer el resultado en grande | Botón **Abrir en ventana** (con zoom) |
+| Leer el resultado en grande | Botón **Abrir en ventana**: ventana propia (botón en la barra de tareas) con el informe a color y las matrices dibujadas; en el Solucionador, una tarjeta arriba con el tipo de sistema, la solución y si quedó verificada. Índice lateral para saltar a cada sección (también en operaciones, propiedades, Cramer y LU), búsqueda con `Ctrl+F` (`F3` / `Mayús+F3` para moverse entre coincidencias), zoom con A− / A+ o `Ctrl`+rueda, **Líneas** (parte las líneas largas) y **Ancho** (elige la letra para que todo quepa), barras de desplazamiento horizontal y vertical, y guardado en .txt o PDF. Los resultados de Operaciones también salen a color: títulos en azul, pasos en naranja, lo que se cumple en verde, lo que falla en rojo y las matrices dibujadas con corchetes. Se cierra al cerrar la calculadora |
 | Volver a un resultado anterior | Botón **Historial** (Operaciones) |
 | Incluir forma reducida | Interruptor **Gauss-Jordan** |
 | Análisis en Rⁿ completo | Interruptor **Incluir análisis en Rⁿ** |
@@ -243,9 +259,24 @@ la **regla fila-vector**.
 En el paso a paso del Solucionador, las filas que cambian en cada operación
 se resaltan para seguir el procedimiento con la vista.
 
-Al pegar una tabla se aceptan los formatos de Excel (columnas separadas por
-tabulador), `1 2; 3 4`, `[[1,2],[3,4]]` y filas separadas por saltos de línea;
-la cuadrícula crece sola hasta su tamaño máximo.
+Al pegar una tabla se aceptan:
+
+- las celdas de **Excel** (columnas separadas por tabulador);
+- una **tabla de PowerPoint o Word**: en PowerPoint se selecciona la tabla y se copia
+  con `Ctrl+C` (PowerPoint la deja como tabla, no como texto, y la calculadora
+  la lee igual);
+- una matriz de **ecuación de Office** copiada como texto, como `■(3&−7@−3&5)`;
+- `1 2; 3 4`, `[[1,2],[3,4]]` y filas separadas por saltos de línea.
+
+La cuadrícula crece sola hasta su tamaño máximo. Los símbolos de Excel, Word y
+PDF (el menos largo «−», las rayas, la barra «∕», los dígitos matemáticos 𝟑 y
+las fracciones ½ ¼ ¾) se aceptan como los del teclado, y una celda vacía se
+toma como 0. Una **imagen** (captura de pantalla, foto de una matriz) no se puede
+leer: el programa lo avisa y pide copiar la tabla en sí.
+
+Las imágenes que se copian (matriz o informe) siguen el tema de la calculadora:
+fondo oscuro con letra clara en el tema oscuro, y fondo blanco con letra oscura
+en el claro. Los PDF salen siempre en blanco, porque están pensados para imprimir.
 
 ---
 

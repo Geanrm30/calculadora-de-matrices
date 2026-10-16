@@ -41,11 +41,7 @@ def _vector(B, j, nombre):
     return [fila[j] for fila in B]
 
 
-def _iguales(X, Y):
-    if len(X) != len(Y) or len(X[0]) != len(Y[0]):
-        return False
-    return all(X[i][j] == Y[i][j]
-               for i in range(len(X)) for j in range(len(X[0])))
+_iguales = alg.son_iguales
 
 
 def _dim(M):
@@ -69,10 +65,10 @@ def _armar(titulo, regla, nota, pasos, nom_izq, izq, nom_der, der):
 
     cumple = _iguales(izq, der)
     if cumple:
-        lineas.append("  [CUMPLE] {} = {}: la propiedad se verifica.".format(
+        lineas.append("  [Se cumple] {} = {}: la propiedad se verifica.".format(
             nom_izq, nom_der))
     else:
-        lineas.append("  [FALLA] Los dos lados no coinciden.")
+        lineas.append("  [No se cumple] Los dos lados no coinciden.")
         if len(izq) == len(der) and len(izq[0]) == len(der[0]):
             for i in range(len(izq)):
                 for j in range(len(izq[0])):
@@ -103,14 +99,14 @@ def _mv_suma(A, B, r, C=None, s=None):
     v = _vector(B, 1, "v")
     _chequear_A_u(A, u)
     lineas = proc.pasos_propiedad_suma(A, u, v)
-    return lineas, any("[CUMPLE]" in l for l in lineas)
+    return lineas, any("[Se cumple]" in l for l in lineas)
 
 
 def _mv_escalar(A, B, r, C=None, s=None):
     u = _vector(B, 0, "u")
     _chequear_A_u(A, u)
     lineas = proc.pasos_propiedad_escalar(A, r, u)
-    return lineas, any("[CUMPLE]" in l for l in lineas)
+    return lineas, any("[Se cumple]" in l for l in lineas)
 
 
 # ---------------------------------------------------------------------------
@@ -328,7 +324,7 @@ def _pro_escalar(A, B, r, C=None, s=None):
     # Verificación adicional del tercer miembro A(rB)
     c2 = _iguales(izq, alt)
     lineas.append("  Verificación A·(r·B): {}".format(
-        "[CUMPLE] coincide con r·(A·B)." if c2 else "[FALLA] no coincide."))
+        "[Se cumple] coincide con r·(A·B)." if c2 else "[No se cumple] no coincide."))
     lineas.append("")
     return lineas, c1 and c2
 
@@ -346,7 +342,7 @@ def _pro_identidad(A, B, r, C=None, s=None):
     if c2:
         lineas.append("  Además ambos coinciden con A.")
     else:
-        lineas.append("  [FALLA] Los productos no coinciden con A.")
+        lineas.append("  [No se cumple] Los productos no coinciden con A.")
     lineas.append("")
     return lineas, c1 and c2
 
@@ -433,6 +429,19 @@ def _inv_transpuesta(A, B, r, C=None, s=None):
                   "(A⁻¹)ᵀ", alg.transponer(Ainv))
 
 
+def _inv_por_inversa(A, B, r, C=None, s=None):
+    """A·A⁻¹ = I. Requiere A cuadrada e invertible."""
+    if len(A) != len(A[0]):
+        raise ValueError("Esta propiedad requiere una matriz cuadrada.")
+    from modulos.modulo_matrices import inversa_gauss_jordan
+    Ainv = inversa_gauss_jordan(A)
+    return _armar("A·A⁻¹ = I",
+                  "Una matriz por su inversa da la identidad.",
+                  None, [("A⁻¹ =", Ainv)],
+                  "A·A⁻¹", alg.multiplicar_matrices(A, Ainv),
+                  "I", _identidad(len(A)))
+
+
 # ---------------------------------------------------------------------------
 # Determinante (Sesion 11)
 # ---------------------------------------------------------------------------
@@ -488,6 +497,25 @@ def _det_inversa_prop(A, B, r, C=None, s=None):
                   "1/det(A)", [[Fraccion(1) / dA]])
 
 
+def _det_escalar(A, B, r, C=None, s=None):
+    """det(k·A) = kⁿ·det(A) para A de n×n. Usa r como el escalar k."""
+    if len(A) != len(A[0]):
+        raise ValueError("El determinante solo está definido para matrices cuadradas.")
+    from modulos.modulo_matrices import determinante
+    n = len(A)
+    dA = determinante(A)
+    k_a_la_n = Fraccion(1)
+    for _ in range(n):
+        k_a_la_n = k_a_la_n * r
+    kA = alg.multiplicar_escalar(r, A)
+    return _armar("det(k·A) = kⁿ·det(A)",
+                  "Multiplicar toda la matriz por k multiplica el determinante por kⁿ.",
+                  "k = r = {}   n = {}   det(A) = {}".format(r, n, dA),
+                  [("k·A =", kA)],
+                  "det(k·A)", [[determinante(kA)]],
+                  "kⁿ·det(A)", [[k_a_la_n * dA]])
+
+
 def _det_op_fila(A, B, r, C=None, s=None):
     """Verifica el efecto de las 3 operaciones de fila sobre det(A).
     Usa r como escalar k y opera siempre sobre las dos primeras filas."""
@@ -512,7 +540,7 @@ def _det_op_fila(A, B, r, C=None, s=None):
     lineas += ["  Operación 1: F1 ↔ F2  (intercambio de filas)",
                "    det esperado: -det(A) = {}".format(-dA),
                "    det obtenido:          {}".format(d_swap),
-               "    [{}]".format("CUMPLE" if c1 else "FALLA"), ""]
+               "    [{}]".format("Se cumple" if c1 else "No se cumple"), ""]
 
     # Operación 2: reemplazo F2 → F2 + r·F1 (el reemplazo no cambia el det)
     A_repl = [fila[:] for fila in A]
@@ -522,7 +550,7 @@ def _det_op_fila(A, B, r, C=None, s=None):
     lineas += ["  Operación 2: F2 → F2 + {}·F1  (reemplazo)".format(r),
                "    det esperado: det(A)   = {}".format(dA),
                "    det obtenido:           {}".format(d_repl),
-               "    [{}]".format("CUMPLE" if c2 else "FALLA"), ""]
+               "    [{}]".format("Se cumple" if c2 else "No se cumple"), ""]
 
     # Operación 3: escalar F1 → r·F1 (multiplica el det por r)
     A_esc = [fila[:] for fila in A]
@@ -533,11 +561,11 @@ def _det_op_fila(A, B, r, C=None, s=None):
     lineas += ["  Operación 3: F1 → {}·F1  (escalar)".format(r),
                "    det esperado: {}·det(A) = {}".format(r, esperado_esc),
                "    det obtenido:             {}".format(d_esc),
-               "    [{}]".format("CUMPLE" if c3 else "FALLA"), ""]
+               "    [{}]".format("Se cumple" if c3 else "No se cumple"), ""]
 
     cumple = c1 and c2 and c3
     lineas.append("  [{}] Las tres operaciones de fila verificadas.".format(
-        "CUMPLE" if cumple else "FALLA"))
+        "Se cumple" if cumple else "No se cumple"))
     lineas.append("")
     return lineas, cumple
 
@@ -561,9 +589,9 @@ def _det_triangular_prop(A, B, r, C=None, s=None):
         "  Reducción triangular:      det(A) = {}".format(d_triangular),
         ""]
     if cumple:
-        lineas.append("  [CUMPLE] Ambos métodos coinciden.")
+        lineas.append("  [Se cumple] Ambos métodos coinciden.")
     else:
-        lineas.append("  [FALLA] {} ≠ {}: hay un error en la implementación.".format(
+        lineas.append("  [No se cumple] {} ≠ {}: hay un error en la implementación.".format(
             d_cofactores, d_triangular))
     lineas.append("")
     return lineas, cumple
@@ -609,11 +637,13 @@ PROPIEDADES = [
     ("inv_doble",    "(A⁻¹)⁻¹ = A",              CAT_INV, _inv_doble),
     ("inv_prod",     "(AB)⁻¹ = B⁻¹·A⁻¹",         CAT_INV, _inv_producto),
     ("inv_trans",    "(Aᵀ)⁻¹ = (A⁻¹)ᵀ",          CAT_INV, _inv_transpuesta),
+    ("inv_a_ainv",  "A·A⁻¹ = I",                CAT_INV, _inv_por_inversa),
 
     # Determinante (Sesion 11)
     ("det_trans",    "det(Aᵀ) = det(A)",                  CAT_DET, _det_transpuesta),
     ("det_prod",     "det(AB) = det(A)·det(B)",           CAT_DET, _det_producto),
     ("det_inv",      "det(A⁻¹) = 1/det(A)",               CAT_DET, _det_inversa_prop),
+    ("det_escalar", "det(kA) = kⁿ·det(A)",               CAT_DET, _det_escalar),
     ("det_op_fila",  "operaciones de fila y det",  CAT_DET, _det_op_fila),
     ("det_tri",      "triangular vs cofactores",   CAT_DET, _det_triangular_prop),
 ]
@@ -660,7 +690,8 @@ def verificar_todas(A, B, r, C=None, s=None):
         cuerpo.extend(lineas)
         cuerpo.append("  " + "-" * 60)
         cuerpo.append("")
-        marca = {True: "[CUMPLE]", False: "[FALLA] ", None: "[INFO]  "}[cumple]
+        marca = {True: "[Se cumple]   ", False: "[No se cumple]",
+                 None: "[INFO]       "}[cumple]
         resumen.append("  {} {}".format(marca, nombre))
 
     encabezado = ["RESUMEN DE PROPIEDADES", ""] + resumen + ["", "=" * 62, ""]

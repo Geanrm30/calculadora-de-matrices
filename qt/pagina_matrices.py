@@ -24,6 +24,7 @@ from qt.componentes import (BotonAnimado, CuadriculaMatriz, Interruptor,
                             mostrar_aviso)
 from qt.ejemplos import MATRICES
 from qt.exportar import escribir_pdf
+from qt.imagen import imagen_de_matriz, imagen_de_texto
 from qt.pagina_base import PaginaBase
 from qt.visor import abrir_visor
 
@@ -260,7 +261,8 @@ class PaginaMatrices(PaginaBase):
         bc_lu = BotonAnimado("Factorización LU (A = L·U) y Ax = b", "verde")
         bc_lu.clicked.connect(self._ejecutar_factorizacion_lu)
         lay.addWidget(bc_lu)
-        n_lu = QLabel("A cuadrada n×n; B debe ser el vector b (1 columna, sin pivotes cero).")
+        n_lu = QLabel("Factoriza cualquier A (m×n). Si A es cuadrada y B es el vector b "
+                      "(1 columna), también resuelve A · x = b.")
         n_lu.setObjectName("nota")
         n_lu.setWordWrap(True)
         lay.addWidget(n_lu)
@@ -349,11 +351,16 @@ class PaginaMatrices(PaginaBase):
         b_guardar.con_menu([("Texto (.txt)", self.guardar_informe),
                             ("PDF (.pdf)", self.exportar_pdf)])
         acc2.addWidget(b_guardar)
-        for texto, cmd in (("Abrir en ventana", self.abrir_en_ventana),
-                           ("Copiar", self.copiar_resultado)):
-            b = BotonAnimado(texto, "suave", pequeno=True)
-            b.clicked.connect(cmd)
-            acc2.addWidget(b)
+        b_abrir = BotonAnimado("Abrir en ventana", "suave", pequeno=True)
+        b_abrir.clicked.connect(self.abrir_en_ventana)
+        acc2.addWidget(b_abrir)
+        b_copiar = BotonAnimado("Copiar", "suave", pequeno=True)
+        b_copiar.con_menu([
+            ("Copiar como texto", self.copiar_resultado),
+            ("Copiar como imagen", self.copiar_resultado_imagen),
+            ("Copiar la matriz resultado como imagen",
+             self.copiar_matriz_resultado_imagen)])
+        acc2.addWidget(b_copiar)
         acc2.addStretch(1)
         t.agregar_layout(acc2)
 
@@ -705,45 +712,43 @@ class PaginaMatrices(PaginaBase):
         self.mostrar_resultado("\n".join(lineas), "Regla de Cramer")
 
     def _ejecutar_factorizacion_lu(self):
-        """Factoriza A = L·U (A de m×n) y, si A es cuadrada y hay B, resuelve A·x = b."""
+        """Factoriza A = L·U (A de cualquier tamaño) y, si se puede, resuelve A·x = b."""
         self.ocultar_error()
         A = self._leer_matriz(self.grid_A, "A")
         if A is None:
             return
- 
-        cuadrada = (len(A) == len(A[0]))
- 
-        # Resolver A·x = b con L y U solo tiene sentido si A es cuadrada.
-        # Con una A no cuadrada se ignora B y únicamente se factoriza.
-        b_vec = None
-        if self.usa_B and cuadrada:
+
+        vector_b, nota = None, ""
+        if len(A) != len(A[0]):
+            nota = ("A no es cuadrada ({}×{}): se factorizó, pero no se resuelve "
+                    "A · x = b.".format(len(A), len(A[0])))
+        elif self.usa_B:
             B = self._leer_matriz(self.grid_B, "B")
             if B is None:
                 return
-            if len(B[0]) != 1:
-                self.error("B no es un vector",
-                           "B tiene {} columnas. Para resolver A·x = b, B debe ser "
-                           "el vector b (1 columna).".format(len(B[0])))
-                return
-            if len(B) != len(A):
-                self.error("Dimensiones incompatibles",
-                           "A tiene {} filas y b tiene {} componentes.".format(
-                               len(A), len(B)))
-                return
-            b_vec = [B[i][0] for i in range(len(B))]
- 
-        from modulos.factorizacion_lu import ejecutar_modulo_lu
+            if len(B[0]) == 1 and len(B) == len(A):
+                vector_b = [fila[0] for fila in B]
+            else:
+                nota = ("B no es un vector b de {} componentes (1 columna): se "
+                        "factorizó, pero no se resuelve A · x = b.".format(len(A)))
+        else:
+            nota = "B está quitada: se factorizó, pero no se resuelve A · x = b."
+
+        from modulos.modulo_lu import ejecutar_modulo_lu
         try:
-            res = ejecutar_modulo_lu(A, b_vec, self.sw_pasos.isChecked())
+            res = ejecutar_modulo_lu(A, vector_b, self.sw_pasos.isChecked())
         except ValueError as ex:
             self.error("Factorización LU", str(ex))
             return
- 
-        # El resultado reutilizable es x (si se resolvió) o, si no, la matriz U
+
+        informe = res["informe"]
+        if nota:
+            informe += "\n" + nota
+
+        # El resultado reutilizable es x si se resolvió; si no, la matriz U
         self._con_resultado([[v] for v in res["x"]] if res["x"] is not None
                             else res["U"])
-        self.mostrar_resultado(res["informe"], "Factorización LU")
- 
+        self.mostrar_resultado(informe, "Factorización LU")
 
     def _mostrar_inversa(self, operacion, A):
         from modulos.modulo_matrices import (determinante, inversa_gauss_jordan,
@@ -896,11 +901,27 @@ class PaginaMatrices(PaginaBase):
         QApplication.clipboard().setText(self._texto_res)
         mostrar_aviso(self, "Resultado copiado al portapapeles")
 
+    def copiar_resultado_imagen(self):
+        """Copia todo el resultado (con sus pasos) como imagen."""
+        if not self._texto_res:
+            return
+        QApplication.clipboard().setImage(imagen_de_texto(self._texto_res))
+        mostrar_aviso(self, "Resultado copiado como imagen")
+
+    def copiar_matriz_resultado_imagen(self):
+        """Copia solo la matriz resultado, limpia y entre corchetes, como imagen."""
+        if self.resultado_actual is None:
+            mostrar_aviso(self, "Este resultado no es una matriz", "info")
+            return
+        textos = [[str(v) for v in fila] for fila in self.resultado_actual]
+        QApplication.clipboard().setImage(imagen_de_matriz(textos))
+        mostrar_aviso(self, "Matriz resultado copiada como imagen")
+
     def abrir_en_ventana(self):
         if not self._texto_res:
             self.info("Sin resultado", "Todavía no hay nada que mostrar.")
             return
-        abrir_visor(self, "Resultado", self._texto_res, "informe_matrices.txt")
+        abrir_visor("Resultado", self._texto_res, "informe_matrices")
 
     def guardar_informe(self):
         if not self._texto_res:
