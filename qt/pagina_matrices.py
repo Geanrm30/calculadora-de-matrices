@@ -705,22 +705,18 @@ class PaginaMatrices(PaginaBase):
         self.mostrar_resultado("\n".join(lineas), "Regla de Cramer")
 
     def _ejecutar_factorizacion_lu(self):
-        """Factoriza A = L·U y, si hay B (vector b), resuelve A·x = b."""
+        """Factoriza A = L·U (A de m×n) y, si A es cuadrada y hay B, resuelve A·x = b."""
         self.ocultar_error()
         A = self._leer_matriz(self.grid_A, "A")
         if A is None:
             return
  
-        if len(A) != len(A[0]):
-            self.error("A no es cuadrada",
-                       "La factorización LU requiere A cuadrada "
-                       "(A es {}×{}).".format(len(A), len(A[0])))
-            return
+        cuadrada = (len(A) == len(A[0]))
  
-        # Si la matriz B está activa se usa como vector b para resolver A·x = b;
-        # si no, solo se factoriza A.
+        # Resolver A·x = b con L y U solo tiene sentido si A es cuadrada.
+        # Con una A no cuadrada se ignora B y únicamente se factoriza.
         b_vec = None
-        if self.usa_B:
+        if self.usa_B and cuadrada:
             B = self._leer_matriz(self.grid_B, "B")
             if B is None:
                 return
@@ -738,29 +734,15 @@ class PaginaMatrices(PaginaBase):
  
         from modulos.factorizacion_lu import ejecutar_modulo_lu
         try:
-            res = ejecutar_modulo_lu(A, b_vec)
+            res = ejecutar_modulo_lu(A, b_vec, self.sw_pasos.isChecked())
         except ValueError as ex:
             self.error("Factorización LU", str(ex))
             return
  
-        lineas = []
-        if self.sw_pasos.isChecked():
-            lineas.append(res["informe"])
-            lineas.append("─" * 52)
-            lineas.append("")
-        lineas.extend(proc.texto_resultado("L =", res["L"]))
-        lineas.append("")
-        lineas.extend(proc.texto_resultado("U =", res["U"]))
-        if res["x"] is not None:
-            lineas.append("")
-            lineas.extend(proc.texto_resultado("x =", [[v] for v in res["x"]]))
-        lineas.append("")
-        lineas.append("Verificación exacta: " + ("CUMPLE" if res["valido"] else "FALLA"))
- 
         # El resultado reutilizable es x (si se resolvió) o, si no, la matriz U
         self._con_resultado([[v] for v in res["x"]] if res["x"] is not None
                             else res["U"])
-        self.mostrar_resultado("\n".join(lineas), "Factorización LU")
+        self.mostrar_resultado(res["informe"], "Factorización LU")
  
 
     def _mostrar_inversa(self, operacion, A):

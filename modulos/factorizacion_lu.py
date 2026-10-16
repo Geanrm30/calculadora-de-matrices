@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Módulo de Factorización LU y resolución de sistemas Ax = b en dos etapas
-(Sustitución hacia adelante Ly = b y sustitución hacia atrás Ux = y).
-Implementado con aritmética exacta de Fraccion. MTM0120 Álgebra Lineal — UAM.
-Elaborado para el Proyecto Integrador de Álgebra Lineal.
+Módulo de Factorización LU y resolución de sistemas Ax = b en dos etapas,
+siguiendo el formato visto en clase:
+
+  DATOS      A = L·U y el vector b (L y U se calculan automáticamente, sin
+             mostrar su procedimiento).
+  PASO 1     Ly = b por Gauss-Jordan:  [L | b] ~ [I | y]
+  PASO 2     Ux = y por Gauss-Jordan:  [U | y] ~ [I | x]
+  RESULTADO  y, x y la comprobación (L·U = A y A·x = b).
+
+Implementado con aritmética exacta de Fraccion.
+MTM0120 Álgebra Lineal — UAM. Proyecto Integrador de Álgebra Lineal.
 """
 
 from core.fraccion import Fraccion
@@ -11,22 +18,57 @@ import core.algebra as alg
 from core.formato import texto_matriz, ancho_columna, subindice
 
 
+# ---------------------------------------------------------------------------
+# Utilidades de escritura
+# ---------------------------------------------------------------------------
+
 def _sub(n):
-    """Subíndice Unicode de un número ya en base 1: 2 -> ₂ (se usa en y₂, x₂, b₂, f₂)."""
+    """Subíndice Unicode de un número ya en base 1: 2 -> ₂."""
     return subindice(n)
 
 
-def _ind(fila, col):
+def _fila(i):
+    """Nombre de la fila i (base 0) en base 1 con subíndice: 0 -> F₁."""
+    return "F" + _sub(i + 1)
+
+
+def _mult(coef, nombre):
     """
-    Subíndice doble en base 1: (2, 1) -> ₂₁ (se usa en L₂₁).
-    Si algún índice tiene dos dígitos se separa con coma (L₁₀,₁), igual que
-    core/procedimiento, para no confundir "fila 1 columna 12" con "fila 11 columna 2".
+    Escribe 'coef·nombre' como en clase: F₁, −F₁, 2F₁ y (3/2)·F₁
+    (las fracciones van entre paréntesis).
     """
-    f = subindice(fila)
-    c = subindice(col)
-    if fila > 9 or col > 9:
-        return f + "," + c
-    return f + c
+    if coef.es_uno():
+        return nombre
+    if (-coef).es_uno():
+        return "−" + nombre
+    if coef.den == 1:
+        return str(coef) + nombre
+    return "(" + str(coef) + ")·" + nombre
+
+
+def _op_reemplazo(i, j, k):
+    """
+    Operación de reemplazo  F_i → F_i + k·F_j  (flecha de izquierda a derecha:
+    la fila de la izquierda se cambia por la expresión de la derecha).
+    Si k es negativo se escribe como resta: F₃ → F₃ − 2F₁.
+    """
+    if k.es_negativo():
+        signo = " − "
+        magnitud = -k
+    else:
+        signo = " + "
+        magnitud = k
+    return "{} → {}{}{}".format(_fila(i), _fila(i), signo, _mult(magnitud, _fila(j)))
+
+
+def _op_escala(i, factor):
+    """Operación de escalamiento  F_i → factor·F_i."""
+    return "{} → {}".format(_fila(i), _mult(factor, _fila(i)))
+
+
+def _vector(v):
+    """Vector en una línea como en clase: (3, 4, -6)."""
+    return "(" + ", ".join(str(c) for c in v) + ")"
 
 
 def _texto_matriz(M, sangria="  "):
@@ -45,216 +87,285 @@ def _texto_matriz(M, sangria="  "):
     return "\n".join(lineas)
 
 
-def factorizacion_lu_pasos(A):
+def _lado_a_lado(bloques, sangria="  "):
     """
-    Obtiene la Factorización LU de una matriz A (A = L·U) mediante operaciones
-    elementales de reemplazo de filas.
-    Registra los multiplicadores en L y la forma escalonada en U.
-    Devuelve un diccionario con las matrices L, U, los pasos detallados y la comprobación.
+    Dibuja varias matrices en la misma fila, cada una con su rótulo arriba:
+
+            A            L
+      [ 2  1 ]  =  [ 1  0 ]
+
+    bloques: lista de (rótulo, matriz, separador que va a la derecha).
+    """
+    columnas = []
+    for rotulo, M, sep in bloques:
+        lineas = _texto_matriz(M, sangria="").split("\n")
+        ancho = max(max(len(l) for l in lineas), len(rotulo))
+        lineas = [l.ljust(ancho) for l in lineas]
+        columnas.append((rotulo, lineas, ancho, sep))
+
+    n_filas = max(len(c[1]) for c in columnas)
+    fila_sep = n_filas // 2
+
+    encabezado = ""
+    cuerpo = ["" for _ in range(n_filas)]
+    for rotulo, lineas, ancho, sep in columnas:
+        encabezado += rotulo.center(ancho) + " " * len(sep)
+        for r in range(n_filas):
+            texto = lineas[r] if r < len(lineas) else " " * ancho
+            cuerpo[r] += texto + (sep if r == fila_sep else " " * len(sep))
+
+    return "\n".join([sangria + encabezado.rstrip()] +
+                     [sangria + c.rstrip() for c in cuerpo])
+
+
+# ---------------------------------------------------------------------------
+# Cálculo (silencioso): A = L·U
+# ---------------------------------------------------------------------------
+
+def factorizar_lu(A):
+    """
+    Obtiene A = L·U para una matriz de tamaño m×n (cuadrada o no) usando solo
+    operaciones de reemplazo de filas, como en clase:
+      - U (m×n) es una forma escalonada de A.
+      - L (m×m) es triangular inferior con unos en la diagonal. La columna k de
+        L son las entradas de la k-ésima columna pivote (de arriba hacia abajo)
+        divididas entre el pivote.
+    Si una columna no tiene pivote (todo lo que queda de ella es cero) se pasa a
+    la siguiente columna; las columnas de L que no se usan quedan como las de la
+    identidad. No escribe ningún procedimiento.
     """
     m = len(A)
     n = len(A[0])
 
-    if m != n:
-        raise ValueError(
-            "La factorización LU estándar requiere una matriz cuadrada "
-            "(A es {}×{}).".format(m, n))
-
-    # Copias de trabajo
     U = [[A[i][j] for j in range(n)] for i in range(m)]
     L = [[Fraccion(1) if i == j else Fraccion(0) for j in range(m)] for i in range(m)]
 
-    lineas_proceso = []
-    lineas_proceso.append("=== 1. PROCESO DE FACTORIZACIÓN A = L·U ===")
-    lineas_proceso.append(f"Matriz inicial A ({m}×{n}):")
-    lineas_proceso.append(_texto_matriz(A, sangria="  "))
-    lineas_proceso.append("")
+    fila = 0   # fila donde debería ir el siguiente pivote (= columna de L que se llena)
+    for col in range(n):
+        if fila >= m:
+            break
 
-    paso_num = 1
-    for col in range(n - 1):
-        pivote = U[col][col]
+        pivote = U[fila][col]
         if pivote.es_cero():
-            raise ValueError(
-                f"El pivote en la posición ({col+1}, {col+1}) es cero. "
-                "La factorización LU sin intercambios de filas no es posible "
-                "para esta matriz.")
+            # Sin pivote en esta columna si todo lo de abajo también es cero;
+            # si no, haría falta intercambiar filas (y eso ya no es A = L·U).
+            if any(not U[i][col].es_cero() for i in range(fila + 1, m)):
+                raise ValueError(
+                    "El pivote en la posición ({}, {}) es cero y hay entradas no "
+                    "nulas debajo de él. La factorización LU sin intercambios de "
+                    "filas no es posible para esta matriz.".format(fila + 1, col + 1))
+            continue
 
-        lineas_proceso.append(f"--- Columna pivote {col+1} (pivote = {pivote}) ---")
-
-        for fila in range(col + 1, m):
-            factor = U[fila][col] / pivote
-            L[fila][col] = factor
-
-            # Operación elemental: f_fila -> f_fila - factor * f_col
+        for i in range(fila + 1, m):
+            if U[i][col].es_cero():
+                continue
+            factor = U[i][col] / pivote
+            L[i][fila] = factor
             for c in range(col, n):
-                U[fila][c] = U[fila][c] - factor * U[col][c]
+                U[i][c] = U[i][c] - factor * U[fila][c]
 
-            lineas_proceso.append(
-                f"  Paso {paso_num}: f{_sub(fila+1)} ← f{_sub(fila+1)} - ({factor})·f{_sub(col+1)}  "
-                f"(multiplicador L{_ind(fila+1, col+1)} = {factor})"
-            )
-            paso_num += 1
+        fila += 1
 
-        lineas_proceso.append("")
-        lineas_proceso.append("  Matriz U parcial:")
-        lineas_proceso.append(_texto_matriz(U, sangria="    "))
-        lineas_proceso.append("")
+    return L, U
 
-    lineas_proceso.append("Matrices finales de la descomposición:")
-    lineas_proceso.append("Matriz L (Triangular inferior unitaria):")
-    lineas_proceso.append(_texto_matriz(L, sangria="  "))
-    lineas_proceso.append("")
-    lineas_proceso.append("Matriz U (Forma escalonada):")
-    lineas_proceso.append(_texto_matriz(U, sangria="  "))
-    lineas_proceso.append("")
 
-    # Comprobación L * U = A
+# ---------------------------------------------------------------------------
+# Gauss-Jordan de cada etapa (con procedimiento)
+# ---------------------------------------------------------------------------
+
+def _bloque_operaciones(ops, M, n):
+    """Operaciones de una columna y la matriz que resulta de aplicarlas."""
+    lineas = ["  Operaciones:"]
+    for op in ops:
+        lineas.append("    " + op)
+    lineas.append(texto_matriz(M, n, sangria="    "))
+    lineas.append("")
+    return lineas
+
+
+def _gauss_jordan_inferior(L, b, nombre_izq, nombre_der):
+    """
+    [L | b] ~ [I | y]. Como L es triangular inferior con unos en la diagonal,
+    solo hay que anular lo que está debajo de cada pivote (columna por columna).
+    Devuelve (vector y, líneas del procedimiento).
+    """
+    n = len(L)
+    M = [list(L[i]) + [b[i]] for i in range(n)]
+
+    lineas = ["  Matriz inicial [{} | {}]:".format(nombre_izq, nombre_der),
+              texto_matriz(M, n, sangria="    "), ""]
+
+    for col in range(n):
+        ops = []
+        for i in range(col + 1, n):
+            c = M[i][col]
+            if c.es_cero():
+                continue
+            M[i] = [M[i][k] - c * M[col][k] for k in range(n + 1)]
+            ops.append(_op_reemplazo(i, col, -c))
+        if ops:
+            lineas += _bloque_operaciones(ops, M, n)
+
+    return [M[i][n] for i in range(n)], lineas
+
+
+def _gauss_jordan_superior(U, y, nombre_izq, nombre_der):
+    """
+    [U | y] ~ [I | x]. Se trabaja de la última columna a la primera: primero
+    el pivote se lleva a 1 y luego se anula lo que está encima de él.
+    Devuelve (vector x, líneas del procedimiento).
+    """
+    n = len(U)
+    M = [list(U[i]) + [y[i]] for i in range(n)]
+
+    lineas = ["  Matriz inicial [{} | {}]:".format(nombre_izq, nombre_der),
+              texto_matriz(M, n, sangria="    "), ""]
+
+    for col in range(n - 1, -1, -1):
+        ops = []
+        p = M[col][col]
+        if not p.es_uno():
+            f = Fraccion(1) / p
+            M[col] = [v * f for v in M[col]]
+            ops.append(_op_escala(col, f))
+        for i in range(col):
+            c = M[i][col]
+            if c.es_cero():
+                continue
+            M[i] = [M[i][k] - c * M[col][k] for k in range(n + 1)]
+            ops.append(_op_reemplazo(i, col, -c))
+        if ops:
+            lineas += _bloque_operaciones(ops, M, n)
+
+    return [M[i][n] for i in range(n)], lineas
+
+
+# ---------------------------------------------------------------------------
+# Flujo completo
+# ---------------------------------------------------------------------------
+
+def ejecutar_modulo_lu(A, b=None, con_pasos=True):
+    """
+    Flujo completo en el orden de clase:
+      1) DATOS: A = L·U (calculados automáticamente) y el vector b.
+      2) PASO 1: Ly = b por Gauss-Jordan  ->  y   (solo si con_pasos)
+      3) PASO 2: Ux = y por Gauss-Jordan  ->  x   (solo si con_pasos)
+      4) RESULTADO Y COMPROBACIÓN: y, x, L·U = A y A·x = b.
+    Sin b solo se factoriza A (y, x quedan en None).
+    A puede ser m×n: si no es cuadrada solo se factoriza (resolver Ax = b con
+    L y U en dos etapas requiere A cuadrada), aunque se entregue b.
+
+    Devuelve un diccionario: L, U, y, x, informe (texto) y valido (bool).
+    """
+    m = len(A)
+    n = len(A[0])
+    L, U = factorizar_lu(A)
+    cuadrada = (m == n)
+    if not cuadrada:
+        b = None
+
+    # b puede llegar como lista plana o como columna [[b1], [b2], ...]
+    b_plano = None
+    if b is not None:
+        b_plano = [val[0] if isinstance(val, list) else val for val in b]
+        if len(b_plano) != m:
+            raise ValueError(
+                "b debe tener {} componentes (una por fila de A), tiene {}.".format(
+                    m, len(b_plano)))
+        # Un cero en la diagonal de U significa que A es singular
+        for i in range(n):
+            if U[i][i].es_cero():
+                raise ValueError(
+                    "La matriz A es singular: U tiene un cero en la diagonal "
+                    "(posición ({0}, {0})). El sistema no tiene solución única, "
+                    "así que no se puede resolver con L y U.".format(i + 1))
+
+    lineas = []
+
+    # ---- DATOS ----------------------------------------------------------
+    lineas.append("=== DATOS: A = L·U" + (" y vector b" if b_plano is not None else "") + " ===")
+    lineas.append("L y U se calculan automáticamente a partir de A.")
+    if not cuadrada:
+        lineas.append("A es {0}×{1}: L es {0}×{0} (triangular inferior con unos en la diagonal) "
+                      "y U es {0}×{1} (forma escalonada).".format(m, n))
+        lineas.append("Como A no es cuadrada solo se calcula la factorización A = L·U.")
+    lineas.append("")
+    bloques = [("A", A, " = "), ("L", L, " · "),
+               ("U", U, "  ,  " if b_plano is not None else "")]
+    if b_plano is not None:
+        bloques.append(("b", [[v] for v in b_plano], ""))
+    lineas.append(_lado_a_lado(bloques))
+    lineas.append("")
+
+    if b_plano is not None and con_pasos:
+        lineas.append("Plan de solución:")
+        lineas.append("  1) Resolver Ly = b con Gauss-Jordan:  [L | b] ~ [I | y]")
+        lineas.append("  2) Resolver Ux = y con Gauss-Jordan:  [U | y] ~ [I | x]")
+        lineas.append("  Comprobación: L·U = A (entrada por entrada) y A·x = b.")
+        lineas.append("")
+
+    y = None
+    x = None
+    if b_plano is not None:
+        # ---- PASO 1: Ly = b -------------------------------------------
+        y, l1 = _gauss_jordan_inferior(L, b_plano, "L", "b")
+        if con_pasos:
+            lineas.append("=== PASO 1: Ly = b, de [L | b] a [I | y] ===")
+            lineas += l1
+            lineas.append("  y = " + _vector(y))
+            lineas.append("")
+
+        # ---- PASO 2: Ux = y -------------------------------------------
+        x, l2 = _gauss_jordan_superior(U, y, "U", "y")
+        if con_pasos:
+            lineas.append("=== PASO 2: Ux = y, de [U | y] a [I | x] ===")
+            lineas += l2
+            lineas.append("  x = " + _vector(x))
+            lineas.append("")
+
+    # ---- RESULTADO Y COMPROBACIÓN --------------------------------------
+    lineas.append("=== RESULTADO Y COMPROBACIÓN ===")
+    lineas.append("")
+
+    if b_plano is not None:
+        lineas.append(_lado_a_lado([("y", [[v] for v in y], "    "),
+                                    ("x", [[v] for v in x], "")]))
+        lineas.append("")
+
     LU = alg.multiplicar_matrices(L, U)
-    comprobacion_ok = all(
-        LU[i][j] == A[i][j] for i in range(m) for j in range(n)
-    )
+    lu_ok = all(LU[i][j] == A[i][j] for i in range(m) for j in range(n))
 
-    lineas_proceso.append("Comprobación L·U = A:")
-    lineas_proceso.append(_texto_matriz(LU, sangria="  "))
-    if comprobacion_ok:
-        lineas_proceso.append("  [CUMPLE] El producto L·U coincide exactamente con A.")
-    else:
-        lineas_proceso.append("  [FALLA] El producto L·U no coincide con A.")
-    lineas_proceso.append("")
+    lineas.append("Comprobación de L·U = A:")
+    lineas.append(_lado_a_lado([("L·U", LU, "  =  "), ("A", A, "")]))
+    lineas.append("  " + ("✓ L·U coincide con A entrada por entrada."
+                          if lu_ok else "✗ L·U NO coincide con A."))
+    lineas.append("")
+
+    ax_ok = True
+    if b_plano is not None:
+        lineas.append("Comprobación de Ax = b:")
+        for i in range(m):
+            terminos = " + ".join("({})·({})".format(A[i][j], x[j]) for j in range(n))
+            obtenido = Fraccion(0)
+            for j in range(n):
+                obtenido = obtenido + A[i][j] * x[j]
+            ok = (obtenido == b_plano[i])
+            ax_ok = ax_ok and ok
+            if ok:
+                lineas.append("  {} = {} ✓".format(terminos, obtenido))
+            else:
+                lineas.append("  {} = {} ✗ (se esperaba {})".format(
+                    terminos, obtenido, b_plano[i]))
+        lineas.append("")
+        lineas.append("  " + ("✓ La solución x satisface exactamente A·x = b."
+                              if ax_ok else "✗ La solución NO satisface A·x = b."))
+        lineas.append("")
 
     return {
         "L": L,
         "U": U,
-        "pasos": lineas_proceso,
-        "comprobacion_lu": comprobacion_ok
-    }
-
-
-def resolver_sistema_lu_pasos(L, U, b, A=None):
-    """
-    Resuelve Ax = b en dos etapas sustitutivas utilizando L y U:
-    1. Sustitución hacia adelante: Ly = b
-    2. Sustitución hacia atrás: Ux = y
-    Si se entrega A, la comprobación final usa la matriz original (A·x = b);
-    si no, se usa L·U.
-    Devuelve un diccionario con el vector y, el vector x y todo el procedimiento explicado.
-    """
-    m = len(L)
-    n = len(U[0])
-
-    # b puede llegar como lista plana o como columna [[b1], [b2], ...]
-    b_plano = [val[0] if isinstance(val, list) else val for val in b]
-
-    if len(b_plano) != m:
-        raise ValueError(
-            "b debe tener {} componentes (una por fila de A), tiene {}.".format(
-                m, len(b_plano)))
-
-    # Un cero en la diagonal de U significa que A es singular: no hay solución única
-    for i in range(min(m, n)):
-        if U[i][i].es_cero():
-            raise ValueError(
-                "La matriz A es singular: U tiene un cero en la diagonal "
-                "(posición ({0}, {0})). El sistema no tiene solución única, "
-                "así que no se puede resolver con L y U.".format(i + 1))
-
-    lineas = []
-    lineas.append("=== 2. RESOLUCIÓN DE Ax = b MEDIANTE DESCOMPOSICIÓN LU ===")
-    lineas.append(f"Vector de términos independientes b = [ {', '.join(str(v) for v in b_plano)} ]^T")
-    lineas.append("")
-
-    # ETAPA 1: Resolver Ly = b (Sustitución hacia adelante)
-    lineas.append("--- Etapa 1: Sustitución hacia adelante (Ly = b) ---")
-    lineas.append("Se resuelve el sistema triangular inferior ampliando [L | b]:")
-
-    aug_L = [list(L[i]) + [b_plano[i]] for i in range(m)]
-    lineas.append(texto_matriz(aug_L, m, sangria="  "))
-    lineas.append("")
-
-    y = [Fraccion(0) for _ in range(m)]
-    for i in range(m):
-        acum = aug_L[i][m]
-        for j in range(i):
-            acum = acum - aug_L[i][j] * y[j]
-        y[i] = acum / aug_L[i][i]
-        lineas.append(f"  y{_sub(i+1)} = {acum} / {aug_L[i][i]} = {y[i]}")
-
-    lineas.append("")
-    lineas.append(f"Vector intermedio y = [ {', '.join(str(val) for val in y)} ]^T")
-    lineas.append("")
-
-    # ETAPA 2: Resolver Ux = y (Sustitución hacia atrás)
-    lineas.append("--- Etapa 2: Sustitución hacia atrás (Ux = y) ---")
-    lineas.append("Se resuelve el sistema triangular superior ampliando [U | y]:")
-
-    aug_U = [list(U[i]) + [y[i]] for i in range(m)]
-    lineas.append(texto_matriz(aug_U, n, sangria="  "))
-    lineas.append("")
-
-    x = [Fraccion(0) for _ in range(n)]
-    for i in range(n - 1, -1, -1):
-        acum = aug_U[i][n]
-        for c in range(i + 1, n):
-            acum = acum - U[i][c] * x[c]
-        x[i] = acum / U[i][i]
-        lineas.append(f"  x{_sub(i+1)} = {acum} / {U[i][i]} = {x[i]}")
-
-    lineas.append("")
-    lineas.append(f"Solución final x = [ {', '.join(str(val) for val in x)} ]^T")
-    lineas.append("")
-
-    # Comprobación final A * x = b
-    lineas.append("--- Comprobación final del sistema (A·x = b) ---")
-
-    A_ref = A if A is not None else alg.multiplicar_matrices(L, U)
-    x_mat = [[val] for val in x]
-    Ax = alg.multiplicar_matrices(A_ref, x_mat)
-
-    comprobacion_ax = all(Ax[i][0] == b_plano[i] for i in range(m))
-
-    for i in range(m):
-        lineas.append(f"  Ecuación {i+1}: obtenida = {Ax[i][0]} | esperada (b{_sub(i+1)}) = {b_plano[i]}")
-
-    if comprobacion_ax:
-        lineas.append("  [CUMPLE] La solución x satisface exactamente A·x = b.")
-    else:
-        lineas.append("  [FALLA] La solución no satisface el sistema.")
-    lineas.append("")
-
-    return {
         "y": y,
         "x": x,
-        "pasos": lineas,
-        "comprobacion_ax": comprobacion_ax
-    }
-
-
-def ejecutar_modulo_lu(A, b=None):
-    """
-    Ejecuta el flujo completo de factorización LU y, si se entrega b, la
-    resolución del sistema Ax = b, concatenando los informes paso a paso.
-    Sin b solo factoriza (y, x quedan en None).
-    """
-    res_lu = factorizacion_lu_pasos(A)
-
-    if b is None:
-        return {
-            "L": res_lu["L"],
-            "U": res_lu["U"],
-            "y": None,
-            "x": None,
-            "informe": "\n".join(res_lu["pasos"]),
-            "valido": res_lu["comprobacion_lu"]
-        }
-
-    res_res = resolver_sistema_lu_pasos(res_lu["L"], res_lu["U"], b, A)
-
-    informe_completo = "\n".join(res_lu["pasos"] + res_res["pasos"])
-    return {
-        "L": res_lu["L"],
-        "U": res_lu["U"],
-        "y": res_res["y"],
-        "x": res_res["x"],
-        "informe": informe_completo,
-        "valido": res_lu["comprobacion_lu"] and res_res["comprobacion_ax"]
+        "informe": "\n".join(lineas),
+        "valido": lu_ok and ax_ok
     }
