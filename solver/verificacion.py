@@ -2,6 +2,7 @@
 """
 Comprueba la solución sustituyendo en el sistema original con aritmética exacta;
 siempre verifica contra el sistema sin reducir para que la prueba sea independiente.
+Unidad: Proyecto Integrador (Sesiones 1-11).
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
@@ -49,12 +50,8 @@ def verificar_valores(matriz_original, n_vars, x):
 
 
 def verificar_expresiones(matriz_original, n_vars, expresiones, libres):
-    """
-    Comprueba la solucion general SIN dar valores a los parametros.
-
-    Sustituye en cada ecuacion las expresiones simbolicas y verifica que:
-      - el termino independiente resultante sea igual a b, y
-      - el coeficiente de cada parametro se cancele (quede en cero).
+    """Comprueba la solución general sin dar valores a los parámetros.
+    Sustituye en cada ecuación: el término independiente debe ser b y el coeficiente de cada parámetro, cero.
     """
     ancho = 1 + len(libres)
     resultados = []

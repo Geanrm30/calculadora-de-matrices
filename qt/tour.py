@@ -2,6 +2,10 @@
 """
 Recorrido guiado: oscurece la ventana, ilumina un elemento a la vez y explica
 para qué sirve. Se muestra la primera vez y se puede repetir desde la ayuda.
+Unidad: Proyecto Integrador (interfaz gráfica).
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
 """
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -18,18 +22,21 @@ from qt.componentes import BotonAnimado
 
 @dataclass
 class PasoTour:
+    """Un paso del recorrido: título, texto y el elemento que se resalta."""
     titulo: str
     texto: str
-    objetivo: Callable[[], QWidget]      # widget que se ilumina
-    pagina: Optional[str] = None         # página a mostrar antes (clave)
-    antes: Optional[Callable] = None     # acción previa (cambiar de pestaña, cargar un ejemplo…)
+    objetivo: Callable[[], QWidget]
+    pagina: Optional[str] = None
+    antes: Optional[Callable] = None
 
 
 class Tour(QWidget):
 
+    """Capa que recorre la interfaz paso a paso resaltando cada elemento."""
     MARGEN = 10
 
     def __init__(self, ventana, pasos, al_terminar=None):
+        """Crea la capa con la tarjeta explicativa y sus botones."""
         super().__init__(ventana)
         self._ventana = ventana
         self._pasos = pasos
@@ -44,7 +51,6 @@ class Tour(QWidget):
         self.setFocusPolicy(Qt.StrongFocus)
         self.setGeometry(ventana.rect())
 
-        # Tarjeta con la explicación
         self.card = QFrame(self)
         self.card.setObjectName("tarjeta")
         self.card.setFixedWidth(360)
@@ -82,9 +88,9 @@ class Tour(QWidget):
         self.setFocus()
         self._ir(0, animar=False)
 
-    # ── Navegación ────────────────────────────────────────────
 
     def _ir(self, i, animar=True):
+        """Muestra el paso i: cambia de página si hace falta, actualiza el texto y mueve el resalte."""
         self._i = i
         paso = self._pasos[i]
         if paso.pagina:
@@ -97,32 +103,33 @@ class Tour(QWidget):
         self.lbl_texto.setText(paso.texto)
         self.b_ant.setEnabled(i > 0)
         self.b_sig.setText("Finalizar" if i == len(self._pasos) - 1 else "Siguiente")
-        # Espera a que termine la transición de página y se acomode el diseño.
         QTimer.singleShot(520 if paso.pagina else (160 if paso.antes else 40),
                           lambda: self._ubicar_seguro(animar))
 
     def siguiente(self):
+        """Avanza al paso siguiente o termina si era el último."""
         if self._i >= len(self._pasos) - 1:
             self.terminar()
         else:
             self._ir(self._i + 1)
 
     def anterior(self):
+        """Vuelve al paso anterior."""
         if self._i > 0:
             self._ir(self._i - 1)
 
     def terminar(self):
+        """Cierra el recorrido y ejecuta la acción final si existe."""
         self._ventana.removeEventFilter(self)
         self.hide()
         self.deleteLater()
         if self._al_terminar:
             self._al_terminar()
 
-    # ── Colocación ────────────────────────────────────────────
 
     def _rect_objetivo(self):
+        """Rectángulo del elemento del paso actual, llevándolo a la vista si hace falta."""
         w = self._pasos[self._i].objetivo()
-        # Si la página tiene desplazamiento, se lleva el elemento a la vista.
         padre = w.parentWidget()
         while padre is not None:
             if isinstance(padre, QScrollArea):
@@ -134,12 +141,14 @@ class Tour(QWidget):
                       w.width() + 2 * m, w.height() + 2 * m)
 
     def _ubicar_seguro(self, animar=True):
+        """Coloca el resalte y la tarjeta ignorando que el elemento ya no exista."""
         try:
             self._ubicar(animar)
         except RuntimeError:
-            pass                          # el recorrido se cerró antes
+            pass
 
     def _ubicar(self, animar=True):
+        """Calcula el hueco del elemento y coloca el resalte y la tarjeta."""
         if not self.isVisible():
             return
         destino = self._rect_objetivo()
@@ -154,16 +163,17 @@ class Tour(QWidget):
         self._colocar_tarjeta(destino)
 
     def _mover_hueco(self, rect):
+        """Fija el rectángulo del hueco y repinta."""
         self._hueco = rect
         self.update()
 
     def _colocar_tarjeta(self, rect=None):
+        """Coloca la tarjeta junto al hueco sin salirse de la ventana."""
         rect = rect or self._hueco
         self.card.adjustSize()
         cw, ch = self.card.width(), self.card.height()
         W, H, g = self.width(), self.height(), 18
 
-        # A la derecha del elemento, si cabe; si no a la izquierda, debajo o arriba.
         if rect.right() + g + cw <= W - 12:
             x, y = rect.right() + g, rect.top()
         elif rect.left() - g - cw >= 12:
@@ -176,9 +186,9 @@ class Tour(QWidget):
         y = max(12, min(y, H - ch - 12))
         self.card.move(int(x), int(y))
 
-    # ── Dibujo y eventos ──────────────────────────────────────
 
     def paintEvent(self, _):
+        """Dibuja el fondo atenuado con el hueco y el borde del elemento."""
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         todo = QPainterPath()
@@ -191,15 +201,18 @@ class Tour(QWidget):
         p.drawRoundedRect(self._hueco, 12, 12)
 
     def eventFilter(self, obj, e):
+        """Ajusta la capa al tamaño de la ventana cuando esta cambia."""
         if obj is self._ventana and e.type() == QEvent.Resize:
             self.setGeometry(self._ventana.rect())
             QTimer.singleShot(0, lambda: self._ubicar_seguro(False))
         return super().eventFilter(obj, e)
 
     def mousePressEvent(self, e):
-        e.accept()                   # bloquea los clics mientras dura el recorrido
+        """Bloquea los clics mientras dura el recorrido."""
+        e.accept()
 
     def keyPressEvent(self, e: QKeyEvent):
+        """Termina el recorrido con Escape."""
         if e.key() == Qt.Key_Escape:
             self.terminar()
         elif e.key() in (Qt.Key_Right, Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):

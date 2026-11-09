@@ -2,6 +2,7 @@
 """
 Coordina el proceso completo de resolución y devuelve un diccionario con todos
 los resultados intermedios; sin entrada ni salida directa.
+Unidad: Proyecto Integrador (Sesiones 1-11).
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
@@ -10,23 +11,15 @@ Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
 from core.fraccion import Fraccion
 from core.matriz import copiar
 from solver.eliminacion import escalonar, reducir_jordan
-from solver.clasificacion import clasificar, DETERMINADO, INDETERMINADO, INCONSISTENTE
+from solver.clasificacion import clasificar, DETERMINADO, INCONSISTENTE
 from solver.solucion import sustitucion_regresiva, calcular_expresiones
 from solver.verificacion import verificar_valores, verificar_expresiones
 
 
 def resolver(matriz, n_vars, aplicar_jordan=True):
-    """
-    Resuelve el sistema representado por la matriz aumentada.
-
-    Parametros:
-        matriz        : lista de listas de Fraccion, la matriz aumentada [A|b]
-        n_vars        : numero de variables
-        aplicar_jordan: si True, ademas de la forma escalonada se calcula la
-                        forma escalonada reducida (Gauss-Jordan)
-
-    Devuelve un diccionario con: la matriz original, los pasos, la matriz
-    escalonada, la clasificacion, la solucion y la verificacion.
+    """Resuelve el sistema de la matriz aumentada [A|b] con n_vars variables.
+    Si aplicar_jordan es True calcula además la forma escalonada reducida.
+    Devuelve un dict con los pasos, la clasificación y las expresiones de la solución.
     """
     original = copiar(matriz)
 

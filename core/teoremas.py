@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 Catálogo de teoremas del Proyecto Integrador: Calculadora de Álgebra Lineal.
-Contiene los teoremas de las Sesiones 1-11: sistemas lineales, independencia,
-matrices, determinante e inversa. Cada entrada es (nombre, enunciado, dónde_se_usa).
+Contiene los teoremas de las Sesiones 1-11 (sistemas lineales, independencia,
+matrices, determinante, inversa y factorización LU) y los del Programa 7
+(bisección y errores numéricos). Cada entrada es (nombre, enunciado, dónde_se_usa).
+Unidad: Proyecto Integrador (Sesiones 1-11) y Programa 7.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
@@ -118,7 +120,6 @@ TEOREMAS = [
         "Solucionador: independencia lineal.",
     ),
 
-    # ── Sesion 10: Matriz inversa ──────────────────────────────────────
     (
         "Propiedades de la inversa",
         "Si A y B son matrices invertibles de orden n:\n"
@@ -154,7 +155,6 @@ TEOREMAS = [
         "Operaciones con matrices: botón 'A⁻¹  Adj'.",
     ),
 
-    # ── Sesion 11: Determinante ────────────────────────────────────────
     (
         "Determinante de una matriz triangular",
         "Si A es triangular superior, inferior o diagonal, entonces:\n"
@@ -185,6 +185,89 @@ TEOREMAS = [
         "multiplicadores de la reducción) y U es m×n escalonada. Si hace falta "
         "intercambiar filas se usa PA = LU. Para A cuadrada, Ax = b se resuelve en "
         "dos etapas: Ly = b (hacia adelante) y Ux = y (hacia atrás).",
-        "Operaciones con matrices: botón 'Factorización LU (A = L·U) y Ax = b'.",
+        "Factorización LU: sección propia (A, b, x, L, U).",
+    ),
+    (
+        "Teorema de Bolzano (existencia de una raíz)",
+        "Si f es continua en [a, b] y f(a)·f(b) < 0, existe al menos un c en "
+        "(a, b) con f(c) = 0.\n"
+        "El cambio de signo por sí solo no basta: sin continuidad puede no haber "
+        "raíz (por ejemplo f(x) = 1/x en [−1, 1], que cambia de signo en una "
+        "asíntota).",
+        "Métodos Numéricos: Bisección, condición inicial y revisión de continuidad.",
+    ),
+    (
+        "Método de bisección",
+        "Con f continua y f(xₗ)·f(xᵤ) < 0, el punto medio xᵣ = (xₗ + xᵤ)/2 divide "
+        "el intervalo en dos. Se conserva la mitad donde f cambia de signo:\n"
+        "   f(xₗ)·f(xᵣ) < 0   ->  xᵤ = xᵣ\n"
+        "   f(xₗ)·f(xᵣ) > 0   ->  xₗ = xᵣ\n"
+        "   f(xₗ)·f(xᵣ) = 0   ->  xᵣ es la raíz exacta\n"
+        "Cada iteración reduce a la mitad la longitud del intervalo que contiene "
+        "a la raíz.",
+        "Métodos Numéricos: Bisección, tabla de iteraciones.",
+    ),
+    (
+        "Cota del error de la bisección",
+        "Después de n iteraciones la raíz r está en [xₗ, xᵤ] y xᵣ es su punto "
+        "medio, de modo que:\n"
+        "   |r − xᵣ| ≤ Eᵦ = (xᵤ − xₗ)/2 = (b − a)/2ⁿ\n"
+        "La cota depende solo del intervalo inicial y de n, no de la función.",
+        "Métodos Numéricos: Bisección, cota del error Eᵦ en el resultado.",
+    ),
+    (
+        "Número de iteraciones de la bisección",
+        "Para garantizar Eᵦ ≤ E basta con\n"
+        "   n ≥ log₂((b − a)/E)    es decir    n = ⌈log₂((b − a)/E)⌉\n"
+        "En la práctica el método puede terminar antes si encuentra la raíz "
+        "exacta, o detenerse en el máximo de iteraciones sin cumplir la "
+        "tolerancia.",
+        "Métodos Numéricos: Bisección, número teórico de iteraciones y criterio de parada.",
+    ),
+    (
+        "Error absoluto, relativo y aproximado",
+        "Si xᵥ es el valor verdadero y xₐ el aproximado:\n"
+        "   Eₐ = |xᵥ − xₐ|           (error absoluto)\n"
+        "   Eᵣ = Eₐ / |xᵥ|           (error relativo, xᵥ ≠ 0; × 100 para %)\n"
+        "Cuando no se conoce xᵥ, en un método iterativo se usa el error aproximado\n"
+        "   εₐ = |xᵣ,ₖ − xᵣ,ₖ₋₁| / |xᵣ,ₖ|",
+        "Métodos Numéricos: Errores numéricos (error absoluto y relativo) y tabla de bisección.",
+    ),
+    (
+        "Propagación del error (aproximación diferencial)",
+        "Si x se conoce con un error Δx, el error de y = f(x) es aproximadamente\n"
+        "   Δy ≈ |f'(x)|·Δx\n"
+        "Es una aproximación de primer orden (recta tangente): la diferencia con "
+        "el Δy real es del orden de (Δx)², así que mejora al disminuir Δx.",
+        "Métodos Numéricos: Errores numéricos, propagación del error.",
+    ),
+    (
+        "Notación posicional y cambio de base",
+        "Un número en base b se escribe con dígitos d y vale\n"
+        "   N = Σ dᵢ·bⁱ    (i positivo a la izquierda del punto, negativo a la derecha)\n"
+        "De base 2 a base 10 se suman las potencias de 2 de los dígitos 1. De "
+        "base 10 a base 2 se divide entre 2 la parte entera y se multiplica por 2 "
+        "la fraccionaria.",
+        "Métodos Numéricos: Notación posicional (base 10 y base 2).",
+    ),
+    (
+        "Representación en punto flotante y épsilon de máquina",
+        "En doble precisión (IEEE 754) un número tiene 53 bits de mantisa. El "
+        "épsilon de máquina es la distancia entre 1.0 y el siguiente número "
+        "representable:\n"
+        "   eps = 2⁻⁵² ≈ 2.22 × 10⁻¹⁶\n"
+        "Por eso 0.1 + 0.2 != 0.3: se comparan con una tolerancia, "
+        "abs(a − b) ≤ tol, nunca con ==.",
+        "Métodos Numéricos: Errores numéricos, punto flotante.",
+    ),
+    (
+        "Tipos de error numérico",
+        "   Inherente      viene de los datos de entrada.\n"
+        "   Redondeo       se guarda un número con menos cifras de las que tiene.\n"
+        "   Truncamiento   se corta un proceso infinito (serie, iteración).\n"
+        "   Overflow       resultado mayor que el máximo representable.\n"
+        "   Underflow      resultado menor que el mínimo representable.\n"
+        "   Modelo         el modelo matemático no describe bien el problema.",
+        "Métodos Numéricos: Errores numéricos, tipos de error.",
     ),
 ]

@@ -5,6 +5,10 @@ matrices dibujadas, respuesta destacada arriba, índice lateral, búsqueda (Ctrl
 zoom (botones o Ctrl+rueda), ajuste de línea y barras de desplazamiento horizontal y
 vertical. Se puede copiar y guardar (texto o PDF). Es una ventana propia, con su
 botón en la barra de tareas; se cierra junto con la calculadora (ver cerrar_todas).
+Unidad: Proyecto Integrador (interfaz gráfica).
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
 """
 import re
 
@@ -21,8 +25,6 @@ from qt.componentes import BotonAnimado, aparecer, mostrar_aviso
 from qt.exportar import escribir_pdf
 from qt.imagen import imagen_de_html, imagen_de_texto
 
-# Referencias a las ventanas abiertas: evitan que Python las recolecte y
-# permiten cerrarlas todas al salir de la calculadora.
 _ABIERTAS = []
 
 _TITULO_SECCION = re.compile(r"^--- (.+) ---$")
@@ -32,9 +34,9 @@ _PROPIEDAD = re.compile(r"^PROPIEDAD(?: \d+)?:\s+(.+)$")
 _RESULTADOS = re.compile(
     r"^\s*(Resultado final|Comprobación\s+(?:de|A)|Matriz aumentada inicial|Matriz [LU] |"
     r"Producto L|Regla de Cramer|Solución  x)")
-# Líneas que se repiten muchas veces: en el índice se agrupan en una sola entrada
 _GRUPOS = (
     (re.compile(r"^\s*Paso \d+:"), "Pasos"),
+    (re.compile(r"^\s*Iteración \d+:"), "Iteraciones"),
     (re.compile(r"^\s*── Cofactor"), "Cofactores"),
     (re.compile(r"^\s*── Variable"), "Variables"),
     (re.compile(r"^--- Pivote "), "Pivotes"),
@@ -44,7 +46,7 @@ _GRUPOS = (
 def _legible(titulo):
     """«5. SOLUCIÓN» → «5. Solución» (solo si todo está en mayúsculas y no lleva fórmulas)."""
     if not titulo.isupper() or any(c in titulo for c in "=·()"):
-        return titulo                          # con fórmulas no se tocan las mayúsculas
+        return titulo
     return re.sub(r"[^\W\d_]", lambda m: m.group(0).upper(), titulo.lower(), count=1)
 
 
@@ -60,6 +62,7 @@ class _Lector(QTextEdit):
     zoom = Signal(int)
 
     def wheelEvent(self, e):
+        """Con Ctrl, la rueda emite el cambio de tamaño de letra (+1 o −1); sin Ctrl desplaza el texto."""
         if e.modifiers() & Qt.ControlModifier:
             self.zoom.emit(1 if e.angleDelta().y() > 0 else -1)
             e.accept()
@@ -69,9 +72,10 @@ class _Lector(QTextEdit):
 
 class VisorTexto(QWidget):
 
+    """Ventana que muestra un informe con colores, índice lateral, búsqueda y exportación."""
     def __init__(self, titulo, texto, nombre_base="informe", cuerpo_pdf=None,
                  resumen=None):
-        # Sin padre: ventana de primer nivel con su propio botón en la barra de tareas
+        """Crea la ventana: tarjeta de respuesta, índice, lector, búsqueda y botones."""
         super().__init__(None)
         self.setWindowTitle(titulo)
         self.setAttribute(Qt.WA_DeleteOnClose)
@@ -84,15 +88,15 @@ class VisorTexto(QWidget):
         self._resumen = resumen
         self._tam = 13
         self._ajustar = False
-        self._entradas = []              # (nombre, número de bloque) del índice
-        self._posiciones = []            # posición vertical de cada entrada
+        self._entradas = []
+        self._posiciones = []
 
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(16, 14, 16, 16)
         raiz.setSpacing(10)
 
         barra = QHBoxLayout()
-        barra.addStretch(1)       # el título ya está en la barra de la ventana
+        barra.addStretch(1)
         self.btn_indice = BotonAnimado("Índice", "suave", pequeno=True)
         self.btn_indice.setToolTip("Mostrar u ocultar el índice de secciones")
         self.btn_indice.clicked.connect(self._alternar_indice)
@@ -128,7 +132,6 @@ class VisorTexto(QWidget):
         barra.addWidget(cerrar)
         raiz.addLayout(barra)
 
-        # Barra de búsqueda (oculta hasta Ctrl+F)
         self.caja_busqueda = QFrame()
         fila = QHBoxLayout(self.caja_busqueda)
         fila.setContentsMargins(0, 0, 0, 0)
@@ -151,12 +154,10 @@ class VisorTexto(QWidget):
         self.caja_busqueda.hide()
         raiz.addWidget(self.caja_busqueda)
 
-        # Respuesta destacada
         self.tarjeta = QFrame()
         self.tarjeta.hide()
         raiz.addWidget(self.tarjeta)
 
-        # Índice + lectura
         cuerpo = QHBoxLayout()
         cuerpo.setSpacing(10)
         self.indice = QListWidget()
@@ -192,7 +193,6 @@ class VisorTexto(QWidget):
         QShortcut(QKeySequence("Ctrl+S"), self, activated=self._guardar_texto)
         QShortcut(QKeySequence("Ctrl+P"), self, activated=self._guardar_pdf)
 
-    # ── Contenido ────────────────────────────────────────────
 
     def _html(self):
         """HTML del informe con la paleta del tema, al tamaño y ajuste actuales."""
@@ -225,7 +225,7 @@ class VisorTexto(QWidget):
         """
         doc = self.edit.document()
         entradas = [["Inicio", 0]]
-        grupos = {}                       # nombre → [entrada, cantidad]
+        grupos = {}
         bloque = doc.begin()
         while bloque.isValid():
             crudo = bloque.text()
@@ -260,7 +260,7 @@ class VisorTexto(QWidget):
     @staticmethod
     def _nombre_de_entrada(crudo, t):
         """Nombre que lleva la línea en el índice, o None si no es un título."""
-        t = re.sub(r"\s{2,}", " ", t)              # los dobles espacios del texto plano
+        t = re.sub(r"\s{2,}", " ", t)
         m = _TITULO_SECCION.match(t) or _TITULO_BLOQUE.match(t)
         if m:
             return _legible(m.group(1).split(" (")[0])
@@ -277,10 +277,11 @@ class VisorTexto(QWidget):
         if _RESULTADOS.match(crudo):
             return t.rstrip(":= ").strip()
         if not crudo[:1].isspace() and t.endswith("=") and len(t) < 40:
-            return t.rstrip("= ").strip()         # «A⁻¹ (Gauss-Jordan) =», «x =», …
+            return t.rstrip("= ").strip()
         return None
 
     def _medir_entradas(self):
+        """Calcula la posición vertical de cada entrada del índice en el documento."""
         doc = self.edit.document()
         capa = doc.documentLayout()
         self._posiciones = []
@@ -290,10 +291,12 @@ class VisorTexto(QWidget):
         self._marcar_entrada_activa()
 
     def _ir_a_entrada(self, fila):
+        """Desplaza el texto hasta la entrada del índice indicada."""
         if 0 <= fila < len(self._posiciones):
             self.edit.verticalScrollBar().setValue(max(0, self._posiciones[fila] - 6))
 
     def _marcar_entrada_activa(self, *_):
+        """Resalta en el índice la sección que se está leyendo."""
         if not self._posiciones:
             return
         y = self.edit.verticalScrollBar().value() + 40
@@ -305,9 +308,9 @@ class VisorTexto(QWidget):
         self.indice.setCurrentRow(activa)
         self.indice.blockSignals(False)
 
-    # ── Respuesta destacada ──────────────────────────────────
 
     def _pintar_tarjeta(self):
+        """Muestra la tarjeta de respuesta con su estado e insignia."""
         r = self._resumen
         if not r:
             return
@@ -338,17 +341,19 @@ class VisorTexto(QWidget):
             lay.addWidget(ins, 0, Qt.AlignVCenter)
         self.tarjeta.show()
 
-    # ── Índice, tamaño y ajuste ──────────────────────────────
 
     def _alternar_indice(self):
+        """Muestra u oculta el índice lateral."""
         self.indice.setVisible(not self.indice.isVisible())
 
     def _alternar_ajuste(self):
+        """Alterna entre líneas partidas al ancho y líneas sin partir."""
         self._ajustar = not self._ajustar
         self.btn_ajuste.setText("Sin partir" if self._ajustar else "Líneas")
         self._mostrar()
 
     def _zoom(self, d):
+        """Cambia el tamaño de letra en d puntos entre 8 y 32."""
         nuevo = max(8, min(32, self._tam + d))
         if nuevo != self._tam:
             self._tam = nuevo
@@ -356,7 +361,7 @@ class VisorTexto(QWidget):
 
     def _ajustar_al_ancho(self):
         """Busca el mayor tamaño de letra con el que no hace falta barra horizontal."""
-        if self._ajustar:                       # con líneas partidas ya cabe siempre
+        if self._ajustar:
             self._alternar_ajuste()
         util = self.edit.viewport().width() - 30
         for _ in range(3):
@@ -370,20 +375,22 @@ class VisorTexto(QWidget):
             self._mostrar()
         mostrar_aviso(self, "Tamaño de letra: {} pt".format(self._tam))
 
-    # ── Búsqueda ─────────────────────────────────────────────
 
     def _abrir_busqueda(self):
+        """Muestra la caja de búsqueda y le da el foco."""
         self.caja_busqueda.show()
         self.ed_buscar.setFocus()
         self.ed_buscar.selectAll()
 
     def _cerrar_busqueda(self):
+        """Oculta la caja de búsqueda y quita lo resaltado."""
         self.caja_busqueda.hide()
         self.edit.setExtraSelections([])
         self.lbl_cuenta.setText("")
         self.edit.setFocus()
 
     def _escape(self):
+        """Escape cierra primero la búsqueda y después la ventana."""
         if self.caja_busqueda.isVisible():
             self._cerrar_busqueda()
         else:
@@ -420,7 +427,7 @@ class VisorTexto(QWidget):
             opciones = (QTextDocument.FindBackward if sentido < 0
                         else QTextDocument.FindFlag(0))
             hallado = doc.find(texto, self.edit.textCursor(), opciones)
-            if hallado.isNull():                 # da la vuelta al llegar al final
+            if hallado.isNull():
                 borde = QTextCursor(doc)
                 borde.movePosition(QTextCursor.End if sentido < 0 else QTextCursor.Start)
                 hallado = doc.find(texto, borde, opciones)
@@ -431,9 +438,9 @@ class VisorTexto(QWidget):
                              if e.cursor.selectionStart() < hallado.selectionStart())
             self.lbl_cuenta.setText("{} de {}".format(numero, len(seleccion)))
 
-    # ── Ventana ──────────────────────────────────────────────
 
     def showEvent(self, e):
+        """Hace aparecer el texto con un fundido al mostrarse."""
         super().showEvent(e)
         aparecer(self.edit, 300)
         if not getattr(self, "_ya_aparecio", False):
@@ -449,17 +456,19 @@ class VisorTexto(QWidget):
             self._anim_ventana = anim
 
     def closeEvent(self, e):
+        """Quita la ventana de la lista de ventanas abiertas."""
         if self in _ABIERTAS:
             _ABIERTAS.remove(self)
         super().closeEvent(e)
 
-    # ── Copiar y guardar ─────────────────────────────────────
 
     def _copiar(self):
+        """Copia el texto del informe al portapapeles."""
         QApplication.clipboard().setText(self._texto)
         mostrar_aviso(self, "Copiado al portapapeles")
 
     def _copiar_imagen(self):
+        """Copia el informe al portapapeles como imagen con la paleta de impresión."""
         paleta = T.paleta_de_imagen()
         if self._cuerpo_pdf is not None:
             imagen = imagen_de_html(self._cuerpo_pdf(paleta), paleta)
@@ -469,6 +478,7 @@ class VisorTexto(QWidget):
         mostrar_aviso(self, "Copiado como imagen")
 
     def _guardar_texto(self):
+        """Pide una ruta y guarda el informe como texto plano."""
         ruta, _ = QFileDialog.getSaveFileName(
             self, "Guardar informe", self._nombre_base + ".txt",
             "Texto (*.txt);;Todos los archivos (*.*)")
@@ -482,6 +492,7 @@ class VisorTexto(QWidget):
             mostrar_aviso(self, "No se pudo guardar: {}".format(ex), "error")
 
     def _guardar_pdf(self):
+        """Pide una ruta y guarda el informe como PDF."""
         ruta, _ = QFileDialog.getSaveFileName(
             self, "Guardar como PDF", self._nombre_base + ".pdf", "PDF (*.pdf)")
         if not ruta:
@@ -499,18 +510,14 @@ class VisorTexto(QWidget):
 
 
 def abrir_visor(titulo, texto, nombre_base="informe", cuerpo_pdf=None, resumen=None):
-    """
-    Abre el resultado en una ventana propia, junto a la última ventana activa.
-    `cuerpo_pdf` (opcional) devuelve el HTML del informe; si falta, se usa el texto.
-    `resumen` (opcional) es la respuesta destacada: dict con tipo, respuesta,
-    estado ("ok", "error" o nada) e insignia.
+    """Abre el resultado en una ventana propia, junto a la última ventana activa.
+    'cuerpo_pdf' devuelve el HTML del informe (si falta se usa el texto); 'resumen' es la respuesta destacada.
     """
     if not texto or not texto.strip():
         return None
     v = VisorTexto(titulo, texto, nombre_base, cuerpo_pdf, resumen)
     activa = QApplication.activeWindow()
     if activa is not None:
-        # Cada ventana nueva se desplaza un poco para que no queden idénticas
         v.move(activa.x() + 40 + 28 * len(_ABIERTAS),
                activa.y() + 40 + 28 * len(_ABIERTAS))
     _ABIERTAS.append(v)

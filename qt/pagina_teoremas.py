@@ -2,6 +2,10 @@
 """
 Catálogo de teoremas y criterios del curso: filtros por categoría, buscador que
 resalta lo encontrado y tarjetas que se despliegan con animación.
+Unidad: Proyecto Integrador (interfaz gráfica).
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
 """
 import html
 import re
@@ -19,7 +23,7 @@ from qt import tema as T
 from qt.componentes import BotonAnimado, entrada_suave, mezclar, mostrar_aviso
 from qt.pagina_base import PaginaBase
 
-_MAXIMO = 16777215                       # QWIDGETSIZE_MAX
+_MAXIMO = 16777215
 
 
 def _a_html(texto):
@@ -46,6 +50,7 @@ class Filtro(QPushButton):
     """Botón en forma de píldora para filtrar por categoría."""
 
     def __init__(self, texto):
+        """Crea el botón de filtro por categoría con su texto."""
         super().__init__(texto)
         self._texto = texto
         self._sel = 0.0
@@ -64,30 +69,36 @@ class Filtro(QPushButton):
         self.toggled.connect(self._cambio)
 
     def poner_texto(self, texto):
+        """Cambia el texto del filtro (con el conteo) y recalcula su tamaño."""
         self._texto = texto
         self.updateGeometry()
         self.update()
 
     def sizeHint(self):
+        """Tamaño sugerido: el ancho del texto más márgenes."""
         f = QFont(T.FUENTE, 9)
         f.setWeight(QFont.DemiBold)
         return QSize(QFontMetrics(f).horizontalAdvance(self._texto) + 34, 32)
 
     def _poner_sel(self, v):
+        """Guarda el avance de la selección y repinta."""
         self._sel = v
         self.update()
 
     def _poner_hov(self, v):
+        """Guarda el avance del resalte y repinta."""
         self._hov = v
         self.update()
 
     def _cambio(self, marcado):
+        """Anima la selección al marcarse o desmarcarse el filtro."""
         self._a_sel.stop()
         self._a_sel.setStartValue(self._sel)
         self._a_sel.setEndValue(1.0 if marcado else 0.0)
         self._a_sel.start()
 
     def enterEvent(self, e):
+        """Anima el resalte cuando el ratón entra."""
         self._a_hov.stop()
         self._a_hov.setStartValue(self._hov)
         self._a_hov.setEndValue(1.0)
@@ -95,6 +106,7 @@ class Filtro(QPushButton):
         super().enterEvent(e)
 
     def leaveEvent(self, e):
+        """Quita el resalte cuando el ratón sale."""
         self._a_hov.stop()
         self._a_hov.setStartValue(self._hov)
         self._a_hov.setEndValue(0.0)
@@ -102,6 +114,7 @@ class Filtro(QPushButton):
         super().leaveEvent(e)
 
     def paintEvent(self, _):
+        """Dibuja el filtro como una pastilla con su estado de selección."""
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         r = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
@@ -121,16 +134,19 @@ class Flecha(QWidget):
     """Chevron que gira 90° al abrir la tarjeta."""
 
     def __init__(self):
+        """Crea la flecha de 20 × 20 px que indica si la tarjeta está abierta."""
         super().__init__()
         self.setFixedSize(20, 20)
         self._giro = 0.0
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
 
     def poner(self, v):
+        """Fija el ángulo de giro de la flecha y repinta."""
         self._giro = v
         self.update()
 
     def paintEvent(self, _):
+        """Dibuja la flecha girada según su ángulo."""
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         p.translate(self.width() / 2, self.height() / 2)
@@ -143,10 +159,11 @@ class Flecha(QWidget):
 class TarjetaTeorema(QFrame):
     """Teorema plegable: título y vista previa; al pulsar se despliega el enunciado."""
 
-    _moviendo = 0              # cuántas tarjetas se están moviendo ahora mismo
-    _UMBRAL_LENTO = 0.032      # si los cuadros tardan más (s), el movimiento termina de golpe
+    _moviendo = 0
+    _UMBRAL_LENTO = 0.032
 
     def __init__(self, n, nombre, enunciado, uso, ventana):
+        """Crea la tarjeta plegable con nombre, vista previa, enunciado y botón de uso."""
         super().__init__()
         self.setObjectName("tarjeta")
         self.setMouseTracking(True)
@@ -155,16 +172,13 @@ class TarjetaTeorema(QFrame):
         self._nombre, self._enunciado, self._uso = nombre, enunciado, uso
         self._ventana = ventana
         self._abierta = False
-        self._auto = False                      # la abrió una búsqueda
+        self._auto = False
         self._hover = 0.0
         self._acento = 0.0
         self._animando = False
         self._contando = False
         self._a_alto = None
 
-        # El contenido va en un panel interior de tamaño fijo: la tarjeta solo lo
-        # «recorta» al achicarse o crecer, así el texto no se reacomoda ni se aprieta
-        # mientras se mueve.
         self.interior = QWidget(self)
         self.interior.setStyleSheet("background: transparent;")
         self._alto_interior = 0
@@ -244,13 +258,17 @@ class TarjetaTeorema(QFrame):
 
     @staticmethod
     def _destino(uso):
+        """Devuelve (sección, texto del botón) a la que lleva el campo «dónde se usa»."""
         if uso.startswith("Solucionador"):
             return "solucionador", "Solucionador"
         if uso.startswith("Operaciones"):
             return "matrices", "Operaciones"
+        if uso.startswith("Factorización LU"):
+            return "lu", "Factorización LU"
+        if uso.startswith("Métodos Numéricos"):
+            return "numerico", "Métodos Numéricos"
         return None, None
 
-    # ── Contenido ──
 
     def resaltar(self, consulta):
         """Muestra los textos con las coincidencias marcadas (texto plano si no hay búsqueda)."""
@@ -266,19 +284,22 @@ class TarjetaTeorema(QFrame):
         self._fijar_altura()
 
     def _copiar(self):
+        """Copia el nombre y el enunciado al portapapeles."""
         QApplication.clipboard().setText("{}\n{}".format(self._nombre, self._enunciado))
         mostrar_aviso(self.window(), "Teorema copiado")
 
-    # ── Despliegue ──
 
     def abierta(self):
+        """Indica si la tarjeta está desplegada."""
         return self._abierta
 
     def _ancho_util(self):
+        """Ancho disponible para el contenido, sin márgenes (mínimo 240 px)."""
         m = self._raiz.contentsMargins()
         return max(240, self.width() - m.left() - m.right())
 
     def _alto_cuerpo(self):
+        """Alto que necesita el cuerpo con el ancho actual."""
         alto = self.cuerpo.layout().totalHeightForWidth(self._ancho_util())
         return alto if alto > 0 else self.cuerpo.sizeHint().height()
 
@@ -292,6 +313,7 @@ class TarjetaTeorema(QFrame):
         return m.top() + m.bottom() + cab + resto
 
     def _poner_interior(self, alto):
+        """Fija la geometría del interior durante la animación."""
         self._alto_interior = alto
         self.interior.setGeometry(0, 0, self.width(), alto)
 
@@ -311,6 +333,7 @@ class TarjetaTeorema(QFrame):
             self._poner_interior(alto)
 
     def resizeEvent(self, e):
+        """Mantiene el interior con el ancho de la tarjeta mientras anima."""
         super().resizeEvent(e)
         if self._animando:
             self.interior.setGeometry(0, 0, self.width(), self._alto_interior)
@@ -318,6 +341,7 @@ class TarjetaTeorema(QFrame):
             self._fijar_altura()
 
     def fijar(self, abierta, animar=True, auto=False):
+        """Abre o cierra la tarjeta con animación; 'auto' indica que no fue un clic del usuario."""
         if abierta == self._abierta:
             return
         visible = self.isVisible()
@@ -331,13 +355,12 @@ class TarjetaTeorema(QFrame):
         desde = self.height() if visible else (h_cerrada if abierta else h_abierta)
         hasta = h_abierta if abierta else h_cerrada
 
-        # Mientras se mueve, el contenido es siempre el de la tarjeta desplegada y con su
-        # tamaño completo: no se reacomoda nada, solo se recorta por abajo.
         self._animando = True
         self._mostrar_contenido(True)
         self._poner_interior(max(h_abierta, h_cerrada))
 
         def fin():
+            """Termina la animación y deja la altura final."""
             self._animando = False
             self._mostrar_contenido(self._abierta)
             self._fijar_altura()
@@ -360,16 +383,17 @@ class TarjetaTeorema(QFrame):
         marcas = []
 
         def paso(v):
+            """Un cuadro de la animación: fija la altura y mide la fluidez."""
             self.setFixedHeight(int(v))
             marcas.append(time.perf_counter())
-            # Si los cuadros salen lentos (equipo justo), mejor terminar ya que arrastrar el tirón
             if len(marcas) == 5 and (marcas[4] - marcas[1]) / 3 > TarjetaTeorema._UMBRAL_LENTO:
                 QTimer.singleShot(0, lambda: anim.setCurrentTime(anim.duration()))
 
         def terminar():
+            """Cierra la animación y devuelve el resaltado bajo el cursor."""
             self._soltar_conteo()
             fin()
-            if not TarjetaTeorema._moviendo:        # vuelve el resaltado bajo el cursor
+            if not TarjetaTeorema._moviendo:
                 self._hover_a(1.0 if self.underMouse() else 0.0)
 
         anim.valueChanged.connect(paso)
@@ -387,39 +411,43 @@ class TarjetaTeorema(QFrame):
             TarjetaTeorema._moviendo = max(0, TarjetaTeorema._moviendo - 1)
 
     def alternar(self):
+        """Abre la tarjeta si está cerrada y la cierra si está abierta."""
         self.fijar(not self._abierta, auto=False)
 
     def _poner_giro(self, v):
+        """Fija el giro de la flecha y el acento de la tarjeta."""
         self.flecha.poner(v)
         self._acento = max(v, self._hover * 0.6)
         self.update()
 
     def _poner_hover(self, v):
+        """Guarda el avance del resalte y el acento de la tarjeta."""
         self._hover = v
         self._acento = max(self.flecha._giro, v * 0.6)
         self.update()
 
-    # ── Eventos ──
 
     def _hover_a(self, destino):
+        """Anima el resalte hasta el valor dado."""
         self._a_hov.stop()
         self._a_hov.setStartValue(self._hover)
         self._a_hov.setEndValue(destino)
         self._a_hov.start()
 
     def enterEvent(self, e):
-        # Al deslizarse las tarjetas bajo el cursor llegan muchos eventos de entrada y
-        # salida: mientras se mueven no se animan los resaltados (menos repintados).
+        """Resalta la tarjeta, salvo mientras las tarjetas se desplazan bajo el cursor."""
         if not TarjetaTeorema._moviendo:
             self._hover_a(1.0)
         super().enterEvent(e)
 
     def leaveEvent(self, e):
+        """Quita el resalte, salvo mientras las tarjetas se desplazan bajo el cursor."""
         if not TarjetaTeorema._moviendo:
             self._hover_a(0.0)
         super().leaveEvent(e)
 
     def mousePressEvent(self, e):
+        """Abre o cierra la tarjeta al hacer clic en su cabecera o su vista previa."""
         limite = self.cabecera.geometry().bottom() + (
             self.lbl_prev.geometry().height() if self.lbl_prev.isVisible() else 0) + 6
         if e.button() == Qt.LeftButton and e.position().y() <= limite:
@@ -427,6 +455,7 @@ class TarjetaTeorema(QFrame):
         super().mousePressEvent(e)
 
     def paintEvent(self, e):
+        """Pinta la tarjeta y su franja de acento cuando hay resalte."""
         super().paintEvent(e)
         if self._hover > 0.01 or self._acento > 0.01:
             p = QPainter(self)
@@ -446,16 +475,19 @@ class TarjetaTeorema(QFrame):
 
 class PaginaTeoremas(PaginaBase):
 
+    """Sección del catálogo de teoremas con filtros por categoría y buscador."""
     CATEGORIAS = (
         ("todos", "Todos"),
         ("solucionador", "Solucionador"),
         ("operaciones", "Operaciones"),
         ("propiedades", "Propiedades"),
+        ("numericos", "Métodos numéricos"),
     )
 
     def __init__(self, ventana):
+        """Construye el buscador, los filtros y una tarjeta por cada teorema."""
         super().__init__(ventana, "Teoremas y criterios",
-                         "Catálogo de teoremas del curso (Sesiones 1–11)")
+                         "Catálogo de teoremas del curso (Sesiones 1–11 y Programa 7)")
         self._categoria = "todos"
         self._consulta = ""
 
@@ -467,7 +499,6 @@ class PaginaTeoremas(PaginaBase):
         self.raiz.addWidget(self.buscador)
         self.atajo("Ctrl+F", lambda: (self.buscador.setFocus(), self.buscador.selectAll()))
 
-        # Filtros por categoría y control de despliegue
         fila = QHBoxLayout()
         fila.setSpacing(8)
         self.grupo = QButtonGroup(self)
@@ -495,12 +526,9 @@ class PaginaTeoremas(PaginaBase):
         self.lista.setContentsMargins(0, 0, 8, 0)
         self.lista.setSpacing(10)
 
-        self.tarjetas = []                       # (tarjeta, texto en minúsculas, categorías)
-        for i, (nombre, enunciado, uso) in enumerate(TEOREMAS, start=1):
-            t = TarjetaTeorema(i, nombre, enunciado, uso, ventana)
-            self.lista.addWidget(t)
-            self.tarjetas.append((t, "{} {} {}".format(nombre, enunciado, uso).lower(),
-                                  self._categorias(nombre, uso)))
+        self.tarjetas = []
+        self._pendientes = list(enumerate(TEOREMAS, start=1))
+        self._ventana_principal = ventana
 
         self.lbl_vacio = QLabel("")
         self.lbl_vacio.setAlignment(Qt.AlignCenter)
@@ -516,33 +544,55 @@ class PaginaTeoremas(PaginaBase):
         area.setWidget(cont)
         self.raiz.addWidget(area, 1)
 
+        categorias = [self._categorias(nombre, uso) for nombre, _, uso in TEOREMAS]
         for clave, f in self.filtros.items():
-            n = sum(1 for _, _, cats in self.tarjetas if clave in cats)
+            n = sum(1 for cats in categorias if clave in cats)
             f.poner_texto("{}  ·  {}".format(dict(self.CATEGORIAS)[clave], n))
+        self._construir_tarjetas(8)
+
+    def _construir_tarjetas(self, cantidad):
+        """Crea hasta 'cantidad' tarjetas y deja el resto para después, en tandas pequeñas.
+        Así abrir la sección no congela la ventana mientras se construyen las 30 tarjetas.
+        """
+        for _ in range(cantidad):
+            if not self._pendientes:
+                break
+            i, (nombre, enunciado, uso) = self._pendientes.pop(0)
+            t = TarjetaTeorema(i, nombre, enunciado, uso, self._ventana_principal)
+            self.lista.insertWidget(self.lista.count() - 2, t)
+            self.tarjetas.append((t, "{} {} {}".format(nombre, enunciado, uso).lower(),
+                                  self._categorias(nombre, uso)))
         self._aplicar(animar=False)
+        if self._pendientes:
+            QTimer.singleShot(0, lambda: self._construir_tarjetas(3))
 
     @staticmethod
     def _categorias(nombre, uso):
+        """Categorías (secciones) a las que pertenece un teorema según dónde se usa."""
         cats = {"todos"}
         if uso.startswith("Solucionador"):
             cats.add("solucionador")
-        if uso.startswith("Operaciones"):
+        if uso.startswith(("Operaciones", "Factorización LU")):
             cats.add("operaciones")
+        if uso.startswith("Métodos Numéricos"):
+            cats.add("numericos")
         if nombre.lower().startswith("propiedades"):
             cats.add("propiedades")
         return cats
 
-    # ── Filtros y búsqueda ──
 
     def _al_filtrar(self, clave):
+        """Cambia la categoría elegida y vuelve a filtrar."""
         self._categoria = clave
         self._aplicar()
 
     def _al_buscar(self, texto):
+        """Guarda el texto buscado y vuelve a filtrar."""
         self._consulta = texto.strip().lower()
         self._aplicar()
 
     def _aplicar(self, animar=True):
+        """Muestra solo las tarjetas de la categoría y la búsqueda actuales, resaltando lo hallado."""
         q = self._consulta
         visibles, nuevas = 0, []
         for t, clave, cats in self.tarjetas:
@@ -557,7 +607,7 @@ class PaginaTeoremas(PaginaBase):
                     t.fijar(True, animar, auto=True)
                 elif t._auto:
                     t.fijar(False, animar)
-        total = len(self.tarjetas)
+        total = len(TEOREMAS)
         if self._categoria == "todos" and not q:
             self.lbl_cuenta.setText("{} teoremas".format(total))
         else:
@@ -572,44 +622,48 @@ class PaginaTeoremas(PaginaBase):
         self._actualizar_boton()
 
     def _visibles(self):
+        """Lista de tarjetas visibles."""
         return [t for t, _, _ in self.tarjetas if t.isVisible()]
 
     def _actualizar_boton(self):
+        """Rotula el botón como «Expandir todo» o «Contraer todo» según el estado."""
         visibles = self._visibles()
         todo_abierto = bool(visibles) and all(t.abierta() for t in visibles)
         self.btn_desplegar.setText("Contraer todo" if todo_abierto else "Expandir todo")
 
     def _desplegar_todo(self):
+        """Abre o cierra todas las tarjetas visibles manteniendo la posición de lectura."""
         visibles = self._visibles()
         abrir = not (visibles and all(t.abierta() for t in visibles))
         area = self.findChild(QScrollArea)
         barra, vista = area.verticalScrollBar(), area.viewport()
-        valor_antes = barra.value()                  # referencia: Qt lo recorta al achicarse la lista
+        valor_antes = barra.value()
         compensar = 0
-        # Primero se mide dónde está cada una (en cuanto cambia una, las demás se corren)
         posiciones = [(t, t.mapTo(vista, QPoint(0, 0)).y()) for t in visibles]
         for t, y in posiciones:
             if 0 <= y < vista.height():
-                t.fijar(abrir)                       # las que se ven enteras desde arriba, animadas
+                t.fijar(abrir)
             else:
                 antes = t.height()
-                t.fijar(abrir, animar=False)         # las demás cambian al instante
-                if y < 0:                            # por encima del borde: empujarían lo que se ve
-                    compensar += t._altura(abrir) - antes   # la altura nueva aún no se aplicó
+                t.fijar(abrir, animar=False)
+                if y < 0:
+                    compensar += t._altura(abrir) - antes
 
         def mantener_vista():
+            """Compensa el desplazamiento para que lo leído no se mueva."""
             try:
                 barra.setValue(valor_antes + compensar)
             except RuntimeError:
                 pass
 
         if compensar:
-            area.widget().layout().activate()        # que la lista ya tenga su nuevo largo
+            area.widget().layout().activate()
             mantener_vista()
             QTimer.singleShot(0, mantener_vista)
         self.btn_desplegar.setText("Contraer todo" if abrir else "Expandir todo")
 
     def showEvent(self, e):
+        """Hace entrar las primeras tarjetas de forma escalonada."""
         super().showEvent(e)
         for i, t in enumerate(self._visibles()[:10]):
             entrada_suave(t, 45 * i, 420)

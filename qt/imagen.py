@@ -3,6 +3,10 @@
 Imágenes para pegar en Word o PowerPoint: una matriz limpia entre corchetes y
 los informes completos. Siguen el tema de la calculadora: fondo oscuro con letra
 clara en el tema oscuro, y blanco con letra oscura en el claro.
+Unidad: Proyecto Integrador (interfaz gráfica).
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
 """
 from math import sqrt
 
@@ -13,7 +17,6 @@ from PySide6.QtGui import (QColor, QFont, QFontMetrics, QImage, QPainter, QPen,
 from qt import render
 from qt import tema as T
 
-# Tope de píxeles de una imagen: un informe muy largo no debe agotar la memoria
 MAXIMO_DE_PIXELES = 24_000_000
 
 
@@ -36,8 +39,8 @@ def imagen_de_matriz(textos, aumentada=False, paleta=None, escala=2):
 
     ancho_columna = [max(medidas.horizontalAdvance(textos[i][j]) for i in range(filas))
                      for j in range(columnas)]
-    separacion = round(34 * escala)          # hueco entre columnas
-    margen = round(26 * escala)              # hueco entre el corchete y los números
+    separacion = round(34 * escala)
+    margen = round(26 * escala)
     alto_fila = medidas.height() + round(14 * escala)
     barra = round(14 * escala) if aumentada else 0
 
@@ -68,7 +71,6 @@ def imagen_de_matriz(textos, aumentada=False, paleta=None, escala=2):
                        ancho_columna[j], alto_fila, Qt.AlignCenter, textos[i][j])
         x += ancho_columna[j] + separacion
 
-    # Corchetes izquierdo y derecho
     p.setPen(QPen(tinta, max(2.0, 2.4 * escala), Qt.SolidLine, Qt.FlatCap, Qt.MiterJoin))
     y0, y1, brazo = round(5 * escala), alto - round(5 * escala), round(12 * escala)
     izq, der = round(6 * escala), ancho - round(6 * escala)

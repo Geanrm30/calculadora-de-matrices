@@ -2,7 +2,9 @@
 """
 Analiza dependencia e independencia lineal de vectores resolviendo el sistema
 homogéneo A·c = 0 con los vectores como columnas de A; incluye criterios
-por inspección. MTM0120 Álgebra Lineal — Universidad Americana.
+por inspección.
+Unidad: Proyecto Integrador (Sesiones 1-11).
+MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
 """
@@ -11,17 +13,9 @@ from core.fraccion import Fraccion, mcd
 from core.formato import subindice, texto_coeficiente
 
 
-# ---------------------------------------------------------------------------
-# Construccion del sistema homogeneo
-# ---------------------------------------------------------------------------
-
 def sistema_homogeneo(vectores):
-    """
-    Devuelve la matriz aumentada [v1 v2 ... vk | 0] del sistema
-    c1.v1 + ... + ck.vk = 0.
-
-    Cada vector ocupa una COLUMNA y la columna de terminos independientes es
-    de ceros, porque la combinacion debe dar el vector nulo.
+    """Devuelve la matriz aumentada [v1 ... vk | 0] del sistema c1·v1 + ... + ck·vk = 0.
+    Cada vector ocupa una columna; los términos independientes son ceros.
     """
     from core.vector import matriz_de_vectores
 
@@ -34,10 +28,6 @@ def nombre_vector(indice):
     return "v" + subindice(indice + 1)
 
 
-# ---------------------------------------------------------------------------
-# Criterios por inspeccion
-# ---------------------------------------------------------------------------
-
 def _es_vector_cero(v):
     """Indica si todas las componentes del vector son cero."""
     for componente in v:
@@ -47,17 +37,14 @@ def _es_vector_cero(v):
 
 
 def _multiplo(u, v):
-    """
-    Si v = k.u para algun escalar k, devuelve k; si no, devuelve None.
-
-    Se busca el factor en la primera componente no nula de u y luego se
-    comprueba que ese mismo factor sirva para todas las demas.
+    """Si v = k·u para algún escalar k, devuelve k; si no, None.
+    El factor se busca en la primera componente no nula de u y se comprueba en las demás.
     """
     factor = None
     for i in range(len(u)):
         if u[i].es_cero():
             if not v[i].es_cero():
-                return None      # u tiene 0 donde v no: ningun factor sirve
+                return None
             continue
         candidato = v[i] / u[i]
         if factor is None:
@@ -68,24 +55,13 @@ def _multiplo(u, v):
 
 
 def criterios_por_inspeccion(vectores):
-    """
-    Aplica los criterios que resuelven el problema sin eliminar.
-
-    Devuelve una lista de diccionarios con:
-        "texto"      : explicacion del criterio
-        "conclusion" : "dependiente", "independiente" o None si no decide
-
-    Criterios aplicados:
-      1. Un conjunto con mas vectores que componentes (k > n) es dependiente.
-      2. Un conjunto que contiene al vector cero es dependiente.
-      3. Un conjunto de un solo vector es independiente si el vector no es cero.
-      4. Un conjunto de dos vectores es dependiente si uno es multiplo del otro.
+    """Aplica los criterios que deciden sin eliminar (k > n, vector cero, un vector, múltiplo).
+    Devuelve una lista de dicts con 'texto' y 'conclusion' (dependiente, independiente o None).
     """
     hallazgos = []
     k = len(vectores)
     n = len(vectores[0]) if vectores else 0
 
-    # 1. Mas vectores que entradas en cada vector
     if k > n:
         hallazgos.append({
             "conclusion": "dependiente",
@@ -93,7 +69,6 @@ def criterios_por_inspeccion(vectores):
                       "componentes (k > n), asi que es linealmente dependiente.".format(k, n)),
         })
 
-    # 2. Presencia del vector cero
     for indice in range(k):
         if _es_vector_cero(vectores[indice]):
             hallazgos.append({
@@ -103,7 +78,6 @@ def criterios_por_inspeccion(vectores):
             })
             break
 
-    # 3. Conjunto de un solo vector
     if k == 1:
         if _es_vector_cero(vectores[0]):
             hallazgos.append({
@@ -117,7 +91,6 @@ def criterios_por_inspeccion(vectores):
                           "siempre que ese vector no sea el vector cero."),
             })
 
-    # 4. Conjunto de dos vectores: uno multiplo del otro
     if k == 2:
         factor = _multiplo(vectores[0], vectores[1])
         if factor is not None:
@@ -145,10 +118,6 @@ def criterios_por_inspeccion(vectores):
     return hallazgos
 
 
-# ---------------------------------------------------------------------------
-# Relacion de dependencia explicita
-# ---------------------------------------------------------------------------
-
 def _mcm(a, b):
     """Minimo comun multiplo, calculado con el maximo comun divisor."""
     if a == 0 or b == 0:
@@ -157,23 +126,14 @@ def _mcm(a, b):
 
 
 def relacion_de_dependencia(expresiones, libres, n_vars):
-    """
-    Construye una relacion de dependencia concreta a partir de la solucion
-    general del sistema homogeneo.
-
-    Se da valor a UNA variable libre (las demas quedan en cero) y con eso se
-    obtiene un juego de escalares no todos cero. El valor elegido es el
-    minimo comun multiplo de los denominadores que aparecen, para que los
-    escalares salgan enteros siempre que sea posible.
-
-    Devuelve (escalares, indice_libre, valor_asignado) o None si no hay
-    variables libres (el conjunto seria independiente).
+    """Construye una relación de dependencia concreta desde la solución general del sistema homogéneo.
+    Da a una variable libre el mcm de los denominadores y a las demás libres el valor cero.
     """
     if not libres:
         return None
 
-    indice_libre = libres[0]      # posicion de la variable libre en el sistema
-    columna = 1                   # columna 0 = termino independiente
+    indice_libre = libres[0]
+    columna = 1
 
     # Denominador comun de los coeficientes que acompanan a esa variable
     comun = 1
@@ -197,18 +157,8 @@ def relacion_de_dependencia(expresiones, libres, n_vars):
 
 
 def analizar(vectores):
-    """
-    Analisis completo de un conjunto de vectores.
-
-    Resuelve SIEMPRE el sistema homogeneo A.c = 0 propio del conjunto, sin
-    importar de que sistema venga la pregunta: la independencia lineal
-    depende solo de los vectores, nunca del termino independiente b.
-
-    Devuelve un diccionario con:
-        "independiente" : True si la unica solucion es la trivial
-        "libres"        : indices de las variables libres
-        "relacion"      : (escalares, indice_libre, valor) o None
-        "criterios"     : hallazgos por inspeccion
+    """Análisis completo de un conjunto de vectores resolviendo siempre A·c = 0.
+    Devuelve un dict con 'independiente', 'libres', 'relacion', 'criterios' y 'resultado'.
     """
     from solver.resolutor import resolver
 
@@ -232,12 +182,8 @@ def analizar(vectores):
 
 
 def texto_relacion(escalares, nombre=nombre_vector, igual_a="0"):
-    """
-    Escribe la combinacion con sus escalares:
-
-        10·v1 - 5·v2 + 5·v3 = 0
-
-    Los terminos con escalar cero se omiten, salvo que todos lo sean.
+    """Escribe la combinación con sus escalares, por ejemplo 10·v1 - 5·v2 + 5·v3 = 0.
+    Omite los términos con escalar cero, salvo que todos lo sean.
     """
     partes = []
     for k in range(len(escalares)):
@@ -246,7 +192,6 @@ def texto_relacion(escalares, nombre=nombre_vector, igual_a="0"):
             continue
 
         magnitud = -c if c.es_negativo() else c
-        # El coeficiente 1 se omite: se escribe v₂, no 1·v₂.
         factor = texto_coeficiente(magnitud)
         cuerpo = (factor + "·" + nombre(k)) if factor else nombre(k)
 

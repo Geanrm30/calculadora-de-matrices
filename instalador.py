@@ -6,7 +6,10 @@ si no se puede mostrar una ventana, informa por consola.
 
 Este módulo solo usa la biblioteca estándar: se ejecuta ANTES de que exista
 PySide6, así que no puede depender de él.
+Unidad: Proyecto Integrador (interfaz gráfica).
 MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
 """
 
 import importlib
@@ -16,27 +19,24 @@ import subprocess
 import sys
 import threading
 
-PAQUETE = "PySide6-Essentials>=6.6"   # lo que se instala con pip (versión ligera)
-MODULO = "PySide6"                    # lo que se importa
+PAQUETE = "PySide6-Essentials>=6.6"
+MODULO = "PySide6"
 
-# Colores de la ventana de espera (los mismos del tema oscuro del programa).
 FONDO, PANEL, TEXTO, MUTED = "#1E1E2E", "#181825", "#CDD6F4", "#7F849C"
 NARANJA, ROJO, SUPERF = "#FAB387", "#F38BA8", "#313244"
 
 
 def hay_modulo(nombre):
+    """Indica si el módulo 'nombre' se puede importar en este Python."""
     importlib.invalidate_caches()
     return importlib.util.find_spec(nombre) is not None
 
-
-# ─────────────────────────────────────────────────────────────
-# Instalación (sin interfaz): llama a pip y avisa de cada línea
-# ─────────────────────────────────────────────────────────────
 
 class Instalacion:
     """Ejecuta pip paso a paso; `al_linea(texto)` recibe lo que va ocurriendo."""
 
     def __init__(self, modulo, paquete, al_linea):
+        """Guarda el módulo y el paquete pip a instalar y la función que recibe cada línea de salida."""
         self.modulo = modulo
         self.paquete = paquete
         self.al_linea = al_linea
@@ -44,6 +44,7 @@ class Instalacion:
         self._proceso = None
 
     def cancelar(self):
+        """Marca la instalación como cancelada y detiene el proceso pip en curso."""
         self.cancelada = True
         try:
             if self._proceso is not None:
@@ -53,7 +54,7 @@ class Instalacion:
 
     def _pip(self, argumentos):
         """Corre `python -m <argumentos>` mostrando su salida. True si terminó bien."""
-        banderas = getattr(subprocess, "CREATE_NO_WINDOW", 0)   # sin consola extra
+        banderas = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         try:
             self._proceso = subprocess.Popen(
                 [sys.executable, "-m"] + argumentos,
@@ -76,12 +77,10 @@ class Instalacion:
         """Devuelve True si al terminar el módulo ya se puede importar."""
         if hay_modulo(self.modulo):
             return True
-        # Algunas instalaciones de Python no traen pip.
         if not hay_modulo("pip"):
             self.al_linea("Preparando el instalador de paquetes (pip)...")
             self._pip(["ensurepip", "--upgrade"])
         base = ["pip", "install", "--disable-pip-version-check", self.paquete]
-        # Primero la instalación normal; si no hay permisos, solo para el usuario.
         for extra in ([], ["--user"]):
             if self.cancelada:
                 return False
@@ -113,10 +112,6 @@ def _amigable(linea):
     return None
 
 
-# ─────────────────────────────────────────────────────────────
-# Ventana de espera
-# ─────────────────────────────────────────────────────────────
-
 def _con_ventana(modulo, paquete):
     """
     Muestra la ventana de espera. Devuelve True/False según el resultado, o
@@ -126,7 +121,7 @@ def _con_ventana(modulo, paquete):
         import tkinter as tk
         from tkinter import ttk
         raiz = tk.Tk()
-    except Exception:                       # sin tkinter o sin pantalla
+    except Exception:
         return None
 
     raiz.title("Calculadora de Álgebra Lineal")
@@ -174,10 +169,12 @@ def _con_ventana(modulo, paquete):
     resultado = {"ok": False}
 
     def hilo():
+        """Ejecuta la instalación en segundo plano y avisa a la ventana cuando termina."""
         resultado["ok"] = trabajo.ejecutar()
-        cola.put(None)                      # señal de fin
+        cola.put(None)
 
     def fallo():
+        """Muestra en la ventana que la instalación falló y habilita el cierre."""
         barra.stop()
         barra.pack_forget()
         titulo.config(text="No se pudo instalar el componente", fg=ROJO)
@@ -190,6 +187,7 @@ def _con_ventana(modulo, paquete):
         raiz.protocol("WM_DELETE_WINDOW", raiz.destroy)
 
     def revisar():
+        """Vacía la cola de mensajes del hilo hacia la ventana de progreso."""
         try:
             while True:
                 linea = cola.get_nowait()
@@ -208,6 +206,7 @@ def _con_ventana(modulo, paquete):
         raiz.after(100, revisar)
 
     def al_cerrar():
+        """Cancela la instalación y destruye la ventana."""
         trabajo.cancelar()
         raiz.destroy()
 
@@ -217,10 +216,6 @@ def _con_ventana(modulo, paquete):
     raiz.mainloop()
     return resultado["ok"]
 
-
-# ─────────────────────────────────────────────────────────────
-# Alternativa por consola
-# ─────────────────────────────────────────────────────────────
 
 def _decir(texto=""):
     """print que no falla si el programa se abrió sin consola (pythonw)."""
@@ -232,6 +227,7 @@ def _decir(texto=""):
 
 
 def _esperar_tecla():
+    """Pausa la consola hasta que el usuario pulse una tecla (si hay terminal)."""
     try:
         if sys.stdin is not None and sys.stdin.isatty():
             input("\nPulsa Enter para cerrar esta ventana...")
@@ -240,6 +236,7 @@ def _esperar_tecla():
 
 
 def _con_consola(modulo, paquete):
+    """Instala el paquete mostrando el progreso en la consola."""
     _decir("=" * 62)
     _decir("  Calculadora de Álgebra Lineal")
     _decir("=" * 62)
@@ -258,10 +255,6 @@ def _con_consola(modulo, paquete):
     return False
 
 
-# ─────────────────────────────────────────────────────────────
-# Punto de entrada
-# ─────────────────────────────────────────────────────────────
-
 def asegurar_dependencias(modulo=MODULO, paquete=PAQUETE):
     """
     Comprueba que la librería gráfica esté disponible y, si no, la instala
@@ -270,6 +263,6 @@ def asegurar_dependencias(modulo=MODULO, paquete=PAQUETE):
     if hay_modulo(modulo):
         return True
     resultado = _con_ventana(modulo, paquete)
-    if resultado is None:                   # no se pudo abrir una ventana
+    if resultado is None:
         return _con_consola(modulo, paquete)
     return bool(resultado) and hay_modulo(modulo)

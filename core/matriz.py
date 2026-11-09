@@ -2,52 +2,24 @@
 """
 Estructura de la matriz aumentada [A|b] y las tres operaciones elementales
 por filas: intercambio, escalado y suma de múltiplo de fila.
+Unidad: Proyecto Integrador (Sesiones 1-11).
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
 """
 
-from core.fraccion import Fraccion
-
-
-# ---------------------------------------------------------------------------
-# Construccion y copia
-# ---------------------------------------------------------------------------
-
-def matriz_cero(n_filas, n_columnas):
-    """Crea una matriz de ceros exactos del tamano indicado."""
-    return [[Fraccion(0) for _ in range(n_columnas)] for _ in range(n_filas)]
-
-
 def copiar(M):
-    """
-    Copia profunda de la matriz.
-
-    Requerida porque la eliminacion modifica la matriz in situ: el sistema
-    original debe conservarse intacto para la verificacion final, y cada
-    paso registrado necesita su propia copia independiente.
+    """Copia profunda de la matriz.
+    La eliminación modifica la matriz en sitio y cada paso guardado necesita su copia.
     """
     return [[valor for valor in fila] for fila in M]
 
-
-def dimensiones(M, n_vars):
-    """Devuelve (numero de filas, numero de variables)."""
-    return len(M), n_vars
-
-
-# ---------------------------------------------------------------------------
-# Operacion elemental 1: intercambio de filas
-# ---------------------------------------------------------------------------
 
 def intercambiar_filas(M, i, j):
     """f_i <-> f_j"""
     M[i], M[j] = M[j], M[i]
     return "f{} <-> f{}".format(i + 1, j + 1)
 
-
-# ---------------------------------------------------------------------------
-# Operacion elemental 2: multiplicar una fila por un escalar
-# ---------------------------------------------------------------------------
 
 def escalar_fila(M, i, k):
     """f_i -> k * f_i"""
@@ -60,10 +32,6 @@ def escalar_fila(M, i, k):
     return "f{} -> ({}) * f{}".format(i + 1, k, i + 1)
 
 
-# ---------------------------------------------------------------------------
-# Operacion elemental 3: sumar a una fila un multiplo de otra
-# ---------------------------------------------------------------------------
-
 def sumar_multiplo(M, i, j, k):
     """f_i -> f_i + k * f_j"""
     for c in range(len(M[i])):
@@ -71,10 +39,6 @@ def sumar_multiplo(M, i, j, k):
 
     return "f{} -> f{} + ({}) * f{}".format(i + 1, i + 1, k, j + 1)
 
-
-# ---------------------------------------------------------------------------
-# Consultas sobre filas
-# ---------------------------------------------------------------------------
 
 def fila_de_coeficientes_nulos(M, i, n_vars):
     """

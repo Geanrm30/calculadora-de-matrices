@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
-"""Ventana de ayuda: atajos de teclado y «Acerca de»."""
+"""
+Ventana de ayuda: atajos de teclado y «Acerca de».
+Unidad: Proyecto Integrador (interfaz gráfica).
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 import platform
 
 import PySide6
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QDialog, QFrame, QGridLayout, QHBoxLayout,
-                               QLabel, QMessageBox, QScrollArea, QTabWidget,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
+                               QMessageBox, QScrollArea, QVBoxLayout, QWidget)
 
 from qt import NOMBRE, VERSION
 from qt import tema as T
@@ -14,14 +19,14 @@ from qt.componentes import (BotonAnimado, CajaAnimada, DialogoAnimado,
                             PestanasAnimadas, Tarjeta)
 from qt.icono import dibujar
 
-# Única fuente de verdad de los atajos: la ayuda los lista tal cual.
 ATAJOS = [
     ("General", [
         ("F1", "Abrir esta ayuda"),
-        ("Ctrl+1 … Ctrl+4", "Cambiar de herramienta"),
+        ("Ctrl+1 … Ctrl+6", "Cambiar de herramienta"),
         ("Ctrl+Shift+T", "Cambiar entre tema claro y oscuro"),
         ("Ctrl++  /  Ctrl+−  /  Ctrl+0",
          "Agrandar, reducir o restablecer la letra de cuadrículas y resultados"),
+        ("F11  /  Esc", "Modo exposición (letra grande, sin barra lateral) / salir"),
         ("Ctrl+Q", "Salir (se guarda la sesión)"),
     ]),
     ("Cuadrículas de matriz", [
@@ -46,6 +51,21 @@ ATAJOS = [
         ("Ctrl+S", "Guardar el resultado (.txt)"),
         ("Ctrl+P", "Exportar el resultado a PDF"),
     ]),
+    ("Factorización LU", [
+        ("Ctrl+Enter", "Factorizar A = L·U"),
+        ("Ctrl+L", "Limpiar"),
+        ("Ctrl+S", "Guardar el informe (.txt)"),
+        ("Ctrl+P", "Exportar el informe a PDF"),
+    ]),
+    ("Métodos Numéricos", [
+        ("Enter", "Calcular desde cualquier campo de la pestaña"),
+        ("Ctrl+Enter", "Calcular (bisección, gráfica, descomposición o errores)"),
+        ("Ctrl+G", "Graficar la raíz de la bisección"),
+        ("Ctrl+L", "Limpiar la pestaña actual"),
+        ("Ctrl+Shift+Z", "Deshacer la última limpieza"),
+        ("Ctrl+S", "Guardar el informe (.txt)"),
+        ("Ctrl+P", "Exportar el informe a PDF"),
+    ]),
 ]
 
 
@@ -59,6 +79,7 @@ class DialogoAyuda(DialogoAnimado):
     borrar_datos = Signal()
 
     def __init__(self, padre, pestana=0):
+        """Crea el diálogo de ayuda con pestañas de guía, atajos y acerca de."""
         super().__init__(padre)
         self.setWindowTitle("Ayuda")
         self.resize(760, 640)
@@ -85,7 +106,8 @@ class DialogoAyuda(DialogoAnimado):
         raiz.addLayout(pie)
 
     def _pedir_tour(self):
-        self._al_cerrar = self.repetir_tour.emit    # cuando ya se cerró
+        """Cierra la ayuda y, ya cerrada, pide repetir el recorrido guiado."""
+        self._al_cerrar = self.repetir_tour.emit
         self.accept()
 
     def _confirmar_borrado(self):
@@ -106,13 +128,14 @@ class DialogoAyuda(DialogoAnimado):
         return caja.clickedButton() is borrar
 
     def _pedir_borrado(self):
+        """Pide confirmación y, si se acepta, cierra la ayuda y pide borrar los datos guardados."""
         if self._confirmar_borrado():
             self._al_cerrar = self.borrar_datos.emit
             self.accept()
 
-    # ── Atajos ────────────────────────────────────────────────
 
     def _pestana_atajos(self):
+        """Construye la pestaña con la lista de atajos de teclado."""
         cont = QWidget()
         lay = QVBoxLayout(cont)
         lay.setContentsMargins(0, 10, 8, 10)
@@ -146,9 +169,9 @@ class DialogoAyuda(DialogoAnimado):
         area.setWidget(cont)
         return area
 
-    # ── Acerca de ─────────────────────────────────────────────
 
     def _pestana_acerca(self):
+        """Construye la pestaña con la información del programa y sus autores."""
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.setContentsMargins(10, 24, 10, 10)
@@ -181,7 +204,7 @@ class DialogoAyuda(DialogoAnimado):
                       "fracciones exactas y el procedimiento paso a paso.")
         desc.setWordWrap(True)
         desc.setAlignment(Qt.AlignCenter)
-        desc.setFixedWidth(500)          # ancho fijo: así la altura se calcula bien
+        desc.setFixedWidth(500)
         lay.addWidget(desc, 0, Qt.AlignHCenter)
 
         lay.addSpacing(12)

@@ -2,18 +2,17 @@
 """
 Aritmética exacta con números racionales implementada sobre enteros de Python.
 Permite comparaciones exactas (sin tolerancia de punto flotante) necesarias para
-la eliminación gaussiana. MTM0120 Álgebra Lineal — Universidad Americana.
+la eliminación gaussiana.
+Unidad: Proyecto Integrador (Sesiones 1-11).
+MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
 """
 
 
 def mcd(a, b):
-    """
-    Maximo comun divisor por el algoritmo de Euclides.
-
-    Se apoya en que mcd(a, b) = mcd(b, a mod b), iterando hasta que el
-    resto es cero. Complejidad logaritmica respecto del menor operando.
+    """Máximo común divisor por Euclides: mcd(a, b) = mcd(b, a mod b).
+    Recibe dos enteros y devuelve un entero no negativo.
     """
     a = abs(a)
     b = abs(b)
@@ -28,10 +27,8 @@ class Fraccion:
     signo en el numerador (el denominador nunca es negativo).
     """
 
-    # -----------------------------------------------------------------
-    # Construccion
-    # -----------------------------------------------------------------
     def __init__(self, numerador, denominador=1, simbolo=None):
+        """Crea la fracción num/den en forma irreducible; el denominador no puede ser cero."""
         if denominador == 0:
             raise ZeroDivisionError("El denominador no puede ser cero.")
 
@@ -48,9 +45,6 @@ class Fraccion:
         self.den = denominador
         self.simbolo = simbolo
 
-    # -----------------------------------------------------------------
-    # Conversion de otros tipos a Fraccion
-    # -----------------------------------------------------------------
     def _convertir(self, otro):
         """Permite operar una Fraccion con un entero directamente."""
         if isinstance(otro, Fraccion):
@@ -59,30 +53,32 @@ class Fraccion:
             return Fraccion(otro, 1)
         raise TypeError("No se puede operar una Fraccion con {}".format(type(otro)))
 
-    # -----------------------------------------------------------------
-    # Operaciones aritmeticas
-    # -----------------------------------------------------------------
     def __add__(self, otro):
+        """Suma exacta: a/b + c/d = (ad + cb)/(bd)."""
         otro = self._convertir(otro)
         return Fraccion(self.num * otro.den + otro.num * self.den,
                         self.den * otro.den)
 
     def __sub__(self, otro):
+        """Resta exacta: a/b − c/d = (ad − cb)/(bd)."""
         otro = self._convertir(otro)
         return Fraccion(self.num * otro.den - otro.num * self.den,
                         self.den * otro.den)
 
     def __mul__(self, otro):
+        """Producto exacto: (a/b)(c/d) = (ac)/(bd)."""
         otro = self._convertir(otro)
         return Fraccion(self.num * otro.num, self.den * otro.den)
 
     def __truediv__(self, otro):
+        """División exacta multiplicando por el inverso; el divisor no puede ser cero."""
         otro = self._convertir(otro)
         if otro.num == 0:
             raise ZeroDivisionError("Division entre cero.")
         return Fraccion(self.num * otro.den, self.den * otro.num)
 
     def __neg__(self):
+        """Devuelve la fracción opuesta."""
         return Fraccion(-self.num, self.den)
 
     def inverso(self):
@@ -91,10 +87,8 @@ class Fraccion:
             raise ZeroDivisionError("El cero no tiene inverso multiplicativo.")
         return Fraccion(self.den, self.num)
 
-    # -----------------------------------------------------------------
-    # Comparaciones y consultas
-    # -----------------------------------------------------------------
     def __eq__(self, otro):
+        """Dos fracciones irreducibles son iguales si coinciden numerador y denominador."""
         otro = self._convertir(otro)
         return self.num == otro.num and self.den == otro.den
 
@@ -103,19 +97,19 @@ class Fraccion:
         return self.num == 0
 
     def es_uno(self):
+        """Indica si la fracción vale exactamente 1."""
         return self.num == 1 and self.den == 1
 
     def es_negativo(self):
+        """Indica si la fracción es menor que cero."""
         return self.num < 0
 
     def a_decimal(self):
         """Valor aproximado, solo para mostrarlo junto al valor exacto."""
         return self.num / self.den
 
-    # -----------------------------------------------------------------
-    # Representacion en texto
-    # -----------------------------------------------------------------
     def __str__(self):
+        """Texto de la fracción: entero si el denominador es 1, 'a/b' en otro caso."""
         if hasattr(self, 'simbolo') and self.simbolo is not None:
             return self.simbolo
         if self.den == 1:
@@ -125,19 +119,11 @@ class Fraccion:
         return "{}/{}".format(self.num, self.den)
 
 
-# ---------------------------------------------------------------------------
-# Lectura de fracciones escritas por el usuario
-# ---------------------------------------------------------------------------
-
 import unicodedata
 
-# Símbolos que traen Excel, Word y los PDF y que no existen en el teclado.
 _EQUIVALENCIAS = {
-    # menos tipográfico, rayas, guiones especiales y menos de ancho completo
     **{ord(c): "-" for c in "\u2212\u2013\u2014\u2012\u2010\u2011\ufe63\uff0d"},
-    # barra de fracción y barra inclinada de ancho completo
     **{ord(c): "/" for c in "\u2215\u2044\uff0f"},
-    # caracteres invisibles que se cuelan al copiar
     **{ord(c): None for c in "\u200b\u200c\u200d\ufeff"},
 }
 
@@ -147,21 +133,13 @@ def normalizar_texto_numerico(texto):
     Convierte a símbolos de teclado el texto copiado de Excel, Word o un PDF
     (menos tipográfico, rayas, barra de fracción) y quita todo espacio.
     """
-    # NFKC: dígitos matemáticos (𝟑 → 3), fracciones (½ → 1⁄2), anchos completos
     texto = unicodedata.normalize("NFKC", texto)
     return "".join(texto.translate(_EQUIVALENCIAS).split())
 
 
 def desde_texto(texto):
-    """
-    Convierte lo que escribe el usuario en una Fraccion exacta.
-    Formatos aceptados:
-        entero      ->  -7
-        fraccion    ->  3/4   -5/2
-        decimal     ->  2.5   -0.25   (se convierte a fraccion exacta)
-        raiz        ->  sqrt(2)  o  √2
-    También acepta los símbolos de Excel y Word (−, –, ∕).
-    Lanza ValueError si el texto no es valido.
+    """Convierte el texto escrito por el usuario en una Fraccion exacta.
+    Acepta enteros, fracciones a/b, decimales, raíces √ y los símbolos de Excel y Word.
     """
     texto = normalizar_texto_numerico(texto)
     if texto == "":
@@ -222,6 +200,3 @@ def desde_texto(texto):
 
     return Fraccion(int(texto), 1)
 
-
-CERO = Fraccion(0)
-UNO = Fraccion(1)

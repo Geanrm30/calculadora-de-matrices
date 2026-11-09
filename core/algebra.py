@@ -3,6 +3,7 @@
 Operaciones básicas del álgebra de matrices para el Proyecto Integrador.
 Implementa suma, resta, producto escalar, producto matricial y transposición
 usando listas anidadas y Fraccion para aritmética exacta. Sin NumPy ni SciPy.
+Unidad: Proyecto Integrador (Sesiones 1-11).
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta

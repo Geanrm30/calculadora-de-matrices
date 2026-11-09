@@ -2,6 +2,10 @@
 """
 Generación de HTML (subconjunto que entiende Qt) para dibujar matrices,
 vectores y texto del informe con colores.
+Unidad: Proyecto Integrador (interfaz gráfica).
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
 """
 import html
 import re
@@ -20,8 +24,9 @@ def _mezcla(c0, c1, t):
 
 
 def css(impreso=False, tam=None, ajustar=None):
-    # En el PDF las líneas largas deben ajustarse al ancho de la página.
-    # `tam` (pt) y `ajustar` permiten a la ventana de resultado elegirlos ella misma.
+    """Hoja de estilos del informe; en impreso ajusta las líneas largas al ancho de la página.
+    'tam' (pt) y 'ajustar' permiten a la ventana de resultados elegir tamaño y ajuste.
+    """
     if ajustar is None:
         ajustar = impreso
     ajuste = "white-space: pre-wrap;" if ajustar else ""
@@ -41,11 +46,13 @@ h3   {{ color: {AZUL}; font-family: '{FUENTE}'; margin: 14px 0 4px 0; }}
 
 
 def pagina(cuerpo, impreso=False, tam=None, ajustar=None):
+    """Envuelve el cuerpo HTML con su hoja de estilos en un documento completo."""
     return "<html><head>{}</head><body>{}</body></html>".format(
         css(impreso, tam, ajustar), cuerpo)
 
 
 def etiqueta(texto, color=None):
+    """Párrafo HTML pequeño y en color que sirve de rótulo de sección."""
     color = color or T.MUTED
     return ("<p style=\"margin:10px 0 4px 0; color:{}; "
             "font-family:'{}'; font-size:9.5pt;\">{}</p>"
@@ -142,7 +149,7 @@ def html_vector_solucion(resultado):
 _CELDA = r"-?\d+(?:/\d+)?"
 _FILA_MATRIZ = re.compile(
     r"^\s*\[\s*((?:{c}\s+)*{c})\s*(?:\|\s*((?:{c}\s+)*{c})\s*)?\]\s*$".format(c=_CELDA))
-_PASO = re.compile(r"^\s*(Paso \d+:|── )")
+_PASO = re.compile(r"^\s*(Paso \d+:|── |Iteración \d+:)")
 _ENCABEZADO = re.compile(
     r"^\s*(PASO A PASO|PROPIEDAD|RESUMEN DE|LADO |COMPARACI|Resultado final|Comprobación\s+(?:de|A)|"
     r"Matriz aumentada inicial|Matriz [LU] |Producto L|Regla de Cramer|Solución\s+x)")
@@ -156,11 +163,15 @@ def _estilo_de_linea(linea):
     if ">>" in linea:
         return (T.ROJO if "INCONSISTENTE" in linea else T.VERDE), True
     if ("FALLA" in linea or "[No se cumple]" in linea or "[ERROR]" in linea
-            or "Atención" in linea):
+            or "Atención" in linea or s.startswith("No se pudo")
+            or "SIN cumplir" in linea or "NO coinciden" in linea):
         return T.ROJO, True
     if ("CUMPLE" in linea or "superada" in linea or "[Se cumple]" in linea
             or "es correcta" in linea or "exitosa" in linea
-            or "verificación exacta" in linea or "es invertible" in linea):
+            or "verificación exacta" in linea or "es invertible" in linea
+            or "olerancia alcanzada" in linea or "Coinciden:" in linea
+            or s.startswith(("Raíz exacta", "Se encontró una raíz exacta",
+                             "Raíz aproximada"))):
         return T.VERDE, True
     if s.startswith("[OMITIDA]"):
         return T.MUTED, False
@@ -179,6 +190,7 @@ def _estilo_de_linea(linea):
 
 
 def _html_filas_de_texto(lineas):
+    """Convierte líneas de texto en filas HTML con el color que corresponde a cada una."""
     out = []
     for linea in lineas:
         color, negrita = _estilo_de_linea(linea)
@@ -194,7 +206,6 @@ def _html_matriz_de_texto(filas):
     """Filas «[ 1 2 | 3 ]» consecutivas dibujadas como una matriz con corchetes."""
     partes = [(m.group(1).split(), (m.group(2) or "").split()) for m in filas]
     hay_barra = any(b for _, b in partes)
-    n = len(partes)
     trs = []
     for i, (izq, der) in enumerate(partes):
         celdas = ["<td width='28'></td>"]
@@ -212,10 +223,48 @@ def _html_matriz_de_texto(filas):
                     "border-right:2px solid {};".format(T.AZUL) if ultimo else "",
                     T.NARANJA, _E(v)))
         if not der:
-            # el último número de la parte izquierda cierra el corchete
             celdas[-1] = celdas[-1].replace("style='", "style='border-right:2px solid {};".format(T.AZUL), 1)
         trs.append("<tr>{}</tr>".format("".join(celdas)))
     return "<table cellspacing='0' cellpadding='0'>{}</table>".format("".join(trs))
+
+
+_CAB_TABLA = re.compile(r"^\s*i\s{2,}xₗ\s{2,}xᵤ\s{2,}xᵣ\s{2,}")
+_REGLA_TABLA = re.compile(r"^\s*-+(\s+-+)+\s*$")
+_FILA_TABLA = re.compile(r"^\s*\d+\s{2,}")
+
+
+def _html_tabla_de_texto(cab, filas):
+    """
+    Tabla de iteraciones de la bisección (columnas separadas por 2+ espacios):
+    cabecera azul, filas alternadas, signos de f(xr) en verde/rojo y la última
+    fila resaltada (la iteración que acaba de añadirse).
+    """
+    tenue = _mezcla(T.FONDO, T.SUPERF, 0.55)
+    actual = _mezcla(T.SUPERF, T.NARANJA, 0.45)
+    trs = ["<tr>{}</tr>".format("".join(
+        "<td align='center' style='background-color:{}; color:{};"
+        " font-weight:bold; padding:4px 12px;'>{}</td>".format(
+            T.HDR_BG, T.AZUL, _E(c)) for c in cab))]
+    for r, celdas in enumerate(filas):
+        ultima = r == len(filas) - 1
+        bg = actual if ultima else (T.SUPERF if r % 2 == 0 else tenue)
+        tds = []
+        for c, v in enumerate(celdas):
+            color = T.TEXTO
+            if cab[c].startswith("f(") and v.startswith("+"):
+                color = T.VERDE
+            elif cab[c].startswith("f(") and v.startswith("\u2212"):
+                color = T.ROJO
+            elif c == 3:
+                color = T.NARANJA
+            tds.append(
+                "<td align='{}' style='background-color:{}; color:{};{}"
+                " padding:3px 12px;'>{}</td>".format(
+                    "center" if c == 0 else "right", bg, color,
+                    " font-weight:bold;" if ultima or c == 3 else "", _E(v)))
+        trs.append("<tr>{}</tr>".format("".join(tds)))
+    return ("<table cellspacing='1' cellpadding='0' style='margin:4px 0 4px 18px;'>"
+            "{}</table>".format("".join(trs)))
 
 
 def html_texto(texto):
@@ -228,16 +277,33 @@ def html_texto(texto):
     piezas, tramo, matriz = [], [], []
 
     def cerrar_tramo():
+        """Cierra el tramo de líneas corridas acumulado."""
         if tramo:
             piezas.append(_html_filas_de_texto(tramo))
             tramo.clear()
 
     def cerrar_matriz():
+        """Cierra el bloque de matriz acumulado."""
         if matriz:
             piezas.append(_html_matriz_de_texto(matriz))
             matriz.clear()
 
-    for linea in lineas:
+    i = 0
+    while i < len(lineas):
+        linea = lineas[i]
+        if (_CAB_TABLA.match(linea) and i + 1 < len(lineas)
+                and _REGLA_TABLA.match(lineas[i + 1])):
+            j = i + 2
+            filas = []
+            while j < len(lineas) and _FILA_TABLA.match(lineas[j]):
+                filas.append(re.split(r"\s{2,}", lineas[j].strip()))
+                j += 1
+            cerrar_tramo()
+            cerrar_matriz()
+            piezas.append(_html_tabla_de_texto(
+                re.split(r"\s{2,}", linea.strip()), filas))
+            i = j
+            continue
         m = _FILA_MATRIZ.match(linea)
         if m:
             cerrar_tramo()
@@ -245,6 +311,7 @@ def html_texto(texto):
         else:
             cerrar_matriz()
             tramo.append(linea)
+        i += 1
     cerrar_matriz()
     cerrar_tramo()
     return "".join(piezas)

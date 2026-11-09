@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Exportación de informes a PDF (A4, fondo blanco, texto negro)."""
+"""
+Exportación de informes a PDF (A4, fondo blanco, texto negro).
+Unidad: Proyecto Integrador (interfaz gráfica).
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 import datetime
 
 from PySide6.QtCore import QMarginsF
@@ -10,6 +16,7 @@ from qt import tema as T
 
 
 def encabezado_html(titulo):
+    """Devuelve el encabezado HTML (título y fecha) de un informe exportado a PDF."""
     fecha = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
     return (
         "<h1 style=\"font-family:'{f}'; color:{t}; margin:0 0 2px 0;"

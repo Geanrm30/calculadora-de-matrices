@@ -4,6 +4,7 @@ Paso a paso de las operaciones con matrices y vectores para el Proyecto Integrad
 core/algebra.py CALCULA; este módulo EXPLICA. Recorre las mismas posiciones que
 los bucles del cálculo y escribe fórmula, sustitución y resultado por cada entrada.
 Ninguna función imprime: todas devuelven listas de líneas de texto.
+Unidad: Proyecto Integrador (Sesiones 1-11).
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
@@ -13,17 +14,8 @@ from core.formato import subindice, ancho_columna
 import core.algebra as algebra
 
 
-# ---------------------------------------------------------------------------
-# Utilidades de escritura
-# ---------------------------------------------------------------------------
-
 def _ind(i, j):
-    """
-    Subindice de fila y columna en base 1: (0, 0) -> el par de digitos 11.
-
-    Cuando algun indice tiene dos digitos se separa con coma para que no se
-    confunda "fila 1 columna 12" con "fila 11 columna 2".
-    """
+    """Subíndice de fila y columna en base 1; con dos dígitos usa coma para evitar ambigüedad."""
     f = subindice(i + 1)
     c = subindice(j + 1)
     if i + 1 > 9 or j + 1 > 9:
@@ -59,18 +51,9 @@ def _vector_en_linea(v):
     return "[ " + ", ".join(str(componente) for componente in v) + " ]^T"
 
 
-# ---------------------------------------------------------------------------
-# Suma y resta de matrices
-# ---------------------------------------------------------------------------
-
 def pasos_suma(A, B, resta=False):
-    """
-    Explica la suma (o la resta) entrada por entrada.
-
-    Procedimiento algebraico: la suma de matrices es una operacion ENTRADA A
-    ENTRADA, definida solo si ambas tienen el mismo tamano m x n. Los dos
-    bucles anidados (i sobre las filas, j sobre las columnas) visitan cada
-    posicion una sola vez; no hay acumulacion como si la hay en el producto.
+    """Explica la suma (o resta) entrada por entrada; exige matrices del mismo tamaño m × n.
+    Recibe A, B y 'resta'; devuelve la lista de líneas del procedimiento.
     """
     signo = "-" if resta else "+"
     nombre = "RESTA A - B" if resta else "SUMA A + B"
@@ -95,16 +78,9 @@ def pasos_suma(A, B, resta=False):
     return lineas
 
 
-# ---------------------------------------------------------------------------
-# Producto por un escalar
-# ---------------------------------------------------------------------------
-
 def pasos_escalar(r, A):
-    """
-    Explica el producto de un escalar por una matriz.
-
-    Procedimiento algebraico: el escalar multiplica a TODAS las entradas. El
-    tamano no cambia y no existe ninguna restriccion de dimensiones.
+    """Explica el producto de un escalar r por una matriz A: r multiplica todas las entradas.
+    Devuelve la lista de líneas del procedimiento.
     """
     lineas = _encabezado(
         "PASO A PASO - PRODUCTO POR EL ESCALAR r = {}".format(r),
@@ -123,28 +99,9 @@ def pasos_escalar(r, A):
     return lineas
 
 
-# ---------------------------------------------------------------------------
-# Producto de matrices
-# ---------------------------------------------------------------------------
-
 def pasos_multiplicacion(A, B):
-    """
-    Explica el producto A(m x n) . B(n x p) termino por termino.
-
-    Procedimiento algebraico: cada entrada del resultado es el producto punto
-    entre una FILA de A y una COLUMNA de B. De ahi salen los tres bucles
-    anidados:
-
-        i  (1..m)  elige la fila de A      -> fila del resultado
-        j  (1..p)  elige la columna de B   -> columna del resultado
-        k  (1..n)  recorre los n productos que se acumulan en esa entrada
-
-    El bucle k es el que obliga a que las columnas de A (n) coincidan con las
-    filas de B (n): es el indice que comparten ambas matrices.
-
-    Cuando B tiene una sola columna el producto es A.x, y se anaden las dos
-    lecturas vistas en clase: combinacion lineal de las columnas de A y regla
-    fila-vector.
+    """Explica A(m×n)·B(n×p): cada entrada es el producto punto de una fila de A y una columna de B.
+    Devuelve la lista de líneas del procedimiento.
     """
     m = len(A)
     n = len(A[0])
@@ -168,16 +125,13 @@ def pasos_multiplicacion(A, B):
             lineas.append("  c{}  <-  fila {} de A · columna {} de B".format(
                 _ind(i, j), i + 1, j + 1))
 
-            # Formula general, con los nombres de las entradas
             nombres = ["a{}·b{}".format(_ind(i, k), _ind(k, j)) for k in range(n)]
             lineas.append("     = " + " + ".join(nombres))
 
-            # Sustitucion de los valores
             valores = ["{}·{}".format(_valor(A[i][k]), _valor(B[k][j]))
                        for k in range(n)]
             lineas.append("     = " + " + ".join(valores))
 
-            # Cada producto ya resuelto y, por ultimo, la suma acumulada
             productos = [A[i][k] * B[k][j] for k in range(n)]
             if n > 1:
                 lineas.append("     = " + " + ".join(_valor(v) for v in productos))
@@ -188,8 +142,6 @@ def pasos_multiplicacion(A, B):
             lineas.append("     = " + str(total))
             lineas.append("")
 
-    # Si B es un vector columna, el producto es A.x: se anaden las dos
-    # lecturas que se usan en clase para ese caso particular.
     if p == 1:
         x = [B[k][0] for k in range(n)]
         lineas.append("")
@@ -201,14 +153,8 @@ def pasos_multiplicacion(A, B):
 
 
 def pasos_columnas(A, x):
-    """
-    Explica A.x como COMBINACION LINEAL DE LAS COLUMNAS de A:
-
-        A.x = x1.a1 + x2.a2 + ... + xn.an
-
-    Esta es la definicion de la ecuacion matricial: el producto A.x pesa cada
-    columna de A con la entrada correspondiente de x. Es la lectura que
-    convierte el sistema en una pregunta sobre combinaciones lineales.
+    """Explica A·x como combinación lineal de las columnas de A: x1·a1 + ... + xn·an.
+    Devuelve la lista de líneas del procedimiento.
     """
     m = len(A)
     n = len(A[0])
@@ -219,19 +165,16 @@ def pasos_columnas(A, x):
         "Cada columna aₖ de A se multiplica por la entrada xₖ y se suman los "
         "n vectores resultantes.")
 
-    # Las columnas de A, una por una
     for k in range(n):
         columna = [A[i][k] for i in range(m)]
         lineas.append("    a{} = {}    (columna {} de A)".format(
             _sub(k), _vector_en_linea(columna), k + 1))
     lineas.append("")
 
-    # La combinacion escrita con los pesos
     terminos = ["{}·a{}".format(_valor(x[k]), _sub(k)) for k in range(n)]
     lineas.append("    A·x = " + " + ".join(terminos))
     lineas.append("")
 
-    # Cada vector ya multiplicado por su peso
     escalados = []
     for k in range(n):
         columna = [A[i][k] for i in range(m)]
@@ -241,7 +184,6 @@ def pasos_columnas(A, x):
             _valor(x[k]), _sub(k), _vector_en_linea(escalado)))
     lineas.append("")
 
-    # La suma componente a componente
     for i in range(m):
         sumandos = " + ".join(_valor(escalados[k][i]) for k in range(n))
         total = escalados[0][i]
@@ -263,13 +205,8 @@ def pasos_columnas(A, x):
 
 
 def pasos_fila_vector(A, x):
-    """
-    Explica A.x con la REGLA FILA-VECTOR.
-
-    Si el producto A.x esta definido, la entrada i de A.x es la suma de los
-    productos de las entradas de la fila i de A por las entradas de x. Da el
-    mismo resultado que la combinacion lineal de columnas, pero se calcula
-    fila por fila en lugar de columna por columna.
+    """Explica A·x con la regla fila-vector: la entrada i es (fila i de A)·x.
+    Devuelve la lista de líneas del procedimiento.
     """
     m = len(A)
     n = len(A[0])
@@ -302,17 +239,9 @@ def pasos_fila_vector(A, x):
     return lineas
 
 
-# ---------------------------------------------------------------------------
-# Transpuesta
-# ---------------------------------------------------------------------------
-
 def pasos_transpuesta(A):
-    """
-    Explica la transposicion.
-
-    Procedimiento algebraico: la entrada que estaba en la fila i, columna j
-    pasa a la fila j, columna i. En la practica cada FILA de A se escribe como
-    COLUMNA de A^T, de modo que una matriz m x n se convierte en una n x m.
+    """Explica la transposición: la entrada (i, j) pasa a la posición (j, i).
+    Devuelve la lista de líneas del procedimiento.
     """
     m = len(A)
     n = len(A[0])
@@ -337,17 +266,9 @@ def pasos_transpuesta(A):
     return lineas
 
 
-# ---------------------------------------------------------------------------
-# Propiedades del producto matriz-vector
-# ---------------------------------------------------------------------------
-
 def pasos_propiedad_suma(A, u, v):
-    """
-    Comprueba la propiedad  A(u + v) = A.u + A.v  con los datos dados.
-
-    Procedimiento: se calculan los dos lados por separado y se comparan
-    componente a componente. El lado izquierdo suma primero los vectores y
-    multiplica una sola vez; el derecho multiplica dos veces y suma despues.
+    """Comprueba A(u + v) = A·u + A·v calculando cada lado por separado.
+    Devuelve la lista de líneas del procedimiento.
     """
     from core.vector import como_columna, desde_columna, sumar_vectores
 
@@ -389,11 +310,8 @@ def pasos_propiedad_suma(A, u, v):
 
 
 def pasos_propiedad_escalar(A, c, u):
-    """
-    Comprueba la propiedad  A(c.u) = c(A.u)  con los datos dados.
-
-    Procedimiento: da lo mismo escalar el vector antes de multiplicar por A
-    que multiplicar primero y escalar el resultado.
+    """Comprueba A(c·u) = c(A·u) calculando cada lado por separado.
+    Devuelve la lista de líneas del procedimiento.
     """
     from core.vector import como_columna, desde_columna, escalar_por_vector
 
@@ -447,10 +365,6 @@ def _comparar(izquierdo, derecho, nombre_izq, nombre_der):
     return lineas
 
 
-# ---------------------------------------------------------------------------
-# Determinante por expansión de cofactores
-# ---------------------------------------------------------------------------
-
 def pasos_determinante_cofactores(A):
     """Expansión de la primera fila: muestra cada submatriz, cofactor y contribución."""
     from modulos.modulo_matrices import submatriz, determinante
@@ -500,10 +414,6 @@ def pasos_determinante_cofactores(A):
     lineas.append("")
     return lineas
 
-
-# ---------------------------------------------------------------------------
-# Determinante por Sarrus (solo 3×3)
-# ---------------------------------------------------------------------------
 
 def pasos_determinante_sarrus(A):
     """Regla de Sarrus: 3 diagonales positivas y 3 negativas para matrices 3×3."""
@@ -561,10 +471,6 @@ def pasos_determinante_sarrus(A):
     return lineas
 
 
-# ---------------------------------------------------------------------------
-# Determinante por reducción triangular
-# ---------------------------------------------------------------------------
-
 def pasos_determinante_triangular(A):
     """Reducción a triangular superior: muestra cada intercambio y eliminación de fila."""
     from core.fraccion import Fraccion
@@ -585,6 +491,7 @@ def pasos_determinante_triangular(A):
     paso = [0]
 
     def mostrar(lineas, M):
+        """Agrega a 'lineas' la matriz M con una fila por línea."""
         for fila in M:
             lineas.append("  [ {} ]".format("   ".join(str(v) for v in fila)))
         lineas.append("")
@@ -638,14 +545,9 @@ def pasos_determinante_triangular(A):
     return lineas
 
 
-# ---------------------------------------------------------------------------
-# Inversa por Gauss-Jordan
-# ---------------------------------------------------------------------------
-
 def pasos_inversa_gauss_jordan(A):
     """[A|I] → [I|A⁻¹] con Gauss-Jordan: muestra cada operación elemental de fila."""
     from core.fraccion import Fraccion
-    from core.formato import ancho_columna
     n = len(A)
 
     lineas = _encabezado(
@@ -661,6 +563,7 @@ def pasos_inversa_gauss_jordan(A):
     ]
 
     def mostrar_aug(lineas, M):
+        """Agrega a 'lineas' la matriz aumentada M = [A | I] con columnas alineadas."""
         ancho = max(len(str(M[i][j])) for i in range(n) for j in range(2 * n))
         ancho = max(ancho, 1)
         for i in range(n):
@@ -706,15 +609,10 @@ def pasos_inversa_gauss_jordan(A):
                            for k in range(2 * n)]
                 mostrar_aug(lineas, M)
 
-    A_inv = [[M[i][n + j] for j in range(n)] for i in range(n)]
     lineas.append("  Resultado final  [I | A⁻¹]:")
     mostrar_aug(lineas, M)
     return lineas
 
-
-# ---------------------------------------------------------------------------
-# Inversa por la fórmula de la adjunta
-# ---------------------------------------------------------------------------
 
 def pasos_inversa_adjunta(A):
     """A⁻¹ = (1/det(A))·adj(A): muestra cada cofactor, la adjunta y la fórmula final."""
@@ -773,14 +671,9 @@ def pasos_inversa_adjunta(A):
     return lineas
 
 
-# ---------------------------------------------------------------------------
-# Regla de Cramer
-# ---------------------------------------------------------------------------
-
 def pasos_cramer(A, b):
     """Cramer: muestra det(A), cada Aᵢ con su det y la fórmula xᵢ = det(Aᵢ)/det(A)."""
     from modulos.modulo_matrices import determinante
-    from core.fraccion import Fraccion
     n = len(A)
 
     lineas = _encabezado(
@@ -816,9 +709,6 @@ def pasos_cramer(A, b):
     lineas.append("")
     return lineas
 
-# ---------------------------------------------------------------------------
-# Resultado final
-# ---------------------------------------------------------------------------
 
 def texto_resultado(titulo, M):
     """Escribe la matriz resultado con las columnas alineadas."""

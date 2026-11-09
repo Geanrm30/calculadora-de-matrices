@@ -2,12 +2,12 @@
 """
 Reducción de la matriz aumentada a forma escalonada (Gauss) y escalonada
 reducida (Gauss-Jordan) mediante operaciones elementales por filas.
+Unidad: Proyecto Integrador (Sesiones 1-11).
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
 """
 
-from core.fraccion import Fraccion
 from core.matriz import copiar, intercambiar_filas, escalar_fila, sumar_multiplo
 from core.formato import subindice
 
@@ -20,10 +20,6 @@ def registrar(pasos, operacion, M, comentario=""):
         "comentario": comentario,
     })
 
-
-# ---------------------------------------------------------------------------
-# Forma escalonada
-# ---------------------------------------------------------------------------
 
 def escalonar(M, n_vars):
     """
@@ -72,10 +68,6 @@ def escalonar(M, n_vars):
     return pasos, columnas_pivote
 
 
-# ---------------------------------------------------------------------------
-# Forma escalonada reducida (Gauss-Jordan)
-# ---------------------------------------------------------------------------
-
 def reducir_jordan(M, n_vars, columnas_pivote):
     """
     Parte de una matriz YA escalonada y genera ceros encima de cada pivote.
@@ -94,11 +86,3 @@ def reducir_jordan(M, n_vars, columnas_pivote):
 
     return pasos
 
-
-# ---------------------------------------------------------------------------
-# Rango
-# ---------------------------------------------------------------------------
-
-def rango_desde_pivotes(columnas_pivote):
-    """El rango es la cantidad de pivotes encontrados."""
-    return len(columnas_pivote)

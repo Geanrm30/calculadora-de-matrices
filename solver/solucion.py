@@ -2,6 +2,7 @@
 """
 Obtiene los valores de las variables a partir de la forma escalonada, tanto en
 forma numérica como simbólica (pivotes expresados en función de variables libres).
+Unidad: Proyecto Integrador (Sesiones 1-11).
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
@@ -12,16 +13,9 @@ from solver.clasificacion import variables_libres
 from core.formato import texto_coeficiente, nombre_variable
 
 
-# ---------------------------------------------------------------------------
-# Sustitucion regresiva numerica
-# ---------------------------------------------------------------------------
-
 def sustitucion_regresiva(M, n_vars, columnas_pivote, valores_libres=None):
-    """
-    Calcula el valor de cada variable recorriendo las filas con pivote de
-    abajo hacia arriba. A las variables libres se les asigna el valor
-    indicado en valores_libres (diccionario indice -> Fraccion); por defecto
-    valen cero, lo que produce una solucion particular.
+    """Calcula cada variable recorriendo las filas con pivote de abajo hacia arriba.
+    valores_libres (índice → Fraccion) asigna las variables libres; por defecto valen cero.
     """
     x = [Fraccion(0) for _ in range(n_vars)]
 
@@ -40,15 +34,8 @@ def sustitucion_regresiva(M, n_vars, columnas_pivote, valores_libres=None):
     return x
 
 
-# ---------------------------------------------------------------------------
-# Sustitucion regresiva simbolica
-# ---------------------------------------------------------------------------
-
 def calcular_expresiones(M, n_vars, columnas_pivote):
-    """
-    Cada variable se representa como una lista de coeficientes:
-        [termino_independiente, coef_libre_1, coef_libre_2, ...]
-
+    """Escribe cada variable como [término independiente, coef libre 1, coef libre 2, ...].
     Devuelve (expresiones, libres).
     """
     libres = variables_libres(n_vars, columnas_pivote)

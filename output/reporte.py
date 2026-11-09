@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Convierte el diccionario de resolutor.resolver() en un informe de texto completo,
-desacoplado de la interfaz gráfica. MTM0120 Álgebra Lineal — Universidad Americana.
+desacoplado de la interfaz gráfica.
+Unidad: Proyecto Integrador (Sesiones 1-11).
+MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
 """
@@ -9,12 +11,8 @@ Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
 from core.formato import (texto_matriz, texto_sistema, separador, subtitulo,
                            nombre_variable, subindice)
 from solver.solucion import texto_expresion
-from solver.clasificacion import DETERMINADO, INDETERMINADO, INCONSISTENTE
+from solver.clasificacion import DETERMINADO, INCONSISTENTE
 
-
-# ---------------------------------------------------------------------------
-# Secciones del informe
-# ---------------------------------------------------------------------------
 
 def seccion_datos(resultado):
     """Sistema ingresado y matriz aumentada inicial."""
@@ -132,9 +130,6 @@ def seccion_clasificacion(resultado, numero):
     lineas.append("  >> " + analisis["nombre"])
     return "\n".join(lineas)
 
-# ---------------------------------------------------------------------------
-# Lectura del sistema como ecuacion matricial A.x = b
-# ---------------------------------------------------------------------------
 
 def _columnas_de_A(resultado):
     """Devuelve las columnas de A como lista de vectores (listas de Fraccion)."""
@@ -155,12 +150,8 @@ def _en_linea(v):
 
 
 def seccion_ecuacion_matricial(resultado, numero):
-    """
-    Escribe el sistema como ecuacion matricial y como ecuacion vectorial.
-
-    Teorema: A.x = b tiene el mismo conjunto solucion que la ecuacion
-    vectorial x1.a1 + x2.a2 + ... + xn.an = b, y que el sistema cuya matriz
-    aumentada es [a1 a2 ... an | b]. Las tres formas son la misma pregunta.
+    """Escribe el sistema como ecuación matricial y como ecuación vectorial.
+    Teorema: A·x = b, x1·a1 + ... + xn·an = b y [a1 ... an | b] tienen el mismo conjunto solución.
     """
     n_vars = resultado["n_vars"]
     columnas = _columnas_de_A(resultado)
@@ -228,7 +219,6 @@ def seccion_combinacion(resultado, numero):
     lineas.append("     b = " + escalares)
     lineas.append("")
 
-    # Comprobacion componente a componente: se rehace la combinacion.
     lineas.append("  Comprobación (se rehace la combinación):")
     for i in range(len(b)):
         productos = [columnas[j][i] * x[j] for j in range(n_vars)]
@@ -252,14 +242,8 @@ def seccion_combinacion(resultado, numero):
 
 
 def seccion_independencia(resultado, numero):
-    """
-    Decide si las columnas de A son linealmente independientes y, cuando son
-    dependientes, escribe una relacion de dependencia concreta.
-
-    El analisis se hace SIEMPRE sobre el sistema homogeneo A.x = 0 propio de
-    esas columnas (lo resuelve solver/independencia.py), porque la
-    independencia lineal depende unicamente de los vectores: el termino
-    independiente b del sistema que se este resolviendo no interviene.
+    """Decide si las columnas de A son linealmente independientes y, si no, escribe una relación de dependencia.
+    Se analiza siempre el sistema homogéneo A·x = 0 propio de las columnas (solver/independencia.py).
     """
     from solver.independencia import analizar, texto_relacion, comprobar_relacion
 
@@ -268,6 +252,7 @@ def seccion_independencia(resultado, numero):
     analisis = analizar(columnas)
 
     def nombre_columna(indice):
+        """Nombre de la columna de índice dado: a₁, a₂, ..."""
         return "a" + subindice(indice + 1)
 
     lineas = []
@@ -284,7 +269,6 @@ def seccion_independencia(resultado, numero):
         lineas.append("     {} = {}".format(nombre_columna(j), _en_linea(columnas[j])))
     lineas.append("")
 
-    # Criterios que deciden sin necesidad de eliminar
     if analisis["criterios"]:
         lineas.append("  Por inspección:")
         for hallazgo in analisis["criterios"]:
@@ -437,25 +421,9 @@ def seccion_verificacion(resultado, numero):
     return "\n".join(lineas)
 
 
-# ---------------------------------------------------------------------------
-# Que secciones de analisis corresponden
-# ---------------------------------------------------------------------------
-
 def secciones_en_rn(resultado, incluir_vectores, contexto=None):
-    """
-    Devuelve, en orden, las secciones de analisis en Rn que corresponden a
-    este sistema, sin repetir ninguna.
-
-    La casilla de analisis en Rn pide las dos preguntas (combinacion lineal e
-    independencia); el contexto pide la del enunciado con el que llego el
-    sistema. Cuando coinciden, la seccion se escribe una sola vez.
-
-    Dos salvedades:
-      - La ecuacion matricial no se escribe si el sistema vino planteado como
-        independencia lineal, porque alli el termino independiente es cero.
-      - La combinacion lineal se omite en un sistema homogeneo: b = 0 siempre
-        es combinacion de cualquier conjunto (con todos los escalares cero),
-        asi que la pregunta interesante es la independencia.
+    """Devuelve, en orden y sin repetir, las secciones de análisis en Rⁿ que corresponden al sistema.
+    Unen la casilla de análisis en Rⁿ y el enunciado (contexto) con el que llegó el sistema.
     """
     homogeneo = resultado["analisis"]["homogeneo"]
 
@@ -474,18 +442,10 @@ def secciones_en_rn(resultado, incluir_vectores, contexto=None):
     return secciones
 
 
-# ---------------------------------------------------------------------------
-# Informe completo
-# ---------------------------------------------------------------------------
-
 def generar(resultado, incluir_jordan=True, incluir_vectores=False,
             contexto=None):
-    """
-    Arma el informe completo como una sola cadena de texto.
-
-    'contexto' indica con que enunciado se planteo el sistema para agregar la
-    seccion que corresponda: ecuacion matricial, combinacion lineal o
-    independencia lineal.
+    """Arma el informe completo como una sola cadena de texto.
+    'contexto' indica con qué enunciado se planteó el sistema para agregar la sección correspondiente.
     """
     bloques = []
     bloques.append(separador("="))
@@ -504,9 +464,6 @@ def generar(resultado, incluir_jordan=True, incluir_vectores=False,
     bloques.append(seccion_clasificacion(resultado, numero))
     numero += 1
 
-    # Secciones de analisis en Rn. Cada una aparece como maximo una vez, se
-    # haya pedido por el enunciado con el que llego el sistema (contexto) o
-    # por la casilla de analisis en Rn.
     for seccion in secciones_en_rn(resultado, incluir_vectores, contexto):
         bloques.append(seccion(resultado, numero))
         numero += 1

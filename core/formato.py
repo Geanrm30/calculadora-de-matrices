@@ -2,12 +2,18 @@
 """
 Construcción de cadenas de texto para el usuario: matrices, ecuaciones y subíndices.
 Ninguna función imprime; todas devuelven cadenas para que el destino quede a cargo
-del módulo que las consuma. MTM0120 Álgebra Lineal — Universidad Americana.
+del módulo que las consuma.
+Unidad: Proyecto Integrador (Sesiones 1-11).
+MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
 """
+import re
 
 _SUBSCRIPTS = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+_SUB_LETRAS = {"l": "ₗ", "u": "ᵤ", "r": "ᵣ", "v": "ᵥ", "a": "ₐ"}
+_RX_SUB = re.compile(r"(?<![\w\"])(x|E|ε)([lurva])(?!\w)")
+_RX_EB = re.compile(r"(?<![\w\"])Eb(?!\w)")
 
 
 def subindice(n):
@@ -15,9 +21,11 @@ def subindice(n):
     return str(n).translate(_SUBSCRIPTS)
 
 
-# ---------------------------------------------------------------------------
-# Matriz aumentada
-# ---------------------------------------------------------------------------
+def subindices_numericos(texto):
+    """Escribe xl, xu, xr, xv, xa, Ea, Er, εa y Eb con subíndice (xₗ, xᵤ, Eᵣ, Eᵦ, como en el enunciado)."""
+    texto = _RX_SUB.sub(lambda m: m.group(1) + _SUB_LETRAS[m.group(2)], texto)
+    return _RX_EB.sub("Eᵦ", texto)
+
 
 def ancho_columna(M):
     """Calcula el ancho necesario para que todas las entradas queden alineadas."""
@@ -51,10 +59,6 @@ def texto_matriz(M, n_vars, titulo=None, sangria="  "):
     return "\n".join(lineas)
 
 
-# ---------------------------------------------------------------------------
-# Sistema en forma de ecuaciones
-# ---------------------------------------------------------------------------
-
 def texto_coeficiente(magnitud):
     """
     Escribe el coeficiente que acompana a una variable.
@@ -69,11 +73,8 @@ def texto_coeficiente(magnitud):
 
 
 def nombre_variable(indice, nombres=None):
-    """
-    Nombre de la variable numero 'indice'. Por defecto x₁, x₂, x₃...
-    Usa digitos subindice Unicode para notacion matematica correcta.
-    El parametro 'nombres' permite otra numeracion, util al mostrar un
-    subconjunto de variables en la solucion parametrizada.
+    """Devuelve el nombre de la variable número 'indice' con subíndice (x₁, x₂...).
+    'nombres' permite otra numeración al mostrar un subconjunto de variables.
     """
     if nombres is not None and indice < len(nombres):
         return nombres[indice]
@@ -127,11 +128,8 @@ def texto_sistema(M, n_vars, titulo=None, sangria="  "):
     return "\n".join(lineas)
 
 
-# ---------------------------------------------------------------------------
-# Elementos decorativos
-# ---------------------------------------------------------------------------
-
 def separador(caracter="=", largo=66):
+    """Devuelve una línea de 'largo' repeticiones de 'caracter' para separar secciones."""
     return caracter * largo
 
 
@@ -141,4 +139,5 @@ def encabezado(texto, caracter="="):
 
 
 def subtitulo(texto):
+    """Devuelve el texto como encabezado secundario '--- texto ---'."""
     return "\n--- {} ---".format(texto)

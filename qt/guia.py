@@ -3,6 +3,10 @@
 Guía para encontrar un botón: tras llevarte a la herramienta, marca el elemento
 con anillos que se expanden y una burbuja que explica qué hacer. Se retira sola
 (o con un clic, una tecla o al pulsar el propio elemento).
+Unidad: Proyecto Integrador (interfaz gráfica).
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
 """
 import math
 
@@ -21,19 +25,19 @@ class Guia(QWidget):
     DURACION = 8000
 
     def __init__(self, ventana, objetivo, texto):
+        """Crea la capa de guía que resalta un elemento de la ventana con una burbuja."""
         super().__init__(ventana)
         self._ventana = ventana
         self._objetivo = objetivo
         self._texto = texto
         self._fase = 0.0
-        self._alfa = 0.0                       # aparición / desaparición
+        self._alfa = 0.0
         self._cerrando = False
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.setGeometry(ventana.rect())
         self.show()
         self.raise_()
 
-        # Lleva el elemento a la vista si está dentro de un área con desplazamiento
         padre = objetivo.parentWidget()
         while padre is not None:
             if isinstance(padre, QScrollArea):
@@ -54,18 +58,20 @@ class Guia(QWidget):
         self._entrada.start()
 
         QTimer.singleShot(self.DURACION, self.cerrar)
-        # Cualquier clic o tecla (en cualquier parte) retira la guía
         QTimer.singleShot(350, lambda: QApplication.instance().installEventFilter(self))
         ventana.installEventFilter(self)
 
     def _poner_alfa(self, v):
+        """Fija la opacidad de la capa."""
         self._alfa = v
 
     def _avanzar(self):
+        """Avanza la fase de los anillos animados y repinta."""
         self._fase += 0.016
         self.update()
 
     def cerrar(self):
+        """Desvanece la guía y la elimina."""
         if self._cerrando:
             return
         self._cerrando = True
@@ -79,6 +85,7 @@ class Guia(QWidget):
         self._salida = salida
 
     def _eliminar(self):
+        """Quita los filtros de eventos y destruye la capa."""
         try:
             QApplication.instance().removeEventFilter(self)
             self._ventana.removeEventFilter(self)
@@ -89,6 +96,7 @@ class Guia(QWidget):
             pass
 
     def eventFilter(self, obj, e):
+        """Reajusta la guía al cambiar el tamaño de la ventana y la cierra con un clic o una tecla."""
         tipo = e.type()
         if obj is self._ventana and tipo == QEvent.Resize:
             self.setGeometry(self._ventana.rect())
@@ -96,15 +104,16 @@ class Guia(QWidget):
             self.cerrar()
         return False
 
-    # ── Dibujo ──
 
     def _rect_objetivo(self):
+        """Rectángulo del elemento resaltado en coordenadas de la ventana."""
         w = self._objetivo
         origen = w.mapTo(self._ventana, QPoint(0, 0))
         m = 7
         return QRectF(origen.x() - m, origen.y() - m, w.width() + 2 * m, w.height() + 2 * m)
 
     def paintEvent(self, _):
+        """Dibuja el fondo atenuado, el hueco, los anillos y la burbuja."""
         try:
             if not self._objetivo.isVisible():
                 return
@@ -115,7 +124,6 @@ class Guia(QWidget):
         p.setRenderHint(QPainter.Antialiasing)
         color = QColor(T.NARANJA)
 
-        # Anillos que se expanden desde el elemento
         p.setBrush(Qt.NoBrush)
         for k in range(3):
             t = (self._fase * 0.75 + k / 3.0) % 1.0
@@ -125,7 +133,6 @@ class Guia(QWidget):
             p.setPen(QPen(c, 2.4))
             p.drawRoundedRect(r.adjusted(-crece, -crece, crece, crece), 12 + crece * 0.4, 12 + crece * 0.4)
 
-        # Borde fijo con un resplandor suave
         for grosor, alfa in ((7.0, 40), (2.6, 235)):
             c = QColor(color)
             c.setAlpha(int(alfa * self._alfa))
@@ -135,6 +142,7 @@ class Guia(QWidget):
         self._burbuja(p, r)
 
     def _burbuja(self, p, r):
+        """Dibuja la burbuja con el texto de la indicación junto al elemento."""
         fuente = QFont(T.FUENTE, 10)
         fuente.setWeight(QFont.DemiBold)
         p.setFont(fuente)
@@ -148,8 +156,8 @@ class Guia(QWidget):
         y = r.bottom() + hueco if abajo else r.top() - hueco - alto
         x = r.center().x() - ancho / 2
         x = max(12, min(x, W - ancho - 12))
-        rebote = 5 * (0.5 + 0.5 * math.sin(self._fase * 6.0))   # la flecha rebota
-        y += 12 * (1.0 - self._alfa) * (1 if abajo else -1)     # entra deslizándose
+        rebote = 5 * (0.5 + 0.5 * math.sin(self._fase * 6.0))
+        y += 12 * (1.0 - self._alfa) * (1 if abajo else -1)
 
         cuerpo = QRectF(x, y, ancho, alto)
         p.setOpacity(self._alfa)
@@ -171,29 +179,33 @@ class Guia(QWidget):
         p.setOpacity(1.0)
 
 
-# ─────────────────────────────────────────────────────────────
-# Qué señalar para cada teorema
-# ─────────────────────────────────────────────────────────────
-
 def _prop(texto):
+    """Texto que indica elegir la propiedad de la lista y verificarla."""
     return "Elige en esta lista una propiedad sobre {} y pulsa «Verificar la elegida» (o «Verificar todas»).".format(texto)
 
 
 def especificacion_de_teorema(v, n):
     """
-    (página, preparar, objetivo, texto) para el teorema número n (1-21), o None.
+    (página, preparar, objetivo, texto) para el teorema número n (1-30), o None.
     `v` es la ventana principal; las funciones se evalúan cuando ya se llegó a la página.
     """
     s, m = v.pagina_solucionador, v.pagina_matrices
 
     def op():
+        """Lleva Operaciones a la pestaña de operaciones."""
         m.tabs.setCurrentIndex(0)
 
     def propiedades():
+        """Lleva Operaciones a la pestaña de propiedades."""
         m.tabs.setCurrentIndex(1)
 
     def enviar():
+        """Lleva Operaciones a la pestaña de envío al solucionador."""
         m.tabs.setCurrentIndex(2)
+
+    def numerica(pestana):
+        """Devuelve la función que lleva Métodos Numéricos a la pestaña indicada."""
+        return lambda: v.pagina_numerica.tabs.setCurrentIndex(pestana)
 
     tab_solucion = ("solucionador", lambda: s.tabs.setCurrentIndex(1), lambda: s.tabs.tabBar(),
                     "Pulsa RESOLVER y abre esta pestaña, «Solución y verificación»: ahí aparece la clasificación del sistema.")
@@ -227,6 +239,24 @@ def especificacion_de_teorema(v, n):
         19: ("matrices", op, lambda: m.combo_det,
              "Elige «Triangular (eliminación)» aquí y pulsa «det(A)»: la reducción aplica estas operaciones de fila."),
         20: ("matrices", propiedades, lambda: m.combo_prop, _prop("el determinante")),
-        21: ("matrices", op, lambda: m.btn_lu, "Pulsa «Factorización LU»; con B como vector también resuelve A·x = b."),
+        21: ("lu", None, lambda: v.pagina_lu.btn_lu, "Pulsa «Factorizar»; con b como vector también resuelve A·x = b."),
+        22: ("numerico", numerica(0), lambda: v.pagina_numerica.btn_calc_a,
+             "Prueba un intervalo sin cambio de signo, o 1/x en [−1, 1]: el programa explica por qué la bisección no se puede aplicar."),
+        23: ("numerico", numerica(0), lambda: v.pagina_numerica.btn_calc_a,
+             "Pulsa «Calcular bisección»: la tabla muestra xₗ, xᵤ, xᵣ, εₐ y f(xᵣ) en cada iteración."),
+        24: ("numerico", numerica(0), lambda: v.pagina_numerica.btn_calc_a,
+             "Tras calcular, el resultado muestra la cota del error Eᵦ de la raíz."),
+        25: ("numerico", numerica(0), lambda: v.pagina_numerica.e_a,
+             "Cambia la tolerancia E: el informe da el número teórico de iteraciones ⌈log₂((b − a)/E)⌉."),
+        26: ("numerico", numerica(3), lambda: v.pagina_numerica.btn_errores,
+             "Escribe el valor verdadero xᵥ y el aproximado xₐ, y pulsa «Calcular errores»."),
+        27: ("numerico", numerica(3), lambda: v.pagina_numerica.btn_propagacion,
+             "Pulsa «Calcular propagación»: compara Δy aproximado con Δy real."),
+        28: ("numerico", numerica(2), lambda: v.pagina_numerica.btn_desc,
+             "Escribe un número en base 10 o 2 y pulsa «Descomponer»: verás cada dígito por su potencia de la base."),
+        29: ("numerico", numerica(3), lambda: v.pagina_numerica.btn_flotante,
+             "Aquí ves por qué 0.1 + 0.2 != 0.3, el épsilon de máquina, el overflow y el underflow."),
+        30: ("numerico", numerica(3), lambda: v.pagina_numerica.btn_tipos,
+             "Este botón muestra cada tipo de error con un ejemplo."),
     }
     return tabla.get(n)

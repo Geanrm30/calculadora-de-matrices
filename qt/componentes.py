@@ -2,7 +2,10 @@
 """
 Componentes reutilizables con animaciones: botón, interruptor, tarjeta,
 cuadrícula de matriz, pila de páginas con transición y avisos flotantes.
+Unidad: Proyecto Integrador (interfaz gráfica).
 MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
 """
 import re
 from html.parser import HTMLParser
@@ -39,6 +42,7 @@ class _Cortina(QWidget):
     """Capa lisa que cubre un widget y se vuelve transparente (fundido de entrada)."""
 
     def __init__(self, widget, color):
+        """Crea la cortina del color dado que cubre al widget."""
         super().__init__(widget)
         self._color = QColor(color)
         self._alfa = 255
@@ -46,10 +50,12 @@ class _Cortina(QWidget):
         self.setGeometry(widget.rect())
 
     def poner_alfa(self, alfa):
+        """Fija la opacidad de la cortina (0-255) y la repinta."""
         self._alfa = alfa
         self.update()
 
     def paintEvent(self, _):
+        """Rellena todo el widget con el color de la cortina y su opacidad actual."""
         c = QColor(self._color)
         c.setAlpha(self._alfa)
         p = QPainter(self)
@@ -57,13 +63,8 @@ class _Cortina(QWidget):
 
 
 def aparecer(widget, duracion=260, retraso=0, color=None):
-    """
-    Hace aparecer un widget con un fundido. Encima se coloca una cortina del
-    color del fondo (`color`, por defecto el del tema) que se desvanece.
-
-    No se usa QGraphicsOpacityEffect porque falla con las QScrollArea (las
-    cuadrículas de matriz, los cuadros de texto): su interior se pinta aparte
-    y durante la animación mostraba restos de la pantalla anterior.
+    """Hace aparecer un widget con un fundido: una cortina del color del fondo se desvanece encima.
+    No usa QGraphicsOpacityEffect porque falla con las QScrollArea.
     """
     previa = getattr(widget, "_cortina_aparecer", None)
     if previa is not None:
@@ -85,13 +86,15 @@ def aparecer(widget, duracion=260, retraso=0, color=None):
     anim.setEasingCurve(QEasingCurve.OutCubic)
 
     def paso(v):
+        """Un cuadro del fundido: ajusta tamaño y opacidad de la cortina."""
         try:
-            cortina.setGeometry(widget.rect())       # por si cambió de tamaño
+            cortina.setGeometry(widget.rect())
             cortina.poner_alfa(int(255 * v))
         except RuntimeError:
-            pass                                     # el widget ya se destruyó
+            pass
 
     def fin():
+        """Oculta la cortina al terminar el fundido."""
         try:
             cortina.hide()
             cortina.deleteLater()
@@ -99,15 +102,16 @@ def aparecer(widget, duracion=260, retraso=0, color=None):
             pass
 
     def iniciar():
+        """Arranca la animación si el widget sigue vivo."""
         try:
             anim.start()
         except RuntimeError:
-            pass                                     # la ventana se cerró antes
+            pass
 
     anim.valueChanged.connect(paso)
     anim.finished.connect(fin)
     QTimer.singleShot(retraso, iniciar)
-    widget._anim_aparecer = anim                     # evita que se recolecte
+    widget._anim_aparecer = anim
     return anim
 
 
@@ -133,6 +137,7 @@ def desvanecer(widget, duracion=260, color=None):
     anim.setEasingCurve(QEasingCurve.InCubic)
 
     def paso(v):
+        """Un cuadro del desvanecimiento: ajusta tamaño y opacidad de la cortina."""
         try:
             cortina.setGeometry(widget.rect())
             cortina.poner_alfa(int(255 * v))
@@ -159,8 +164,6 @@ def mostrar_animado(widget, mostrar, duracion=360, color=None):
         if widget.isVisible() and widget.maximumHeight() >= maximo:
             return
         inicio = widget.height() if widget.isVisible() else 0
-        # Se prueba cómo quedará el diseño ya con el widget y se lee su altura final:
-        # así la animación llega justo a donde el diseño lo va a dejar (sin salto).
         padre = widget.parentWidget()
         widget.setMaximumHeight(maximo)
         widget.show()
@@ -173,7 +176,7 @@ def mostrar_animado(widget, mostrar, duracion=360, color=None):
         if not widget.isVisible():
             return
         inicio, fin = widget.height(), 0
-        cortina = desvanecer(widget, int(duracion * 0.9), color)
+        desvanecer(widget, int(duracion * 0.9), color)
 
     anim = QVariantAnimation(widget)
     anim.setDuration(duracion)
@@ -182,12 +185,14 @@ def mostrar_animado(widget, mostrar, duracion=360, color=None):
     anim.setEasingCurve(QEasingCurve.OutCubic)
 
     def paso(v):
+        """Un cuadro del despliegue: fija la altura máxima del widget."""
         try:
             widget.setMaximumHeight(max(0, int(v)))
         except RuntimeError:
             pass
 
     def fin_anim():
+        """Quita el límite de altura al terminar el despliegue."""
         try:
             widget.setMaximumHeight(maximo)
             if not mostrar:
@@ -214,6 +219,7 @@ def fundido_de_ventana(ventana, duracion=360):
     anim.setEasingCurve(QEasingCurve.OutCubic)
 
     def paso(v):
+        """Un cuadro del fundido: fija la opacidad de la ventana."""
         try:
             ventana.setWindowOpacity(v)
         except RuntimeError:
@@ -243,18 +249,21 @@ def entrada_suave(widget, retraso=0, duracion=650):
     anim.setEasingCurve(QEasingCurve.OutCubic)
 
     def paso(v):
+        """Un cuadro de la entrada: fija la opacidad del efecto."""
         try:
             efecto.setOpacity(v)
         except RuntimeError:
-            pass                                     # el widget ya se destruyó
+            pass
 
     def fin():
+        """Quita el efecto gráfico al terminar la entrada."""
         try:
             widget.setGraphicsEffect(None)
         except RuntimeError:
             pass
 
     def iniciar():
+        """Arranca la animación si el widget sigue vivo."""
         try:
             anim.start()
         except RuntimeError:
@@ -265,10 +274,6 @@ def entrada_suave(widget, retraso=0, duracion=650):
     QTimer.singleShot(retraso, iniciar)
     widget._anim_entrada = anim
 
-
-# ─────────────────────────────────────────────────────────────
-# Botón animado
-# ─────────────────────────────────────────────────────────────
 
 class BotonAnimado(QPushButton):
     """Botón con color que se interpola al pasar el cursor."""
@@ -288,6 +293,7 @@ class BotonAnimado(QPushButton):
 
     def __init__(self, texto, estilo="suave", pequeno=False, parent=None,
                  borde=False):
+        """Crea el botón con su estilo (suave, fantasma...), borde y tamaño pequeño opcionales."""
         super().__init__(texto, parent)
         self._borde = borde
         self._c0, self._c1, self._ct = self._estilo(estilo)
@@ -305,7 +311,6 @@ class BotonAnimado(QPushButton):
         self._anim.setEasingCurve(QEasingCurve.OutCubic)
         self._anim.valueChanged.connect(self._paso)
 
-        # Onda al pulsar (centro, avance 0→1) y destello periódico (-1 = apagado)
         self._onda = None
         self._brillo = -1.0
         self._ciclo = None
@@ -323,6 +328,7 @@ class BotonAnimado(QPushButton):
         self._anim_brillo.finished.connect(self._fin_brillo)
 
     def _paso(self, v):
+        """Guarda el avance del resalte al pasar el ratón y repinta."""
         self._t = v
         self.update()
 
@@ -331,6 +337,7 @@ class BotonAnimado(QPushButton):
         self.setText(self.text() + "  ▾")
 
         def abrir():
+            """Despliega el menú con las opciones bajo el botón."""
             menu = QMenu(self)
             for op in opciones:
                 if op is None:
@@ -342,6 +349,7 @@ class BotonAnimado(QPushButton):
         return self
 
     def _ir(self, destino):
+        """Anima el resalte desde su valor actual hasta el destino."""
         self._anim.stop()
         self._anim.setStartValue(self._t)
         self._anim.setEndValue(destino)
@@ -357,27 +365,33 @@ class BotonAnimado(QPushButton):
                 self._ciclo.start()
 
     def _lanzar_brillo(self):
+        """Lanza el destello periódico si el botón es visible y está habilitado."""
         if self.isVisible() and self.isEnabled():
             self._anim_brillo.start()
 
     def _paso_brillo(self, v):
+        """Guarda la posición del destello y repinta."""
         self._brillo = v
         self.update()
 
     def _fin_brillo(self):
+        """Apaga el destello al terminar."""
         self._brillo = -1.0
         self.update()
 
     def _paso_onda(self, v):
+        """Guarda el radio de la onda del clic y repinta."""
         if self._onda is not None:
             self._onda = (self._onda[0], v)
             self.update()
 
     def _fin_onda(self):
+        """Borra la onda del clic al terminar."""
         self._onda = None
         self.update()
 
     def mousePressEvent(self, e):
+        """Inicia la onda del clic en el punto pulsado."""
         if e.button() == Qt.LeftButton and self.isEnabled():
             self._onda = (QPointF(e.position()), 0.0)
             self._anim_onda.stop()
@@ -387,29 +401,35 @@ class BotonAnimado(QPushButton):
         super().mousePressEvent(e)
 
     def showEvent(self, e):
+        """Reanuda el destello periódico al mostrarse."""
         super().showEvent(e)
         if self._ciclo is not None:
             self._ciclo.start()
 
     def hideEvent(self, e):
+        """Detiene el destello periódico al ocultarse."""
         super().hideEvent(e)
         if self._ciclo is not None:
             self._ciclo.stop()
 
     def enterEvent(self, e):
+        """Resalta el botón cuando el ratón entra."""
         self._ir(1.0)
         super().enterEvent(e)
 
     def leaveEvent(self, e):
+        """Quita el resalte cuando el ratón sale."""
         self._ir(0.0)
         super().leaveEvent(e)
 
     def sizeHint(self):
+        """Tamaño sugerido: el del botón estándar más un margen horizontal."""
         base = super().sizeHint()
         return QSize(base.width() + (8 if self._pequeno else 20),
                      self.minimumHeight())
 
     def paintEvent(self, _):
+        """Dibuja el botón con su estilo, resalte, destello, onda y texto."""
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         activo = self.isEnabled()
@@ -464,14 +484,11 @@ class BotonAnimado(QPushButton):
         p.drawText(self.rect(), Qt.AlignCenter, self.text())
 
 
-# ─────────────────────────────────────────────────────────────
-# Interruptor
-# ─────────────────────────────────────────────────────────────
-
 class Interruptor(QCheckBox):
     """Casilla con aspecto de interruptor, con animación de la perilla."""
 
     def __init__(self, texto, marcado=False, parent=None):
+        """Crea el interruptor con su texto y su estado inicial."""
         super().__init__(texto, parent)
         self.setChecked(marcado)
         self.setCursor(Qt.PointingHandCursor)
@@ -483,23 +500,28 @@ class Interruptor(QCheckBox):
         self.toggled.connect(self._cambio)
 
     def _paso(self, v):
+        """Guarda la posición de la perilla y repinta."""
         self._t = v
         self.update()
 
     def _cambio(self, marcado):
+        """Anima la perilla hacia el nuevo estado."""
         self._anim.stop()
         self._anim.setStartValue(self._t)
         self._anim.setEndValue(1.0 if marcado else 0.0)
         self._anim.start()
 
     def sizeHint(self):
+        """Tamaño sugerido: el del texto más el espacio del interruptor."""
         base = super().sizeHint()
         return QSize(base.width() + 50, max(base.height(), 26))
 
     def hitButton(self, pos):
+        """Toda la superficie del widget responde al clic."""
         return self.rect().contains(pos)
 
     def paintEvent(self, _):
+        """Dibuja la pista, la perilla y el texto."""
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         alto = 20
@@ -523,14 +545,11 @@ class Interruptor(QCheckBox):
                    Qt.AlignVCenter | Qt.AlignLeft, self.text())
 
 
-# ─────────────────────────────────────────────────────────────
-# Tarjeta
-# ─────────────────────────────────────────────────────────────
-
 class _ConPulso:
     """Pieza común: el borde del marco se ilumina un instante (`pulso`)."""
 
     def _iniciar_pulso(self):
+        """Lanza un pulso de color alrededor del widget."""
         self._pulso = 0.0
         self._color_pulso = QColor(T.AZUL)
         self._anim_pulso = QVariantAnimation(self)
@@ -547,10 +566,12 @@ class _ConPulso:
         self._anim_pulso.start()
 
     def _paso_pulso(self, v):
+        """Guarda el avance del pulso y repinta."""
         self._pulso = v
         self.update()
 
     def _pintar_pulso(self):
+        """Dibuja el halo del pulso mientras está activo."""
         if self._pulso <= 0.01:
             return
         p = QPainter(self)
@@ -567,11 +588,13 @@ class Barra(_ConPulso, QFrame):
     """Franja con borde redondeado (estilo «barra») que puede iluminar su borde."""
 
     def __init__(self, parent=None):
+        """Crea la barra superior con su nombre de objeto para el estilo."""
         super().__init__(parent)
         self.setObjectName("barra")
         self._iniciar_pulso()
 
     def paintEvent(self, e):
+        """Pinta la barra y encima el pulso."""
         super().paintEvent(e)
         self._pintar_pulso()
 
@@ -580,13 +603,13 @@ class Tarjeta(_ConPulso, QFrame):
     """Contenedor redondeado con título pequeño en mayúsculas."""
 
     def __init__(self, titulo="", color=None, parent=None):
+        """Crea la tarjeta con título y cuerpo vertical."""
         super().__init__(parent)
         self.setObjectName("tarjeta")
         self.cuerpo = QVBoxLayout(self)
         self.cuerpo.setContentsMargins(16, 14, 16, 16)
         self.cuerpo.setSpacing(10)
 
-        # Fila superior: título a la izquierda y acciones a la derecha.
         self.cabecera = QHBoxLayout()
         self.cabecera.setSpacing(4)
         self.lbl_titulo = QLabel(titulo.upper())
@@ -596,31 +619,29 @@ class Tarjeta(_ConPulso, QFrame):
                 "color: {}; background: transparent;".format(color))
         self.cabecera.addWidget(self.lbl_titulo)
         self.cuerpo.addLayout(self.cabecera)
-        # Se muestra DESPUÉS de meterla en la tarjeta: antes de eso es un widget sin
-        # padre y mostrarlo abre, por un instante, una ventana suelta.
         self.lbl_titulo.setVisible(bool(titulo))
         self._iniciar_pulso()
 
     def paintEvent(self, e):
+        """Pinta la tarjeta y encima el pulso."""
         super().paintEvent(e)
         self._pintar_pulso()
 
     def poner_titulo(self, texto):
+        """Muestra el título en mayúsculas o lo oculta si está vacío."""
         self.lbl_titulo.setText(texto.upper())
         self.lbl_titulo.setVisible(bool(texto))
 
     def agregar(self, widget, *args, **kw):
+        """Agrega un widget al cuerpo y lo devuelve."""
         self.cuerpo.addWidget(widget, *args, **kw)
         return widget
 
     def agregar_layout(self, layout):
+        """Agrega un layout al cuerpo y lo devuelve."""
         self.cuerpo.addLayout(layout)
         return layout
 
-
-# ─────────────────────────────────────────────────────────────
-# Cuadrícula de matriz
-# ─────────────────────────────────────────────────────────────
 
 def parsear_tabla(texto):
     """
@@ -630,27 +651,27 @@ def parsear_tabla(texto):
     t = (texto or "").strip()
     if not t:
         return None
-    if re.fullmatch(r"-?\d+,\d+", t):          # decimal con coma: 2,5
+    if re.fullmatch(r"-?\d+,\d+", t):
         return None
     if "■(" in t:
         return _tabla_de_ecuacion_lineal(t)
 
     if "\n" in t or "\t" in t:
-        lineas = [l for l in t.splitlines() if l.strip()]
+        lineas = [texto_fila for texto_fila in t.splitlines() if texto_fila.strip()]
     else:
         lineas = re.split(r"\]\s*,?\s*\[|;", t)
 
     filas = []
-    for l in lineas:
-        l = l.strip().strip("[]() ").strip()
-        if not l:
+    for texto_fila in lineas:
+        texto_fila = texto_fila.strip().strip("[]() ").strip()
+        if not texto_fila:
             continue
-        if "\t" in l:
-            toks = [x.strip() for x in l.split("\t")]
-        elif re.search(r"\s", l):
-            toks = [x.rstrip(",;") for x in re.split(r"\s+", l)]
+        if "\t" in texto_fila:
+            toks = [x.strip() for x in texto_fila.split("\t")]
+        elif re.search(r"\s", texto_fila):
+            toks = [x.rstrip(",;") for x in re.split(r"\s+", texto_fila)]
         else:
-            toks = [x.strip() for x in l.split(",")]
+            toks = [x.strip() for x in texto_fila.split(",")]
         toks = [x.strip("[]() ") for x in toks]
         filas.append(toks)
 
@@ -684,11 +705,13 @@ class _CeldasHTML(HTMLParser):
     """Recoge las filas y celdas de la primera tabla de un HTML."""
 
     def __init__(self):
+        """Prepara el lector que extrae filas y celdas de una tabla HTML."""
         super().__init__(convert_charrefs=True)
         self.filas, self._fila, self._celda = [], None, None
         self._tablas = 0
 
     def handle_starttag(self, etiqueta, atributos):
+        """Abre tabla, fila o celda según la etiqueta."""
         if etiqueta == "table":
             self._tablas += 1
         elif self._tablas == 1 and etiqueta == "tr":
@@ -697,10 +720,12 @@ class _CeldasHTML(HTMLParser):
             self._celda = []
 
     def handle_data(self, datos):
+        """Acumula el texto de la celda abierta."""
         if self._celda is not None:
             self._celda.append(datos)
 
     def handle_endtag(self, etiqueta):
+        """Cierra celda, fila o tabla según la etiqueta."""
         if etiqueta == "table":
             self._tablas -= 1
         elif self._tablas == 1 and etiqueta in ("td", "th") and self._celda is not None:
@@ -748,6 +773,7 @@ class Celda(QLineEdit):
     rehacer = Signal()
 
     def __init__(self, texto="0", parent=None):
+        """Crea la celda de entrada de un número de la matriz."""
         super().__init__(texto, parent)
         self.setObjectName("celda")
         self.setProperty("escala", str(T.ESCALA))
@@ -771,7 +797,6 @@ class Celda(QLineEdit):
         self._anim_foco.valueChanged.connect(self._paso_foco)
         self.editingFinished.connect(self._confirmado)
 
-        # Validación en vivo: se revisa cuando dejas de teclear.
         self._revision = QTimer(self)
         self._revision.setSingleShot(True)
         self._revision.setInterval(500)
@@ -782,23 +807,26 @@ class Celda(QLineEdit):
     def destellar(self, retraso=0, intensidad=1.0, color=None):
         """Un resplandor de color cruza la celda (se usa en la ola de la cuadrícula)."""
         def iniciar():
+            """Arranca el destello con la intensidad dada."""
             try:
                 self._intensidad = intensidad
                 self._color_destello = QColor(color or T.NARANJA)
                 self._anim_destello.start()
             except RuntimeError:
-                pass                                 # la celda ya no existe
+                pass
         QTimer.singleShot(retraso, iniciar)
 
     def _paso_destello(self, v):
+        """Guarda el avance del destello y repinta."""
         self._destello = v
         self.update()
 
     def paintEvent(self, e):
+        """Pinta la celda y encima el destello y el halo de foco."""
         super().paintEvent(e)
         if self._destello <= 0.01 and self._foco <= 0.01:
             return
-        p = QPainter(self)                           # un solo pintor para ambos efectos
+        p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         if self._destello > 0.01:
             color = QColor(self._color_destello)
@@ -818,6 +846,7 @@ class Celda(QLineEdit):
             p.drawRoundedRect(QRectF(self.rect()).adjusted(0.4, 0.4, -0.4, -0.4), 3.5, 3.5)
 
     def _paso_foco(self, v):
+        """Guarda el avance del halo de foco y repinta."""
         self._foco = v
         self.update()
 
@@ -828,6 +857,7 @@ class Celda(QLineEdit):
             self.destellar(0, 0.5)
 
     def es_valida(self):
+        """Indica si el texto se puede leer como fracción, decimal o raíz."""
         try:
             desde_texto(self.text())
             return True
@@ -844,17 +874,19 @@ class Celda(QLineEdit):
         self.style().polish(self)
 
     def validar(self):
+        """Marca la celda en rojo si su texto no es válido; devuelve si lo es."""
         self.marcar(not self.es_valida())
         return not self.property("error")
 
     @staticmethod
     def _es_rehacer(e):
+        """Indica si el evento es Rehacer (Ctrl+Y o Ctrl+Mayús+Z)."""
         return (e.matches(QKeySequence.Redo)
                 or (e.key() == Qt.Key_Z
                     and e.modifiers() == (Qt.ControlModifier | Qt.ShiftModifier)))
 
     def event(self, e):
-        # Sin esto, QLineEdit se queda con Ctrl+Z para deshacer solo su texto.
+        """Evita que QLineEdit se quede con Ctrl+Z: el deshacer es el de toda la cuadrícula."""
         if e.type() == QEvent.ShortcutOverride:
             if e.matches(QKeySequence.Undo) or self._es_rehacer(e):
                 e.accept()
@@ -862,6 +894,7 @@ class Celda(QLineEdit):
         return super().event(e)
 
     def keyPressEvent(self, e):
+        """Emite deshacer o rehacer de la cuadrícula en vez del de la celda."""
         if e.matches(QKeySequence.Undo):
             self.deshacer.emit()
             return
@@ -875,7 +908,7 @@ class Celda(QLineEdit):
                 return
         if e.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Down):
             if e.modifiers() & Qt.ControlModifier:
-                e.ignore()            # Ctrl+Enter lo atiende la página
+                e.ignore()
                 return
             self.mover.emit(1, 0)
         elif e.key() == Qt.Key_Up:
@@ -884,6 +917,7 @@ class Celda(QLineEdit):
             super().keyPressEvent(e)
 
     def focusInEvent(self, e):
+        """Guarda el texto al entrar para detectar si cambió y activa el halo."""
         super().focusInEvent(e)
         self._texto_al_entrar = self.text()
         self._anim_foco.stop()
@@ -893,6 +927,7 @@ class Celda(QLineEdit):
         QTimer.singleShot(0, self.selectAll)
 
     def focusOutEvent(self, e):
+        """Quita el halo de foco al salir."""
         super().focusOutEvent(e)
         self._anim_foco.stop()
         self._anim_foco.setStartValue(self._foco)
@@ -904,10 +939,12 @@ class _Lienzo(QWidget):
     """Contenedor de celdas que dibuja los corchetes de la matriz."""
 
     def __init__(self, corchetes, parent=None):
+        """Crea el lienzo que dibuja los corchetes de la matriz."""
         super().__init__(parent)
         self._corchetes = corchetes
 
     def paintEvent(self, _):
+        """Dibuja los corchetes izquierdo y derecho de la matriz."""
         if not self._corchetes:
             return
         p = QPainter(self)
@@ -930,15 +967,14 @@ class CuadriculaMatriz(QScrollArea):
     """
 
     cambiado = Signal()
-    # Se emite cuando deshacer/rehacer/pegar cambian el tamaño: (filas, columnas)
     forma_cambiada = Signal(int, int)
-    # (puede_deshacer, puede_rehacer)
     historial_cambiado = Signal(bool, bool)
 
     MAX_HISTORIAL = 100
 
     def __init__(self, corchetes=True, aumentada=False, max_filas=20,
                  max_cols=20, parent=None):
+        """Crea la cuadrícula de celdas de m filas por n columnas, aumentada o no."""
         super().__init__(parent)
         self._aumentada = aumentada
         self._corchetes = corchetes
@@ -961,15 +997,17 @@ class CuadriculaMatriz(QScrollArea):
         self._temporizador.timeout.connect(self._registrar)
 
     def filas(self):
+        """Número de filas de la cuadrícula."""
         return len(self.celdas)
 
     def columnas(self):
+        """Número de columnas de la cuadrícula."""
         return len(self.celdas[0]) if self.celdas else 0
 
     def textos(self):
+        """Devuelve el texto de cada celda como lista de filas."""
         return [[c.text() for c in fila] for fila in self.celdas]
 
-    # ── Construcción ──────────────────────────────────────────
 
     def reconstruir(self, filas, columnas, anteriores=None, registrar=True,
                     animar=None):
@@ -1048,46 +1086,47 @@ class CuadriculaMatriz(QScrollArea):
 
     @staticmethod
     def _valor(anteriores, i, j):
+        """Texto que corresponde a la celda (i, j): el anterior si existía, '0' si es nueva."""
         if anteriores and i < len(anteriores) and j < len(anteriores[i]):
             return anteriores[i][j]
         return "0"
 
     @staticmethod
     def _cabecera(texto):
-        l = QLabel(texto)
-        l.setAlignment(Qt.AlignCenter)
-        l.setStyleSheet("color: {}; background: transparent; font-weight: 700;"
+        """Crea la etiqueta de encabezado de una columna."""
+        rotulo = QLabel(texto)
+        rotulo.setAlignment(Qt.AlignCenter)
+        rotulo.setStyleSheet("color: {}; background: transparent; font-weight: 700;"
                         .format(T.AZUL))
-        return l
+        return rotulo
 
     def _al_editar(self, _):
-        self._temporizador.start()          # se registra al dejar de teclear
+        """Programa el registro en el historial al dejar de teclear y avisa del cambio."""
+        self._temporizador.start()
         self.cambiado.emit()
 
     def _mover(self, i, j, dr, dc):
+        """Mueve el foco dr filas y dc columnas si la celda destino existe."""
         i2, j2 = i + dr, j + dc
         if 0 <= i2 < len(self.celdas) and 0 <= j2 < len(self.celdas[0]):
             self.celdas[i2][j2].setFocus()
         elif dr == 1 and i2 >= len(self.celdas):
-            # Enter en la última fila: pasa a la primera de la columna siguiente.
             if j + 1 < len(self.celdas[0]):
                 self.celdas[0][j + 1].setFocus()
 
-    def poner_textos(self, textos):
-        self.reconstruir(len(textos), len(textos[0]), textos)
-
     def limpiar(self):
+        """Pone todas las celdas en 0 y lo registra en el historial."""
         habia_datos = any(c.text() != "0" for fila in self.celdas for c in fila)
         for fila in self.celdas:
             for c in fila:
                 c.setText("0")
         self._registrar()
         if habia_datos:
-            self.ola(T.AZUL)                 # barrido azul: todo vuelve a cero
+            self.ola(T.AZUL)
 
-    # ── Historial ─────────────────────────────────────────────
 
     def _avisar_historial(self):
+        """Informa si se puede deshacer y rehacer."""
         self.historial_cambiado.emit(self._pos > 0,
                                      self._pos < len(self._hist) - 1)
 
@@ -1107,6 +1146,7 @@ class CuadriculaMatriz(QScrollArea):
         self._avisar_historial()
 
     def _ir_a_historial(self, pos):
+        """Restaura el estado guardado en la posición pos del historial."""
         snap = self._hist[pos]
         self._pos = pos
         self.reconstruir(len(snap), len(snap[0]), snap, registrar=False)
@@ -1114,16 +1154,17 @@ class CuadriculaMatriz(QScrollArea):
         self.forma_cambiada.emit(len(snap), len(snap[0]))
 
     def deshacer(self):
-        self._registrar()                   # lo escrito y aún no registrado
+        """Retrocede un estado del historial."""
+        self._registrar()
         if self._pos > 0:
             self._ir_a_historial(self._pos - 1)
 
     def rehacer(self):
+        """Avanza un estado del historial."""
         self._temporizador.stop()
         if self._pos < len(self._hist) - 1:
             self._ir_a_historial(self._pos + 1)
 
-    # ── Copiar y pegar ────────────────────────────────────────
 
     def copiar(self):
         """Copia la matriz como tabla con tabuladores (se pega bien en Excel)."""
@@ -1156,12 +1197,6 @@ class CuadriculaMatriz(QScrollArea):
             motivo = "No hay una tabla en el portapapeles."
         mostrar_aviso(self, motivo, "info")
 
-    def pegar_texto(self, texto, i0=0, j0=0):
-        filas = parsear_tabla(texto)
-        if filas is None:
-            return False
-        return self.pegar_filas(filas, i0, j0)
-
     def pegar_filas(self, filas, i0=0, j0=0):
         """Escribe las filas desde la celda (i0, j0); la cuadrícula crece si hace falta."""
         actual = self.textos()
@@ -1172,7 +1207,6 @@ class CuadriculaMatriz(QScrollArea):
         for di, fila in enumerate(filas):
             for dj, valor in enumerate(fila):
                 if i0 + di < n_f and j0 + dj < n_c:
-                    # Excel/Word traen «−» y celdas vacías: se dejan como 0 y «-»
                     base[i0 + di][j0 + dj] = normalizar_texto_numerico(valor) or "0"
         self.reconstruir(n_f, n_c, base)
         self.forma_cambiada.emit(n_f, n_c)
@@ -1185,15 +1219,12 @@ class CuadriculaMatriz(QScrollArea):
         c.marcar(True)
         c.setFocus()
 
-    def hay_invalidas(self):
-        return any(not c.es_valida() for fila in self.celdas for c in fila)
-
-
 def agregar_acciones_grid(tarjeta, grid):
     """Pone en el encabezado de la tarjeta: ↶ ↷ y un menú Tabla (copiar/pegar)."""
     tarjeta.cabecera.addStretch(1)
 
     def icono(texto, tip, cmd):
+        """Crea un botón cuadrado de icono con su ayuda."""
         b = BotonAnimado(texto, "fantasma", pequeno=True)
         b.setFixedSize(30, 28)
         b.setToolTip(tip)
@@ -1216,6 +1247,7 @@ def agregar_acciones_grid(tarjeta, grid):
     tarjeta.btn_tabla = b_tabla
 
     def actualizar(puede_des, puede_reh):
+        """Habilita o no deshacer y rehacer según el historial."""
         b_des.setEnabled(puede_des)
         b_reh.setEnabled(puede_reh)
 
@@ -1224,13 +1256,10 @@ def agregar_acciones_grid(tarjeta, grid):
 
 
 def _sub(n):
+    """Escribe el entero n con dígitos subíndice."""
     tabla = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
     return str(n).translate(tabla)
 
-
-# ─────────────────────────────────────────────────────────────
-# Pila de páginas con transición
-# ─────────────────────────────────────────────────────────────
 
 class _Instantanea(QWidget):
     """
@@ -1241,26 +1270,28 @@ class _Instantanea(QWidget):
     """
 
     def __init__(self, padre, foto, color, direccion=1, eje="v"):
+        """Guarda la foto del contenido anterior para la transición."""
         super().__init__(padre)
         self._foto = foto
         self._color = QColor(color)
-        self._direccion = direccion            # +1: la nueva entra desde abajo / la derecha
-        self._eje = eje                        # "v" vertical, "h" horizontal
+        self._direccion = direccion
+        self._eje = eje
         self._progreso = 0.0
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.setGeometry(padre.rect())
 
     def poner_progreso(self, valor):
+        """Fija el avance de la transición y repinta."""
         self._progreso = valor
         self.update()
 
     def paintEvent(self, _):
+        """Dibuja la foto desvaneciéndose según el avance."""
         p = QPainter(self)
         t = self._progreso
         vertical = self._eje == "v"
         largo = self.height() if vertical else self.width()
         if t < 0.5:
-            # La foto de la página que se va se desliza y se apaga
             u = 2.0 * t
             salida = u * u * (3 - 2 * u)
             desp = int(-self._direccion * 60 * salida)
@@ -1268,7 +1299,6 @@ class _Instantanea(QWidget):
             p.setOpacity(1.0 - u)
             p.drawPixmap(0 if vertical else desp, desp if vertical else 0, self._foto)
         else:
-            # El telón se retira con un borde difuminado y deja ver la página nueva
             u = 2.0 * t - 1.0
             avance = 1.0 - (1.0 - u) ** 3
             blando = 130.0
@@ -1292,6 +1322,7 @@ class PestanasAnimadas(QTabWidget):
     DURACION = 340
 
     def __init__(self, color_fondo=None, parent=None):
+        """Crea las pestañas con transición animada sobre un fondo del color dado."""
         super().__init__(parent)
         self._color = color_fondo
         self._foto = None
@@ -1308,6 +1339,7 @@ class PestanasAnimadas(QTabWidget):
             self._previo = self.currentIndex()
 
     def _terminar(self):
+        """Detiene la transición en curso y quita la foto."""
         if self._anim is not None:
             self._anim.stop()
             self._anim = None
@@ -1320,6 +1352,7 @@ class PestanasAnimadas(QTabWidget):
             self._capa = None
 
     def _despues(self, indice):
+        """Lanza el fundido entre la foto anterior y la pestaña nueva."""
         foto, self._foto = self._foto, None
         if foto is None:
             return
@@ -1355,11 +1388,13 @@ class PilaAnimada(QStackedWidget):
     DURACION = 460
 
     def __init__(self, parent=None):
+        """Crea la pila de páginas con transición animada."""
         super().__init__(parent)
         self._capa = None
         self._anim = None
 
     def _terminar_transicion(self):
+        """Detiene la transición en curso y quita la capa."""
         if self._anim is not None:
             self._anim.stop()
             self._anim = None
@@ -1372,16 +1407,18 @@ class PilaAnimada(QStackedWidget):
             self._capa = None
 
     def resizeEvent(self, e):
+        """Ajusta la capa de transición al nuevo tamaño."""
         super().resizeEvent(e)
         if self._capa is not None:
             self._capa.setGeometry(self.rect())
 
     def ir(self, indice):
+        """Cambia a la página de índice dado con la transición."""
         if indice == self.currentIndex():
             return
         self._terminar_transicion()
         direccion = 1 if indice > self.currentIndex() else -1
-        foto = self.grab()                     # cómo se ve ahora la página que se va
+        foto = self.grab()
         self.setCurrentIndex(indice)
 
         capa = _Instantanea(self, foto, T.FONDO, direccion)
@@ -1398,10 +1435,6 @@ class PilaAnimada(QStackedWidget):
         anim.start()
 
 
-# ─────────────────────────────────────────────────────────────
-# Diálogos con entrada y salida animadas
-# ─────────────────────────────────────────────────────────────
-
 class _AparicionDeDialogo:
     """
     Pieza común: el diálogo entra con un fundido y un pequeño deslizamiento hacia
@@ -1412,11 +1445,13 @@ class _AparicionDeDialogo:
     DESPLAZAMIENTO = 26
 
     def _preparar_animacion(self):
+        """Inicializa el estado de la animación de aparición y cierre."""
         self._ya_aparecio = False
         self._cerrando = False
         self._al_cerrar = None
 
     def showEvent(self, e):
+        """Anima la aparición del diálogo: fundido y ligero desplazamiento."""
         super().showEvent(e)
         if self._ya_aparecio:
             return
@@ -1433,6 +1468,7 @@ class _AparicionDeDialogo:
         anim.setEasingCurve(QEasingCurve.OutCubic)
 
         def paso(v):
+            """Un cuadro de la aparición: opacidad y posición."""
             self.setWindowOpacity(v)
             self.move(destino.x(), destino.y() + int(desp * (1.0 - v)))
 
@@ -1441,12 +1477,14 @@ class _AparicionDeDialogo:
         self._anim_entrada_dialogo = anim
 
     def _terminar_cierre(self, resultado):
+        """Cierra el diálogo y ejecuta la acción pendiente."""
         super().done(resultado)
         pendiente, self._al_cerrar = self._al_cerrar, None
         if pendiente:
             pendiente()
 
     def done(self, resultado):
+        """Anima el cierre antes de cerrar el diálogo."""
         if self._cerrando or not self.isVisible():
             self._terminar_cierre(resultado)
             return
@@ -1459,6 +1497,7 @@ class _AparicionDeDialogo:
         anim.setEasingCurve(QEasingCurve.InCubic)
 
         def paso(v):
+            """Un cuadro del cierre: opacidad y posición."""
             self.setWindowOpacity(v)
             self.move(origen.x(), origen.y() + int(14 * (1.0 - v)))
 
@@ -1472,6 +1511,7 @@ class DialogoAnimado(_AparicionDeDialogo, QDialog):
     """QDialog que entra y sale con animación."""
 
     def __init__(self, padre=None):
+        """Crea el diálogo con aparición animada."""
         super().__init__(padre)
         self._preparar_animacion()
 
@@ -1480,18 +1520,16 @@ class CajaAnimada(_AparicionDeDialogo, QMessageBox):
     """QMessageBox que entra y sale con animación."""
 
     def __init__(self, padre=None):
+        """Crea el cuadro de mensaje con aparición animada."""
         super().__init__(padre)
         self._preparar_animacion()
 
-
-# ─────────────────────────────────────────────────────────────
-# Aviso flotante
-# ─────────────────────────────────────────────────────────────
 
 class Aviso(QLabel):
     """Mensaje breve que aparece abajo, centrado, y se desvanece solo."""
 
     def __init__(self, ventana, texto, tipo="ok"):
+        """Crea el aviso emergente del tipo ok, info o error sobre la ventana."""
         super().__init__(texto, ventana)
         color = {"ok": T.VERDE, "info": T.AZUL, "error": T.ROJO}.get(tipo, T.AZUL)
         self.setStyleSheet(
@@ -1529,6 +1567,7 @@ class Aviso(QLabel):
         salida.setEndValue(0.0)
         salida.finished.connect(self.deleteLater)
         def iniciar_salida():
+            """Arranca la salida del aviso si sigue vivo."""
             try:
                 salida.start()
             except RuntimeError:
@@ -1536,7 +1575,6 @@ class Aviso(QLabel):
         QTimer.singleShot(2400, iniciar_salida)
         self._anims = (entrada, salida)
 
-        # Barra inferior que se acorta hasta que el aviso se retira
         self._color_barra = QColor(color)
         self._resta = 1.0
         self._anim_resta = QVariantAnimation(self)
@@ -1547,10 +1585,12 @@ class Aviso(QLabel):
         self._anim_resta.start()
 
     def _paso_resta(self, v):
+        """Guarda el avance de la barra de tiempo y repinta."""
         self._resta = v
         self.update()
 
     def paintEvent(self, e):
+        """Dibuja el aviso con su color y la barra de tiempo restante."""
         super().paintEvent(e)
         p = QPainter(self)
         p.fillRect(QRectF(4, self.height() - 3, (self.width() - 8) * self._resta, 2),
@@ -1558,4 +1598,5 @@ class Aviso(QLabel):
 
 
 def mostrar_aviso(ventana, texto, tipo="ok"):
+    """Muestra un aviso de texto y tipo sobre la ventana que contiene al widget dado."""
     return Aviso(ventana.window(), texto, tipo)

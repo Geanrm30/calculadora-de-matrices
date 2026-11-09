@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Icono de la aplicación, dibujado por código (no hace falta ningún archivo)."""
+"""
+Icono de la aplicación, dibujado por código (no hace falta ningún archivo).
+Unidad: Proyecto Integrador (interfaz gráfica).
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
+"""
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import (QBrush, QColor, QIcon, QLinearGradient, QPainter,
                            QPen, QPixmap)
@@ -22,7 +28,6 @@ def dibujar(tamano):
     p.setBrush(QBrush(fondo))
     p.drawRoundedRect(QRectF(0, 0, t, t), t * 0.22, t * 0.22)
 
-    # Corchetes
     naranja = QColor("#FAB387")
     lapiz = QPen(naranja, max(1.2, t * 0.07), Qt.SolidLine, Qt.RoundCap,
                  Qt.RoundJoin)
@@ -36,7 +41,6 @@ def dibujar(tamano):
     p.drawPolyline([QPointF(x1 - brazo, y0), QPointF(x1, y0),
                     QPointF(x1, y1), QPointF(x1 - brazo, y1)])
 
-    # Elementos de la matriz
     p.setPen(Qt.NoPen)
     radio = t * 0.075
     for cx, cy, color in ((0.40, 0.38, "#89B4FA"), (0.60, 0.38, "#FAB387"),
@@ -48,6 +52,7 @@ def dibujar(tamano):
 
 
 def crear_icono():
+    """Dibuja el icono de la aplicación en varios tamaños y lo devuelve como QIcon."""
     icono = QIcon()
     for t in TAMANOS:
         icono.addPixmap(dibujar(t))

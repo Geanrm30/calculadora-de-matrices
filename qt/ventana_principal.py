@@ -2,7 +2,12 @@
 """
 Ventana principal: menú lateral con indicador animado y páginas que se
 conservan entre cambios (lo escrito en cada herramienta no se pierde).
+Unidad: Proyecto Integrador (interfaz gráfica).
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
 """
+import importlib.util
 import time
 
 from PySide6.QtCore import (QByteArray, QCoreApplication, QEasingCurve, QEvent,
@@ -22,10 +27,11 @@ from qt.guia import Guia, especificacion_de_teorema
 from qt.tour import PasoTour, Tour
 from qt.visor import cerrar_todas as cerrar_ventanas_de_resultado
 from qt.pagina_inicio import PaginaInicio
+from qt.pagina_lu import PaginaLU
+from qt.pagina_numerica import PaginaNumerica
 from qt.pagina_matrices import PaginaMatrices
 from qt.pagina_solucionador import PaginaSolucionador
 from qt.pagina_teoremas import PaginaTeoremas
-
 
 
 def secciones():
@@ -34,13 +40,17 @@ def secciones():
         ("inicio",       "Inicio",       "⌂", T.TEXTO),
         ("solucionador", "Solucionador", "≡", T.NARANJA),
         ("matrices",     "Operaciones",  "▦", T.AZUL),
+        ("lu",           "Factorización LU", "▤", T.VERDE),
+        ("numerico",     "Métodos Numéricos", "∫", T.ROJO),
         ("teoremas",     "Teoremas",     "∴", T.MORADO),
     ]
 
 
 class BotonNav(QPushButton):
 
+    """Botón de la barra lateral con icono, texto, atajo y animaciones de selección."""
     def __init__(self, texto, icono, color, atajo):
+        """Crea el botón con su texto, icono, color y atajo."""
         super().__init__()
         self._texto, self._icono, self._color = texto, icono, QColor(color)
         self._atajo = atajo
@@ -70,18 +80,22 @@ class BotonNav(QPushButton):
         self._pop_anim.valueChanged.connect(self._set_pop)
 
     def _set_pop(self, v):
+        """Guarda el avance del rebote al seleccionar y repinta."""
         self._pop = v
         self.update()
 
     def _set_hover(self, v):
+        """Guarda el avance del resalte y repinta."""
         self._t = v
         self.update()
 
     def _set_sel(self, v):
+        """Guarda el avance de la selección y repinta."""
         self._sel = v
         self.update()
 
     def _cambio(self, marcado):
+        """Anima la selección al marcarse o desmarcarse."""
         if marcado:
             self._pop_anim.stop()
             self._pop_anim.start()
@@ -91,20 +105,24 @@ class BotonNav(QPushButton):
         self._selanim.start()
 
     def _hover_a(self, d):
+        """Anima el resalte hasta el valor dado."""
         self._hov.stop()
         self._hov.setStartValue(self._t)
         self._hov.setEndValue(d)
         self._hov.start()
 
     def enterEvent(self, e):
+        """Resalta el botón cuando el ratón entra."""
         self._hover_a(1.0)
         super().enterEvent(e)
 
     def leaveEvent(self, e):
+        """Quita el resalte cuando el ratón sale."""
         self._hover_a(0.0)
         super().leaveEvent(e)
 
     def paintEvent(self, _):
+        """Dibuja el fondo, el icono, el texto y el atajo del botón."""
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         r = self.rect().adjusted(8, 2, -8, -2)
@@ -160,16 +178,20 @@ def _rehacer_ventana(tema_nuevo, estado, geometria, vieja):
     nueva.setWindowOpacity(0.0)
     nueva.show()
     fundido_de_ventana(nueva, 420)
-    app._ventana_principal = nueva        # evita que la recolecte el GC
-    nueva.precargar_paginas(retraso=2200)   # el resto, en segundo plano
+    app._ventana_principal = nueva
+    nueva.precargar_paginas(retraso=2200)
 
 
 class VentanaPrincipal(QMainWindow):
 
+    """Ventana principal: barra lateral, páginas de cada sección, tema, ayuda y recorrido."""
     _FABRICAS = {"inicio": PaginaInicio, "solucionador": PaginaSolucionador,
-                 "matrices": PaginaMatrices, "teoremas": PaginaTeoremas}
+                 "matrices": PaginaMatrices, "lu": PaginaLU,
+                 "teoremas": PaginaTeoremas,
+                 "numerico": PaginaNumerica}
 
     def __init__(self):
+        """Crea la ventana, la barra lateral y la pila de páginas; restaura la sesión guardada."""
         super().__init__()
         self.setWindowTitle("Calculadora de Álgebra Lineal — MTM0120")
         self.resize(1480, 920)
@@ -178,6 +200,7 @@ class VentanaPrincipal(QMainWindow):
         self._cambiando_tema = False
         self._tour = None
         self._guia = None
+        self._exposicion = False
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -187,9 +210,6 @@ class VentanaPrincipal(QMainWindow):
 
         self.pila = PilaAnimada()
         self._claves = [s[0] for s in self._secciones]
-        # Las páginas se construyen cuando hacen falta: así la ventana abre (y se
-        # rehace al cambiar de tema) mucho más rápido. `_pendiente` guarda lo que
-        # hubiera escrito en las que todavía no existen.
         self._paginas = {}
         self._pendiente = {}
         self._marcos = {}
@@ -207,6 +227,8 @@ class VentanaPrincipal(QMainWindow):
                       activated=lambda k=self._claves[i]: self.ir_a(k))
 
         QShortcut(QKeySequence("F1"), self, activated=lambda: self.abrir_ayuda(0))
+        QShortcut(QKeySequence("F11"), self, activated=self.alternar_exposicion)
+        QShortcut(QKeySequence("Esc"), self, activated=self._salir_de_exposicion)
         QShortcut(QKeySequence("Ctrl+Shift+T"), self, activated=self.alternar_tema)
         QShortcut(QKeySequence("Ctrl+Q"), self, activated=self.close)
         for tecla in ("Ctrl++", "Ctrl+="):
@@ -217,6 +239,7 @@ class VentanaPrincipal(QMainWindow):
         QShortcut(QKeySequence("Ctrl+0"), self,
                   activated=lambda: self.cambiar_escala(0))
 
+        self._crear_barra_de_estado()
         self._boton_de = dict(zip(self._claves, self.botones))
         self.botones[0].setChecked(True)
         self._mover_indicador(0, animar=False)
@@ -230,7 +253,6 @@ class VentanaPrincipal(QMainWindow):
         for i, w in enumerate(elementos):
             entrada_suave(w, retraso=120 + 70 * i, duracion=420)
 
-    # ──────────────────────────────────────────────────────────
 
     def _pagina(self, clave):
         """Devuelve la página, construyéndola la primera vez que se pide."""
@@ -247,19 +269,19 @@ class VentanaPrincipal(QMainWindow):
     pagina_inicio = property(lambda self: self._pagina("inicio"))
     pagina_solucionador = property(lambda self: self._pagina("solucionador"))
     pagina_matrices = property(lambda self: self._pagina("matrices"))
+    pagina_lu = property(lambda self: self._pagina("lu"))
+    pagina_numerica = property(lambda self: self._pagina("numerico"))
     pagina_teoremas = property(lambda self: self._pagina("teoremas"))
 
     def precargar_paginas(self, retraso=1400, separacion=500, quietud=0.8):
-        """
-        Construye en segundo plano, de una en una, las páginas que aún no existen.
-        Solo lo hace cuando no estás usando el programa (ratón quieto y sin
-        transiciones en curso): construir una página tarda 100-300 ms y, si coincide
-        con un clic, se notaría como un tirón.
+        """Construye en segundo plano las páginas que faltan, solo cuando el programa está en reposo.
+        Así un clic no coincide con los 100-300 ms que tarda construir una página.
         """
         pendientes = [c for c in self._claves if c not in self._paginas]
         reposo = {"pos": QCursor.pos(), "desde": time.perf_counter()}
 
         def siguiente():
+            """Construye la siguiente página pendiente si sigue en reposo."""
             try:
                 if not pendientes or self._cambiando_tema:
                     return
@@ -268,14 +290,14 @@ class VentanaPrincipal(QMainWindow):
                     reposo["pos"], reposo["desde"] = pos, time.perf_counter()
                 en_uso = time.perf_counter() - reposo["desde"] < quietud
                 if en_uso or self.pila._anim is not None:
-                    QTimer.singleShot(250, siguiente)      # se está usando: se espera
+                    QTimer.singleShot(250, siguiente)
                     return
                 self._pagina(pendientes.pop(0))
-                reposo["desde"] = time.perf_counter()      # deja respirar antes de la siguiente
+                reposo["desde"] = time.perf_counter()
                 if pendientes:
                     QTimer.singleShot(separacion, siguiente)
             except RuntimeError:
-                pass                                       # la ventana se cerró
+                pass
 
         QTimer.singleShot(retraso, siguiente)
 
@@ -294,6 +316,7 @@ class VentanaPrincipal(QMainWindow):
         return area
 
     def _crear_barra_lateral(self):
+        """Crea la barra lateral con los botones de navegación, el tema y la ayuda."""
         barra = QFrame()
         barra.setFixedWidth(224)
         barra.setStyleSheet("QFrame {{ background-color: {}; }}".format(T.PANEL))
@@ -319,7 +342,6 @@ class VentanaPrincipal(QMainWindow):
             v.addWidget(b)
             self.botones.append(b)
 
-        # Indicador deslizante (barra de color a la izquierda)
         self.indicador = QFrame(barra)
         self.indicador.setFixedSize(4, 26)
         self.indicador.setStyleSheet(
@@ -329,7 +351,6 @@ class VentanaPrincipal(QMainWindow):
 
         v.addStretch(1)
 
-        # Tamaño de letra de cuadrículas y resultados
         grupo_escala = QFrame()
         grupo_escala.setObjectName("grupoEscala")
         grupo_escala.setStyleSheet(
@@ -369,6 +390,15 @@ class VentanaPrincipal(QMainWindow):
         marco_tema.addWidget(self.btn_tema)
         v.addLayout(marco_tema)
 
+        self.btn_exposicion = BotonAnimado("▢   Modo exposición", "fantasma",
+                                           pequeno=True, borde=True)
+        self.btn_exposicion.setToolTip("Letra grande y pantalla completa para proyectar (F11)")
+        self.btn_exposicion.clicked.connect(self.alternar_exposicion)
+        marco_expo = QHBoxLayout()
+        marco_expo.setContentsMargins(14, 0, 14, 6)
+        marco_expo.addWidget(self.btn_exposicion)
+        v.addLayout(marco_expo)
+
         fila_ayuda = QHBoxLayout()
         fila_ayuda.setContentsMargins(14, 0, 14, 8)
         fila_ayuda.setSpacing(4)
@@ -388,6 +418,7 @@ class VentanaPrincipal(QMainWindow):
         return barra
 
     def _mover_indicador(self, indice, animar=True):
+        """Mueve la marca de selección junto al botón del índice dado."""
         b = self.botones[indice]
         destino = b.mapTo(self._barra, b.rect().topLeft())
         y = destino.y() + (b.height() - self.indicador.height()) // 2
@@ -405,10 +436,12 @@ class VentanaPrincipal(QMainWindow):
         self._anim_ind = anim
 
     def showEvent(self, e):
+        """Coloca la marca de selección al mostrarse la ventana."""
         super().showEvent(e)
         self._mover_indicador(self.pila.currentIndex(), animar=False)
 
     def ir_a(self, clave):
+        """Cambia a la sección identificada por 'clave'."""
         if clave not in self._claves:
             return
         i = self._claves.index(clave)
@@ -421,13 +454,11 @@ class VentanaPrincipal(QMainWindow):
         self._mover_indicador(i)
         self.pila.ir(i)
 
-    # ──────────────────────────────────────────────────────────
-    # Sesión: tema, tamaño y lo escrito en cada herramienta
-    # ──────────────────────────────────────────────────────────
 
     def estado(self):
+        """Devuelve la sección actual y el estado de las páginas que lo guardan."""
         d = {"pagina": self._claves[self.pila.currentIndex()]}
-        for clave in ("solucionador", "matrices"):
+        for clave in ("solucionador", "matrices", "lu", "numerico"):
             if clave in self._paginas:
                 d[clave] = self._paginas[clave].estado()
             elif clave in self._pendiente:
@@ -435,9 +466,10 @@ class VentanaPrincipal(QMainWindow):
         return d
 
     def restaurar(self, d):
+        """Restaura la sección y el estado de las páginas desde 'estado'."""
         if not isinstance(d, dict):
             return
-        for clave in ("solucionador", "matrices"):
+        for clave in ("solucionador", "matrices", "lu", "numerico"):
             if clave in d:
                 if clave in self._paginas:
                     self._paginas[clave].restaurar(d[clave])
@@ -445,7 +477,7 @@ class VentanaPrincipal(QMainWindow):
                     self._pendiente[clave] = d[clave]
         pagina = d.get("pagina", "inicio")
         if pagina in self._claves:
-            self._pagina(pagina)                  # la que se ve tiene que existir
+            self._pagina(pagina)
             i = self._claves.index(pagina)
             self.pila.setCurrentIndex(i)
             for k, b in enumerate(self.botones):
@@ -462,11 +494,14 @@ class VentanaPrincipal(QMainWindow):
         self.restaurar(persistencia.leer("sesion"))
 
     def _guardar_sesion(self, estado=None):
+        """Guarda el estado de las páginas y la geometría de la ventana."""
         persistencia.escribir("sesion", estado or self.estado())
         persistencia.escribir(
             "geometria", bytes(self.saveGeometry().toBase64()).decode())
 
     def closeEvent(self, e):
+        """Guarda la sesión y cierra las ventanas de resultados al salir."""
+        self._salir_de_exposicion()
         if not self._cambiando_tema:
             self._guardar_sesion()
             cerrar_ventanas_de_resultado()
@@ -476,16 +511,16 @@ class VentanaPrincipal(QMainWindow):
         """Cambia entre claro y oscuro sin perder nada de lo escrito."""
         if self._cambiando_tema:
             return
+        self._salir_de_exposicion()
         nuevo = "claro" if T.NOMBRE_TEMA == "oscuro" else "oscuro"
         if self._tour is not None:
             self._tour.terminar()
-        # Sus botones conservarían los colores del tema anterior
         cerrar_ventanas_de_resultado()
         estado = self.estado()
         geometria = self.saveGeometry()
         self._guardar_sesion(estado)
 
-        self._cambiando_tema = True           # también evita guardar la sesión al cerrar
+        self._cambiando_tema = True
         salida = QVariantAnimation(self)
         salida.setDuration(170)
         salida.setStartValue(1.0)
@@ -497,14 +532,11 @@ class VentanaPrincipal(QMainWindow):
         salida.start()
         self._anim_salida = salida
 
-    # ──────────────────────────────────────────────────────────
-    # Ayuda, recorrido guiado y tamaño de letra
-    # ──────────────────────────────────────────────────────────
 
     def abrir_ayuda(self, pestana=0):
+        """Abre el diálogo de ayuda en la pestaña indicada."""
         d = DialogoAyuda(self, pestana)
         d.repetir_tour.connect(self.iniciar_tour)
-        # Se espera a que el diálogo termine de cerrarse antes de rehacer la ventana
         d.borrar_datos.connect(lambda: QTimer.singleShot(0, self.restablecer_todo))
         d.exec()
 
@@ -521,9 +553,9 @@ class VentanaPrincipal(QMainWindow):
 
         nueva = VentanaPrincipal()
         nueva.show()
-        app._ventana_principal = nueva        # evita que la recolecte el GC
+        app._ventana_principal = nueva
 
-        self._cambiando_tema = True           # que al cerrar no vuelva a guardar la sesión
+        self._cambiando_tema = True
         self.close()
         mostrar_aviso(nueva, "Calculadora restablecida a sus valores por defecto")
 
@@ -533,17 +565,20 @@ class VentanaPrincipal(QMainWindow):
             QTimer.singleShot(800, self.iniciar_tour)
 
     def iniciar_tour(self):
+        """Inicia el recorrido guiado por todas las secciones."""
         if self._tour is not None:
             return
         s, m, t = self.pagina_solucionador, self.pagina_matrices, self.pagina_teoremas
+        lu = self.pagina_lu
+        num = self.pagina_numerica
         pasos = [
             PasoTour("Menú lateral",
-                     "Cambia de herramienta aquí o con Ctrl+1 … Ctrl+4. Al pie "
+                     "Cambia de herramienta aquí o con Ctrl+1 … Ctrl+6. Al pie "
                      "tienes la letra, el tema, la ayuda (F1) y «Acerca de».",
                      lambda: self._barra, "inicio"),
             PasoTour("Inicio",
-                     "Tres tarjetas llevan a cada herramienta. Al pasar el cursor "
-                     "se iluminan; también puedes entrar con Ctrl+2, Ctrl+3 y Ctrl+4.",
+                     "Cuatro tarjetas llevan a cada herramienta. Al pasar el cursor "
+                     "se iluminan; también puedes entrar con Ctrl+2 … Ctrl+6.",
                      lambda: self.pagina_inicio.tarjetas[0], "inicio"),
             PasoTour("Prueba un ejemplo",
                      "Carga un sistema ya armado y lo resuelve al instante: "
@@ -609,14 +644,10 @@ class VentanaPrincipal(QMainWindow):
                      "Resuelve A·x = b con determinantes. B debe ser el vector b "
                      "y A cuadrada con det(A) distinto de cero.",
                      lambda: m.btn_cramer),
-            PasoTour("Factorización LU",
-                     "Factoriza A = L·U y, con B como vector, resuelve el sistema en "
-                     "dos etapas. Si hace falta permutar filas, te lo avisa.",
-                     lambda: m.btn_lu),
             PasoTour("Propiedades",
                      "Verifica 31 propiedades con tus propias matrices: elige una "
                      "de la lista o pulsa «Verificar todas». Cada una dice si se cumple.",
-                     lambda: m.combo_prop, None, lambda: m.tabs.setCurrentIndex(1)),
+                     lambda: m.combo_prop, "matrices", lambda: m.tabs.setCurrentIndex(1)),
             PasoTour("Resultado e informes",
                      "Aquí aparece el resultado. Puedes abrirlo en una ventana "
                      "aparte, copiarlo como texto o imagen, o guardarlo en PDF.",
@@ -625,6 +656,34 @@ class VentanaPrincipal(QMainWindow):
                      "Vuelve a cualquier resultado anterior sin recalcularlo, y úsalo "
                      "como A, B o C con los botones «Usar como».",
                      lambda: m.btn_historial),
+            PasoTour("Factorización LU",
+                     "Sección propia: escribe A y b, y obtén L, U, y y x. Resuelve "
+                     "A·x = b en dos etapas y te avisa si hace falta permutar filas.",
+                     lambda: lu.btn_lu, "lu"),
+            PasoTour("LU: agrega L, U o x",
+                     "Con «Agregar matriz L / U / vector x» ves cada resultado en su "
+                     "propia tarjeta. Con L y U a la vista (sin A) calcula A = L·U.",
+                     lambda: lu.btn_toggle["L"]),
+            PasoTour("Métodos numéricos: bisección",
+                     "Escribe f(x), el intervalo [a, b] y la tolerancia E. Verifica "
+                     "el cambio de signo, calcula las iteraciones teóricas y "
+                     "contrasta la raíz con SciPy.",
+                     lambda: num.b_ej_a, "numerico",
+                     lambda: (num.tabs.setCurrentIndex(0), num.cargar_ejemplo_a(0))),
+            PasoTour("Tabla de iteraciones",
+                     "La tabla a 6 decimales: i, xₗ, xᵤ, xᵣ, εₐ (%), f(xᵣ) y xᵤ − xₗ. "
+                     "En «Informe paso a paso» se va construyendo fila por fila "
+                     "y al final aparece completa.",
+                     lambda: num.sub_a),
+            PasoTour("Graficar la raíz",
+                     "Manda la función al Graficador con la raíz aproximada y el "
+                     "intervalo (inicial o final) marcados.",
+                     lambda: num.btn_graf_raiz),
+            PasoTour("Graficador, posicional y errores",
+                     "Estas pestañas grafican funciones sin unir asíntotas, "
+                     "descomponen enteros en base 10 y 2, y explican los errores "
+                     "numéricos (0.1 + 0.2, épsilon, propagación).",
+                     lambda: num.tabs.tabBar()),
             PasoTour("Teoremas: busca y filtra",
                      "Busca por nombre o enunciado (Ctrl+F) y filtra por categoría. "
                      "Lo encontrado sale resaltado y las coincidencias se abren solas.",
@@ -646,11 +705,9 @@ class VentanaPrincipal(QMainWindow):
                      "recorrido cuando quieras. ¡Listo para empezar!",
                      lambda: self.btn_ayuda),
         ]
-        # El recorrido carga ejemplos para enseñar resultados: se guarda lo que hubiera
         self._estado_previo_tour = self.estado()
         self._tour = Tour(self, pasos, al_terminar=self._tour_terminado)
 
-    # ── Guía desde los teoremas ──
 
     def ir_y_mostrar(self, numero):
         """Lleva a la herramienta donde se usa el teorema y marca el botón exacto."""
@@ -664,6 +721,7 @@ class VentanaPrincipal(QMainWindow):
         self.ir_a(pagina)
 
         def mostrar():
+            """Va a la sección, prepara la página y señala el elemento con la guía."""
             if preparar:
                 preparar()
             QTimer.singleShot(140, lambda: self._poner_guia(objetivo, texto))
@@ -671,6 +729,7 @@ class VentanaPrincipal(QMainWindow):
         QTimer.singleShot(560, mostrar)
 
     def _poner_guia(self, objetivo, texto):
+        """Muestra la guía sobre el elemento si todavía existe."""
         try:
             widget = objetivo()
         except (KeyError, AttributeError):
@@ -680,6 +739,7 @@ class VentanaPrincipal(QMainWindow):
         self._guia = Guia(self, widget, texto)
 
     def _tour_terminado(self):
+        """Al terminar el recorrido restaura el estado previo, lo marca como visto y vuelve a Inicio."""
         self._tour = None
         previo, self._estado_previo_tour = getattr(self, "_estado_previo_tour", None), None
         if previo:
@@ -687,7 +747,53 @@ class VentanaPrincipal(QMainWindow):
         persistencia.escribir("tour_visto", True)
         self.ir_a("inicio")
 
+    def _crear_barra_de_estado(self):
+        """Crea la barra de estado: mensajes a la izquierda y tema, letra y SciPy a la derecha."""
+        barra = self.statusBar()
+        barra.setSizeGripEnabled(False)
+        barra.setStyleSheet(
+            "QStatusBar {{ background: {p}; color: {m}; border-top: 1px solid {b}; }}"
+            "QStatusBar::item {{ border: 0; }}".format(p=T.PANEL, m=T.MUTED, b=T.BORDE))
+        self._lbl_estado = QLabel("")
+        self._lbl_estado.setStyleSheet("background: transparent; padding-right: 10px;")
+        barra.addPermanentWidget(self._lbl_estado)
+        self._refrescar_estado()
+        barra.showMessage("Listo", 4000)
+
+    def _refrescar_estado(self):
+        """Actualiza el resumen de la derecha de la barra de estado."""
+        scipy = "disponible" if importlib.util.find_spec("scipy") else "no instalado"
+        self._lbl_estado.setText("Tema {}  ·  Letra {}%  ·  SciPy {}".format(
+            T.NOMBRE_TEMA, round(T.ESCALA * 100), scipy))
+
+    def alternar_exposicion(self):
+        """Entra o sale del modo exposición: pantalla completa, letra grande y sin barra lateral."""
+        if not self._exposicion:
+            self._exposicion = True
+            self._escala_previa = T.ESCALA
+            self._maximizada_previa = self.isMaximized()
+            self._barra.hide()
+            self.statusBar().hide()
+            self._poner_escala(1.5, guardar=False)
+            self.showFullScreen()
+            mostrar_aviso(self, "Modo exposición · F11 o Esc para salir", "info")
+        else:
+            self._exposicion = False
+            self._barra.show()
+            self.statusBar().show()
+            self._poner_escala(self._escala_previa, guardar=False)
+            if self._maximizada_previa:
+                self.showMaximized()
+            else:
+                self.showNormal()
+
+    def _salir_de_exposicion(self):
+        """Esc: sale del modo exposición si está activo."""
+        if self._exposicion:
+            self.alternar_exposicion()
+
     def _refrescar_escala(self):
+        """Muestra el porcentaje de escala, animándolo cuando cambia."""
         nuevo = round(T.ESCALA * 100)
         actual = getattr(self, "_escala_mostrada", None)
         self._escala_mostrada = nuevo
@@ -706,6 +812,20 @@ class VentanaPrincipal(QMainWindow):
         anim.start()
         self._anim_escala = anim
 
+    def _poner_escala(self, nuevo, guardar=True):
+        """Aplica la escala de letra a todas las páginas; devuelve False si ya era esa."""
+        if nuevo == T.ESCALA:
+            return False
+        T.poner_escala(nuevo)
+        if guardar:
+            persistencia.escribir("escala", nuevo)
+        for clave in ("solucionador", "matrices", "lu", "numerico"):
+            if clave in self._paginas:
+                self._paginas[clave].aplicar_escala()
+        self._refrescar_escala()
+        self._refrescar_estado()
+        return True
+
     def cambiar_escala(self, paso):
         """paso = +1 / -1 para subir o bajar un nivel; 0 para restablecer."""
         escalas = T.ESCALAS
@@ -714,12 +834,6 @@ class VentanaPrincipal(QMainWindow):
         else:
             i = escalas.index(T.ESCALA) + paso
             nuevo = escalas[max(0, min(len(escalas) - 1, i))]
-        if nuevo == T.ESCALA:
+        if not self._poner_escala(nuevo):
             return
-        T.poner_escala(nuevo)
-        persistencia.escribir("escala", nuevo)
-        for clave in ("solucionador", "matrices"):
-            if clave in self._paginas:
-                self._paginas[clave].aplicar_escala()
-        self._refrescar_escala()
         mostrar_aviso(self, "Tamaño de letra: {}%".format(round(nuevo * 100)), "info")

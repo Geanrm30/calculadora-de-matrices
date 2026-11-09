@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 Tema visual (paleta oscura tipo Catppuccin Mocha) y hoja de estilos Qt.
+Unidad: Proyecto Integrador (interfaz gráfica).
 MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
 """
 import os
 import tempfile
@@ -11,7 +14,6 @@ from PySide6.QtCore import Qt, QPointF
 from PySide6.QtGui import QColor, QPainter, QPixmap, QPolygonF
 
 PALETAS = {
-    # Catppuccin Mocha
     "oscuro": dict(
         FONDO="#1E1E2E", PANEL="#181825", CRUST="#11111B", SUPERF="#313244",
         SUPERF2="#3B3D52", BORDE="#45475A", TEXTO="#CDD6F4", MUTED="#7F849C",
@@ -19,7 +21,6 @@ PALETAS = {
         VERDE="#A6E3A1", VERDE_H="#85C27D", ROJO="#F38BA8", ROJO_H="#D06A86",
         MORADO="#CBA6F7", PIV_BG="#2D2410", HDR_BG="#1E2845",
         ERROR_BG="#4A2733", SELECCION="#2D3B5A", TEXTO_BOTON="#181825"),
-    # Catppuccin Latte
     "claro": dict(
         FONDO="#EFF1F5", PANEL="#FFFFFF", CRUST="#E6E9EF", SUPERF="#E1E5EC",
         SUPERF2="#D3D8E2", BORDE="#BCC0CC", TEXTO="#4C4F69", MUTED="#7C7F93",
@@ -27,7 +28,6 @@ PALETAS = {
         VERDE="#4CAF50", VERDE_H="#3E9642", ROJO="#D9304F", ROJO_H="#B8203D",
         MORADO="#8839EF", PIV_BG="#FCE8D6", HDR_BG="#DCE6FB",
         ERROR_BG="#F9D5DC", SELECCION="#C9D8F8", TEXTO_BOTON="#FFFFFF"),
-    # Para exportar a PDF: fondo blanco, texto negro
     "impreso": dict(
         FONDO="#FFFFFF", PANEL="#FFFFFF", CRUST="#F4F4F4", SUPERF="#F1F3F6",
         SUPERF2="#E5E8EE", BORDE="#B8BDC8", TEXTO="#1B1D26", MUTED="#5E6272",
@@ -39,7 +39,6 @@ PALETAS = {
 
 NOMBRE_TEMA = "oscuro"
 
-# Factor de tamaño de letra de cuadrículas y resultados (1.0 = 100 %).
 ESCALAS = (0.8, 0.9, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0)
 ESCALA = 1.0
 

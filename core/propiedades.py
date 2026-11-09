@@ -4,6 +4,8 @@ Verificador de propiedades algebraicas de matrices y vectores.
 Implementa las propiedades de las Sesiones 9-11: suma, escalar, transpuesta,
 producto, inversa y determinante. Cada propiedad calcula ambos lados por caminos
 distintos y los compara con fracciones exactas. MTM0120 — Universidad Americana.
+Unidad: Sesiones 9-11.
+MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
 """
@@ -22,11 +24,8 @@ CAT_INV = "Inversa"
 CAT_DET = "Determinante"
 
 
-# ---------------------------------------------------------------------------
-# Utilidades internas
-# ---------------------------------------------------------------------------
-
 def _identidad(n):
+    """Devuelve la matriz identidad de orden n con entradas Fraccion."""
     return [[Fraccion(1) if i == j else Fraccion(0) for j in range(n)]
             for i in range(n)]
 
@@ -45,6 +44,7 @@ _iguales = alg.son_iguales
 
 
 def _dim(M):
+    """Devuelve el tamaño de M como texto 'm×n'."""
     return "{}×{}".format(len(M), len(M[0]))
 
 
@@ -82,11 +82,8 @@ def _armar(titulo, regla, nota, pasos, nom_izq, izq, nom_der, der):
     return lineas, cumple
 
 
-# ---------------------------------------------------------------------------
-# Producto matriz-vector
-# ---------------------------------------------------------------------------
-
 def _chequear_A_u(A, u):
+    """Verifica que A·u esté definido (columnas de A = componentes de u); si no, lanza ValueError."""
     if len(A[0]) != len(u):
         raise ValueError(
             "A tiene {} columnas y los vectores de B tienen {} componentes.\n\n"
@@ -95,6 +92,7 @@ def _chequear_A_u(A, u):
 
 
 def _mv_suma(A, B, r, C=None, s=None):
+    """Propiedad A(u + v) = A·u + A·v con los vectores u y v de B."""
     u = _vector(B, 0, "u")
     v = _vector(B, 1, "v")
     _chequear_A_u(A, u)
@@ -103,17 +101,15 @@ def _mv_suma(A, B, r, C=None, s=None):
 
 
 def _mv_escalar(A, B, r, C=None, s=None):
+    """Propiedad A(r·u) = r(A·u) con el vector u de B."""
     u = _vector(B, 0, "u")
     _chequear_A_u(A, u)
     lineas = proc.pasos_propiedad_escalar(A, r, u)
     return lineas, any("[Se cumple]" in l for l in lineas)
 
 
-# ---------------------------------------------------------------------------
-# Vectores en Rn
-# ---------------------------------------------------------------------------
-
 def _vec_conmutativa(A, B, r, C=None, s=None):
+    """Propiedad u + v = v + u de los vectores de B."""
     u, v = _vector(B, 0, "u"), _vector(B, 1, "v")
     return _armar("u + v = v + u",
                   "La suma de vectores es conmutativa.",
@@ -125,6 +121,7 @@ def _vec_conmutativa(A, B, r, C=None, s=None):
 
 
 def _vec_distributiva(A, B, r, C=None, s=None):
+    """Propiedad r(u + v) = r·u + r·v de los vectores de B."""
     u, v = _vector(B, 0, "u"), _vector(B, 1, "v")
     U, V = como_columna(u), como_columna(v)
     pasos = [("u + v =", alg.sumar_matrices(U, V)),
@@ -137,11 +134,8 @@ def _vec_distributiva(A, B, r, C=None, s=None):
                   "r·u + r·v", alg.sumar_matrices(pasos[1][1], pasos[2][1]))
 
 
-# ---------------------------------------------------------------------------
-# Suma y escalar de matrices
-# ---------------------------------------------------------------------------
-
 def _sum_conmutativa(A, B, r, C=None, s=None):
+    """Propiedad A + B = B + A."""
     return _armar("A + B = B + A",
                   "La suma de matrices es conmutativa.", None, [],
                   "A + B", alg.sumar_matrices(A, B),
@@ -163,6 +157,7 @@ def _sum_asociativa(A, B, r, C=None, s=None):
 
 
 def _sum_neutro(A, B, r, C=None, s=None):
+    """Propiedad A + 0 = A (la matriz cero es el neutro de la suma)."""
     cero = [[Fraccion(0)] * len(A[0]) for _ in A]
     return _armar("A + 0 = A",
                   "La matriz cero es el elemento neutro de la suma.", None,
@@ -171,6 +166,7 @@ def _sum_neutro(A, B, r, C=None, s=None):
 
 
 def _sum_distributiva(A, B, r, C=None, s=None):
+    """Propiedad r(A + B) = r·A + r·B."""
     pasos = [("A + B =", alg.sumar_matrices(A, B)),
              ("r·A =", alg.multiplicar_escalar(r, A)),
              ("r·B =", alg.multiplicar_escalar(r, B))]
@@ -209,6 +205,7 @@ def _sum_asoc_escalares(A, B, r, C=None, s=None):
 
 
 def _sum_opuesto(A, B, r, C=None, s=None):
+    """Propiedad A + (−A) = 0."""
     cero = [[Fraccion(0)] * len(A[0]) for _ in A]
     opuesta = alg.multiplicar_escalar(Fraccion(-1), A)
     return _armar("A + (−A) = 0",
@@ -217,11 +214,8 @@ def _sum_opuesto(A, B, r, C=None, s=None):
                   "A + (−A)", alg.sumar_matrices(A, opuesta), "0", cero)
 
 
-# ---------------------------------------------------------------------------
-# Transpuesta
-# ---------------------------------------------------------------------------
-
 def _tra_doble(A, B, r, C=None, s=None):
+    """Propiedad (Aᵀ)ᵀ = A."""
     T = alg.transponer(A)
     return _armar("(Aᵀ)ᵀ = A",
                   "Transponer dos veces devuelve la matriz original.", None,
@@ -230,6 +224,7 @@ def _tra_doble(A, B, r, C=None, s=None):
 
 
 def _tra_suma(A, B, r, C=None, s=None):
+    """Propiedad (A + B)ᵀ = Aᵀ + Bᵀ."""
     pasos = [("A + B =", alg.sumar_matrices(A, B)),
              ("Aᵀ =", alg.transponer(A)),
              ("Bᵀ =", alg.transponer(B))]
@@ -241,6 +236,7 @@ def _tra_suma(A, B, r, C=None, s=None):
 
 
 def _tra_escalar(A, B, r, C=None, s=None):
+    """Propiedad (r·A)ᵀ = r·Aᵀ."""
     pasos = [("r·A =", alg.multiplicar_escalar(r, A)),
              ("Aᵀ =", alg.transponer(A))]
     return _armar("(r·A)ᵀ = r·Aᵀ",
@@ -251,6 +247,7 @@ def _tra_escalar(A, B, r, C=None, s=None):
 
 
 def _tra_producto(A, B, r, C=None, s=None):
+    """Propiedad (A·B)ᵀ = Bᵀ·Aᵀ (el orden se invierte)."""
     AB = alg.multiplicar_matrices(A, B)
     Bt, At = alg.transponer(B), alg.transponer(A)
     pasos = [("A·B =", AB), ("Bᵀ =", Bt), ("Aᵀ =", At)]
@@ -260,10 +257,6 @@ def _tra_producto(A, B, r, C=None, s=None):
                   "(A·B)ᵀ", alg.transponer(AB),
                   "Bᵀ·Aᵀ", alg.multiplicar_matrices(Bt, At))
 
-
-# ---------------------------------------------------------------------------
-# Producto de matrices
-# ---------------------------------------------------------------------------
 
 def _pro_asociativa(A, B, r, C=None, s=None):
     """Necesita C tal que cols(B) == filas(C)."""
@@ -310,6 +303,7 @@ def _pro_dist_der(A, B, r, C=None, s=None):
 
 
 def _pro_escalar(A, B, r, C=None, s=None):
+    """Propiedad r(A·B) = (r·A)·B = A·(r·B)."""
     AB = alg.multiplicar_matrices(A, B)
     rA = alg.multiplicar_escalar(r, A)
     rB = alg.multiplicar_escalar(r, B)
@@ -330,6 +324,7 @@ def _pro_escalar(A, B, r, C=None, s=None):
 
 
 def _pro_identidad(A, B, r, C=None, s=None):
+    """Propiedad Iₘ·A = A = A·Iₙ."""
     m, n = len(A), len(A[0])
     pasos = [("Iₘ =  (identidad {}×{})".format(m, m), _identidad(m)),
              ("Iₙ =  (identidad {}×{})".format(n, n), _identidad(n))]
@@ -375,10 +370,6 @@ def _pro_no_conmutativo(A, B, r, C=None, s=None):
     lineas.append("")
     return lineas, None
 
-
-# ---------------------------------------------------------------------------
-# Inversa (Sesion 10)
-# ---------------------------------------------------------------------------
 
 def _inv_doble(A, B, r, C=None, s=None):
     """(A⁻¹)⁻¹ = A. Requiere A cuadrada e invertible."""
@@ -441,10 +432,6 @@ def _inv_por_inversa(A, B, r, C=None, s=None):
                   "A·A⁻¹", alg.multiplicar_matrices(A, Ainv),
                   "I", _identidad(len(A)))
 
-
-# ---------------------------------------------------------------------------
-# Determinante (Sesion 11)
-# ---------------------------------------------------------------------------
 
 def _det_transpuesta(A, B, r, C=None, s=None):
     """det(Aᵀ) = det(A). El resultado escalar se muestra como matriz 1×1."""
@@ -597,20 +584,13 @@ def _det_triangular_prop(A, B, r, C=None, s=None):
     return lineas, cumple
 
 
-# ---------------------------------------------------------------------------
-# Catalogo: (clave, nombre que ve el usuario, categoria, funcion)
-# ---------------------------------------------------------------------------
-
 PROPIEDADES = [
-    # Producto matriz-vector
     ("mv_suma",      "A(u + v) = A·u + A·v",    CAT_MV,  _mv_suma),
     ("mv_escalar",   "A(r·u) = r(A·u)",         CAT_MV,  _mv_escalar),
 
-    # Vectores en Rn
     ("vec_conm",     "u + v = v + u",           CAT_VEC, _vec_conmutativa),
     ("vec_dist",     "r(u + v) = r·u + r·v",    CAT_VEC, _vec_distributiva),
 
-    # Suma y escalar de matrices (6 propiedades del teorema, Sesion 9)
     ("sum_conm",     "A + B = B + A",           CAT_SUM, _sum_conmutativa),
     ("sum_asoc",     "(A+B)+C = A+(B+C)",       CAT_SUM, _sum_asociativa),
     ("sum_neutro",   "A + 0 = A",               CAT_SUM, _sum_neutro),
@@ -619,13 +599,11 @@ PROPIEDADES = [
     ("sum_asoc_rs",  "r(sA) = (rs)A",           CAT_SUM, _sum_asoc_escalares),
     ("sum_opuesto",  "A + (−A) = 0",            CAT_SUM, _sum_opuesto),
 
-    # Transpuesta (4 propiedades del teorema, Sesion 9)
     ("tra_doble",    "(Aᵀ)ᵀ = A",               CAT_TRA, _tra_doble),
     ("tra_suma",     "(A + B)ᵀ = Aᵀ + Bᵀ",      CAT_TRA, _tra_suma),
     ("tra_escalar",  "(r·A)ᵀ = r·Aᵀ",           CAT_TRA, _tra_escalar),
     ("tra_prod",     "(A·B)ᵀ = Bᵀ·Aᵀ",          CAT_TRA, _tra_producto),
 
-    # Producto de matrices (5 propiedades del teorema, Sesion 9)
     ("pro_asoc",     "A(BC) = (AB)C",           CAT_PRO, _pro_asociativa),
     ("pro_dist_izq", "A(B+C) = AB+AC",          CAT_PRO, _pro_dist_izq),
     ("pro_dist_der", "(B+C)A = BA+CA",          CAT_PRO, _pro_dist_der),
@@ -633,13 +611,11 @@ PROPIEDADES = [
     ("pro_ident",    "A·I = A = I·A",           CAT_PRO, _pro_identidad),
     ("pro_noconm",   "A·B ≠ B·A  (en general)", CAT_PRO, _pro_no_conmutativo),
 
-    # Inversa (3 propiedades del teorema, Sesion 10)
     ("inv_doble",    "(A⁻¹)⁻¹ = A",              CAT_INV, _inv_doble),
     ("inv_prod",     "(AB)⁻¹ = B⁻¹·A⁻¹",         CAT_INV, _inv_producto),
     ("inv_trans",    "(Aᵀ)⁻¹ = (A⁻¹)ᵀ",          CAT_INV, _inv_transpuesta),
     ("inv_a_ainv",  "A·A⁻¹ = I",                CAT_INV, _inv_por_inversa),
 
-    # Determinante (Sesion 11)
     ("det_trans",    "det(Aᵀ) = det(A)",                  CAT_DET, _det_transpuesta),
     ("det_prod",     "det(AB) = det(A)·det(B)",           CAT_DET, _det_producto),
     ("det_inv",      "det(A⁻¹) = 1/det(A)",               CAT_DET, _det_inversa_prop),
@@ -651,10 +627,6 @@ PROPIEDADES = [
 _POR_CLAVE = {clave: (nombre, cat, f) for clave, nombre, cat, f in PROPIEDADES}
 
 
-def nombre_de(clave):
-    return _POR_CLAVE[clave][0]
-
-
 def etiqueta(clave):
     """Texto del selector: categoria · propiedad."""
     nombre, cat, _ = _POR_CLAVE[clave]
@@ -662,6 +634,7 @@ def etiqueta(clave):
 
 
 def clave_de_etiqueta(texto):
+    """Devuelve la clave de la propiedad cuya etiqueta coincide con 'texto' (None si no hay)."""
     for clave, _n, _c, _f in PROPIEDADES:
         if etiqueta(clave) == texto:
             return clave

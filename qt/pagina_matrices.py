@@ -3,6 +3,10 @@
 Operaciones con matrices y vectores (versión PySide6): suma, resta, escalar,
 producto, transpuesta, determinante, inversa, Cramer, propiedades y envío al
 solucionador. Todo con aritmética exacta de fracciones.
+Unidad: Proyecto Integrador (interfaz gráfica).
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
 """
 import datetime
 
@@ -10,7 +14,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QApplication, QComboBox, QFileDialog, QFrame,
                                QGridLayout, QHBoxLayout, QLabel, QLineEdit,
                                QPlainTextEdit, QScrollArea, QSpinBox,
-                               QSplitter, QTabWidget, QVBoxLayout, QWidget)
+                               QSplitter, QVBoxLayout, QWidget)
 
 from core.fraccion import desde_texto
 import core.algebra as alg  
@@ -44,14 +48,16 @@ MAX_HISTORIAL = 40
 
 class PaginaMatrices(PaginaBase):
 
+    """Sección de operaciones con matrices y vectores: A, B, C, operaciones, propiedades e historial."""
     def __init__(self, ventana):
+        """Construye los tres paneles de la sección y carga el primer ejemplo."""
         super().__init__(ventana, "Operaciones con matrices y vectores",
                          "Suma · resta · escalar · producto · transpuesta · "
                          "determinante · inversa · Cramer · propiedades")
-        self.resultado_actual = None      # última matriz calculada (Fraccion)
+        self.resultado_actual = None
         self._texto_res = ""
         self._etiqueta_res = ""
-        self._historial = []          # resultados anteriores
+        self._historial = []
         self.usa_B = True
         self.botones_op = {}
         self.botones_grid = {}
@@ -70,8 +76,6 @@ class PaginaMatrices(PaginaBase):
         self.raiz.addWidget(split, 1)
 
         self.generar_cuadriculas()
-        # El panel del centro (las matrices) no puede ser más estrecho que el
-        # encabezado de sus tarjetas; los demás, que su propio contenido.
         self._area_centro.setMinimumWidth(
             self.tarjetas["A"].minimumSizeHint().width() + 40)
         self.respetar_minimos(split)
@@ -82,11 +86,9 @@ class PaginaMatrices(PaginaBase):
         self.atajo("Ctrl+S", self.guardar_informe)
         self.atajo("Ctrl+P", self.exportar_pdf)
 
-    # ──────────────────────────────────────────────────────────
-    # Construcción
-    # ──────────────────────────────────────────────────────────
 
     def _spin(self, valor=2):
+        """Crea un selector entero entre 1 y LIMITE que regenera las cuadrículas al cambiar."""
         sp = QSpinBox()
         sp.setRange(1, LIMITE)
         sp.setValue(valor)
@@ -94,6 +96,7 @@ class PaginaMatrices(PaginaBase):
         return sp
 
     def _panel_izquierdo(self):
+        """Panel de tamaños, ejemplos y operaciones."""
         w = QWidget()
         w.setMinimumWidth(230)
         w.setMaximumWidth(360)
@@ -118,9 +121,9 @@ class PaginaMatrices(PaginaBase):
             for texto, sp in ((e_f, filas), (e_c, cols)):
                 col = QVBoxLayout()
                 col.setSpacing(3)
-                l = QLabel(texto)
-                l.setObjectName("nota")
-                col.addWidget(l)
+                rotulo = QLabel(texto)
+                rotulo.setObjectName("nota")
+                col.addWidget(rotulo)
                 col.addWidget(sp)
                 fila.addLayout(col)
             t.agregar_layout(fila)
@@ -153,6 +156,7 @@ class PaginaMatrices(PaginaBase):
         return w
 
     def _panel_centro(self):
+        """Panel con las cuadrículas de A, B y C."""
         cont = QWidget()
         lay = QVBoxLayout(cont)
         lay.setContentsMargins(4, 0, 4, 0)
@@ -182,6 +186,7 @@ class PaginaMatrices(PaginaBase):
         return area
 
     def _panel_derecho(self):
+        """Panel con las pestañas de operaciones, propiedades y envío, y el resultado."""
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.setContentsMargins(8, 0, 0, 0)
@@ -202,6 +207,7 @@ class PaginaMatrices(PaginaBase):
         return w
 
     def _tab_operaciones(self):
+        """Pestaña con los botones de las operaciones."""
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 12, 0, 0)
@@ -235,9 +241,9 @@ class PaginaMatrices(PaginaBase):
         sep.setFixedHeight(1)
         sep.setStyleSheet("background-color: {};".format(T.SUPERF))
         lay.addWidget(sep)
-        l = QLabel("Operaciones sobre A cuadrada:")
-        l.setObjectName("nota")
-        lay.addWidget(l)
+        rotulo = QLabel("Operaciones sobre A cuadrada:")
+        rotulo.setObjectName("nota")
+        lay.addWidget(rotulo)
 
         fd = QGridLayout()
         fd.setSpacing(6)
@@ -264,18 +270,10 @@ class PaginaMatrices(PaginaBase):
         n.setWordWrap(True)
         lay.addWidget(n)
 
-        bc_lu = self.btn_lu = BotonAnimado("Factorización LU (A = L·U) y Ax = b", "verde")
-        bc_lu.clicked.connect(self._ejecutar_factorizacion_lu)
-        lay.addWidget(bc_lu)
-        n_lu = QLabel("Factoriza cualquier A (m×n). Si A es cuadrada y B es el vector b "
-                      "(1 columna), también resuelve A · x = b.")
-        n_lu.setObjectName("nota")
-        n_lu.setWordWrap(True)
-        lay.addWidget(n_lu)
-
         return w
 
     def _tab_propiedades(self):
+        """Pestaña para elegir y verificar propiedades algebraicas."""
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 12, 0, 0)
@@ -292,9 +290,9 @@ class PaginaMatrices(PaginaBase):
         self.ed_s.setFixedWidth(70)
         self.ed_s.setAlignment(Qt.AlignCenter)
         fs.addWidget(self.ed_s)
-        l = QLabel("(2º escalar, para propiedades que lo necesiten)")
-        l.setObjectName("nota")
-        fs.addWidget(l, 1)
+        rotulo = QLabel("(2º escalar, para propiedades que lo necesiten)")
+        rotulo.setObjectName("nota")
+        fs.addWidget(rotulo, 1)
         lay.addLayout(fs)
 
         self.combo_prop = QComboBox()
@@ -314,6 +312,7 @@ class PaginaMatrices(PaginaBase):
         return w
 
     def _tab_solucionador(self):
+        """Pestaña para enviar los datos al solucionador de sistemas."""
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 12, 0, 0)
@@ -332,12 +331,13 @@ class PaginaMatrices(PaginaBase):
         return w
 
     def _tarjeta_resultado(self):
+        """Crea la tarjeta de resultado con sus acciones y el historial."""
         t = self.tarjeta_resultado = Tarjeta("Resultado")
         acc = QHBoxLayout()
         acc.setSpacing(5)
-        l = QLabel("Usar como")
-        l.setObjectName("nota")
-        acc.addWidget(l)
+        rotulo = QLabel("Usar como")
+        rotulo.setObjectName("nota")
+        acc.addWidget(rotulo)
         self.btn_res = {}
         for nombre in "ABC":
             b = BotonAnimado(nombre, "suave", pequeno=True)
@@ -379,11 +379,9 @@ class PaginaMatrices(PaginaBase):
         t.agregar(self.txt, 1)
         return t
 
-    # ──────────────────────────────────────────────────────────
-    # Cuadrículas
-    # ──────────────────────────────────────────────────────────
 
     def generar_cuadriculas(self):
+        """Reconstruye las cuadrículas A, B y C con los tamaños elegidos."""
         for nombre in "ABC":
             f, c = self.sp[nombre]
             self.grids[nombre].reconstruir(f.value(), c.value())
@@ -403,6 +401,7 @@ class PaginaMatrices(PaginaBase):
         self._actualizar_metodos_det()
 
     def cargar_ejemplo(self, indice):
+        """Carga el ejemplo de la lista con el índice dado."""
         ej = MATRICES[indice]
         for nombre in "ABC":
             texto = ej[nombre]
@@ -424,6 +423,7 @@ class PaginaMatrices(PaginaBase):
                       "info")
 
     def _actualizar_titulos(self):
+        """Actualiza el título de cada cuadrícula (matriz o vector) con su tamaño."""
         for nombre in "ABC":
             f, c = self.sp[nombre]
             if c.value() == 1:
@@ -433,6 +433,7 @@ class PaginaMatrices(PaginaBase):
             self.tarjetas[nombre].poner_titulo(txt)
 
     def _metodos_det_disponibles(self):
+        """Métodos de determinante aplicables al tamaño de A (Sarrus solo en 3×3)."""
         metodos = [METODO_COFACTORES, METODO_TRIANGULAR]
         f, c = self.sp["A"]
         if f.value() == 3 and c.value() == 3:
@@ -440,6 +441,7 @@ class PaginaMatrices(PaginaBase):
         return metodos
 
     def _actualizar_metodos_det(self):
+        """Rellena el selector de método conservando el elegido si sigue disponible."""
         actual = self.combo_det.currentText()
         metodos = self._metodos_det_disponibles()
         self.combo_det.blockSignals(True)
@@ -449,6 +451,7 @@ class PaginaMatrices(PaginaBase):
         self.combo_det.blockSignals(False)
 
     def alternar_matriz(self, cual):
+        """Agrega o quita la matriz B o C con animación."""
         if cual == "B":
             self.usa_B = not self.usa_B
             usa, boton = self.usa_B, self.btn_toggle_B
@@ -460,6 +463,7 @@ class PaginaMatrices(PaginaBase):
         boton.setText(("Quitar matriz " if usa else "Agregar matriz ") + cual)
 
     def _leer_B(self):
+        """Lee B; si está quitada avisa y devuelve None."""
         if not self.usa_B:
             self.info("Matriz B quitada",
                       "Esta operación necesita B. Use «Agregar matriz B».")
@@ -467,12 +471,14 @@ class PaginaMatrices(PaginaBase):
         return self._leer_matriz(self.grid_B, "B")
 
     def limpiar(self):
+        """Pone todas las cuadrículas en 0 y borra el resultado."""
         for g in self.grids.values():
             g.limpiar()
         self._sin_resultado()
         self.mostrar_resultado("")
 
     def intercambiar(self):
+        """Intercambia el contenido y el tamaño de A y B."""
         tA, tB = self.grid_A.textos(), self.grid_B.textos()
         fa, ca = self.sp["A"]
         fb, cb = self.sp["B"]
@@ -501,20 +507,20 @@ class PaginaMatrices(PaginaBase):
         self.mostrar_resultado("")
 
     def _sin_resultado(self):
+        """Olvida la matriz resultado y deshabilita los botones que la usan."""
         self.resultado_actual = None
         for b in self.btn_res.values():
             b.setEnabled(False)
 
     def _con_resultado(self, matriz):
+        """Guarda la matriz resultado y habilita los botones que la usan."""
         self.resultado_actual = matriz
         for b in self.btn_res.values():
             b.setEnabled(True)
 
-    # ──────────────────────────────────────────────────────────
-    # Lectura
-    # ──────────────────────────────────────────────────────────
 
     def _leer_matriz(self, grid, nombre):
+        """Lee una cuadrícula como matriz de Fraccion; avisa y devuelve None si hay celdas inválidas."""
         matriz = []
         for i, fila_c in enumerate(grid.celdas):
             fila = []
@@ -533,6 +539,7 @@ class PaginaMatrices(PaginaBase):
         return matriz
 
     def _leer_escalar(self):
+        """Lee el escalar r; avisa y devuelve None si no es válido."""
         try:
             return desde_texto(self.ed_escalar.text())
         except (ValueError, ZeroDivisionError):
@@ -542,6 +549,7 @@ class PaginaMatrices(PaginaBase):
             return None
 
     def _leer_escalar_s(self):
+        """Lee el segundo escalar s; avisa y devuelve None si no es válido."""
         try:
             return desde_texto(self.ed_s.text())
         except (ValueError, ZeroDivisionError):
@@ -550,11 +558,9 @@ class PaginaMatrices(PaginaBase):
                            self.ed_s.text()))
             return None
 
-    # ──────────────────────────────────────────────────────────
-    # Operaciones
-    # ──────────────────────────────────────────────────────────
 
     def ejecutar_operacion(self, operacion):
+        """Lee los datos necesarios y ejecuta la operación pedida mostrando el procedimiento."""
         self.ocultar_error()
         necesita_B = operacion in ("suma", "resta", "multiplicacion",
                                    "prop_suma", "prop_escalar",
@@ -604,6 +610,7 @@ class PaginaMatrices(PaginaBase):
         self.mostrar_resultado("\n".join(lineas), OP_ETIQUETAS.get(operacion, ""))
 
     def _mostrar_determinante(self, A, resultado):
+        """Calcula det(A) con el método elegido y muestra el procedimiento."""
         metodo = self.combo_det.currentText()
         es_3x3 = len(A) == 3 and len(A[0]) == 3
         if metodo == METODO_SARRUS and not es_3x3:
@@ -638,6 +645,7 @@ class PaginaMatrices(PaginaBase):
         self.mostrar_resultado("\n".join(lineas), "det(A)")
 
     def _calcular(self, operacion, A, B):
+        """Devuelve (resultado, rótulo, pasos) de la operación pedida sobre A y B."""
         if operacion == "suma":
             return (alg.sumar_matrices(A, B), "A + B =", proc.pasos_suma(A, B))
         if operacion == "resta":
@@ -661,6 +669,7 @@ class PaginaMatrices(PaginaBase):
         return None, "", []
 
     def _mostrar_cramer(self):
+        """Resuelve A·x = b por la regla de Cramer y muestra el procedimiento."""
         self.ocultar_error()
         A = self._leer_matriz(self.grid_A, "A")
         if A is None:
@@ -716,46 +725,8 @@ class PaginaMatrices(PaginaBase):
         self._con_resultado(sol_mat)
         self.mostrar_resultado("\n".join(lineas), "Regla de Cramer")
 
-    def _ejecutar_factorizacion_lu(self):
-        """Factoriza A = L·U (A de cualquier tamaño) y, si se puede, resuelve A·x = b."""
-        self.ocultar_error()
-        A = self._leer_matriz(self.grid_A, "A")
-        if A is None:
-            return
-
-        vector_b, nota = None, ""
-        if len(A) != len(A[0]):
-            nota = ("A no es cuadrada ({}×{}): se factorizó, pero no se resuelve "
-                    "A · x = b.".format(len(A), len(A[0])))
-        elif self.usa_B:
-            B = self._leer_matriz(self.grid_B, "B")
-            if B is None:
-                return
-            if len(B[0]) == 1 and len(B) == len(A):
-                vector_b = [fila[0] for fila in B]
-            else:
-                nota = ("B no es un vector b de {} componentes (1 columna): se "
-                        "factorizó, pero no se resuelve A · x = b.".format(len(A)))
-        else:
-            nota = "B está quitada: se factorizó, pero no se resuelve A · x = b."
-
-        from modulos.modulo_lu import ejecutar_modulo_lu
-        try:
-            res = ejecutar_modulo_lu(A, vector_b, self.sw_pasos.isChecked())
-        except ValueError as ex:
-            self.error("Factorización LU", str(ex))
-            return
-
-        informe = res["informe"]
-        if nota:
-            informe += "\n" + nota
-
-        # El resultado reutilizable es x si se resolvió; si no, la matriz U
-        self._con_resultado([[v] for v in res["x"]] if res["x"] is not None
-                            else res["U"])
-        self.mostrar_resultado(informe, "Factorización LU")
-
     def _mostrar_inversa(self, operacion, A):
+        """Calcula A⁻¹ por Gauss-Jordan o por la adjunta y muestra el procedimiento."""
         from modulos.modulo_matrices import (determinante, inversa_gauss_jordan,
                                               inversa_adjunta, es_identidad)
         det = determinante(A)
@@ -797,6 +768,7 @@ class PaginaMatrices(PaginaBase):
         self.mostrar_resultado("\n".join(lineas), OP_ETIQUETAS[operacion])
 
     def _ejecutar_propiedad(self, operacion, A, B):
+        """Verifica la propiedad elegida (o todas) con los datos y escalares actuales."""
         r = self._leer_escalar()
         if r is None:
             return
@@ -833,6 +805,7 @@ class PaginaMatrices(PaginaBase):
             else "Propiedad: " + self.combo_prop.currentText())
 
     def usar_resultado(self, destino):
+        """Copia la matriz resultado a la cuadrícula destino (A, B o C)."""
         if self.resultado_actual is None:
             return
         texto = [[str(v) for v in fila] for fila in self.resultado_actual]
@@ -845,11 +818,9 @@ class PaginaMatrices(PaginaBase):
         self._actualizar_metodos_det()
         mostrar_aviso(self, "Resultado copiado en {}".format(destino), "info")
 
-    # ──────────────────────────────────────────────────────────
-    # Salida
-    # ──────────────────────────────────────────────────────────
 
     def mostrar_resultado(self, texto, etiqueta="", registrar=True):
+        """Muestra el texto en la tarjeta de resultado y lo registra en el historial."""
         self._texto_res = texto.strip()
         self._etiqueta_res = etiqueta
         self.txt.setPlainText(("\n" + texto + "\n") if texto else "")
@@ -865,9 +836,9 @@ class PaginaMatrices(PaginaBase):
                 "etiqueta": etiqueta, "texto": texto, "matriz": matriz})
             del self._historial[MAX_HISTORIAL:]
 
-    # ── Historial de resultados ───────────────────────────────
 
     def _menu_historial(self):
+        """Despliega el menú con los resultados anteriores."""
         from PySide6.QtCore import QPoint
         from PySide6.QtWidgets import QMenu
         menu = QMenu(self)
@@ -884,6 +855,7 @@ class PaginaMatrices(PaginaBase):
         menu.exec(b.mapToGlobal(QPoint(0, b.height() + 4)))
 
     def _cargar_historial(self, indice):
+        """Vuelve a mostrar el resultado guardado con el índice dado."""
         e = self._historial[indice]
         matriz = None
         if e["matriz"]:
@@ -898,10 +870,12 @@ class PaginaMatrices(PaginaBase):
         self.mostrar_resultado(e["texto"], e["etiqueta"], registrar=False)
 
     def _borrar_historial(self):
+        """Borra el historial de resultados."""
         self._historial.clear()
         mostrar_aviso(self, "Historial borrado", "info")
 
     def copiar_resultado(self):
+        """Copia el resultado al portapapeles como texto."""
         if not self._texto_res:
             return
         QApplication.clipboard().setText(self._texto_res)
@@ -924,12 +898,14 @@ class PaginaMatrices(PaginaBase):
         mostrar_aviso(self, "Matriz resultado copiada como imagen")
 
     def abrir_en_ventana(self):
+        """Abre el resultado en la ventana de resultados."""
         if not self._texto_res:
             self.info("Sin resultado", "Todavía no hay nada que mostrar.")
             return
         abrir_visor("Resultado", self._texto_res, "informe_matrices")
 
     def guardar_informe(self):
+        """Pide una ruta y guarda el resultado como texto."""
         if not self._texto_res:
             self.info("Sin resultado", "Todavía no hay nada que guardar.")
             return
@@ -945,11 +921,9 @@ class PaginaMatrices(PaginaBase):
         except OSError as ex:
             self.error("Error al guardar", str(ex))
 
-    # ──────────────────────────────────────────────────────────
-    # Envío al solucionador
-    # ──────────────────────────────────────────────────────────
 
     def enviar_al_solucionador(self, modo):
+        """Envía A y b al solucionador como sistema A·x = b, combinación lineal o independencia."""
         self.ocultar_error()
         """
         "matricial"     -> [A | b], el sistema A·x = b
@@ -986,11 +960,9 @@ class PaginaMatrices(PaginaBase):
         self.ventana.pagina_solucionador.cargar_sistema(celdas, filas, columnas, modo)
         self.ventana.ir_a("solucionador")
 
-    # ──────────────────────────────────────────────────────────
-    # Exportar a PDF
-    # ──────────────────────────────────────────────────────────
 
     def exportar_pdf(self):
+        """Pide una ruta y guarda el resultado como PDF."""
         if not self._texto_res:
             self.info("Sin resultado", "Todavía no hay nada que exportar.")
             return
@@ -1007,11 +979,9 @@ class PaginaMatrices(PaginaBase):
         except OSError as ex:
             self.error("Error al guardar", str(ex))
 
-    # ──────────────────────────────────────────────────────────
-    # Estado guardable (se recupera al volver a abrir el programa)
-    # ──────────────────────────────────────────────────────────
 
     def estado(self):
+        """Devuelve tamaños, textos y matrices en uso para guardar la sesión."""
         return {
             "tamanos": {n: [self.sp[n][0].value(), self.sp[n][1].value()]
                         for n in "ABC"},
@@ -1031,6 +1001,7 @@ class PaginaMatrices(PaginaBase):
         }
 
     def restaurar(self, d):
+        """Restaura el estado guardado por 'estado'; ignora datos dañados."""
         try:
             for n in "ABC":
                 texto = d["textos"][n]
@@ -1062,13 +1033,11 @@ class PaginaMatrices(PaginaBase):
                 self.mostrar_resultado(d["resultado"], d.get("etiqueta", ""),
                                        registrar=False)
         except (KeyError, IndexError, TypeError, ValueError, ZeroDivisionError):
-            pass                      # datos viejos o dañados: se ignoran
+            pass
 
-    # ──────────────────────────────────────────────────────────
-    # Tamaño de letra
-    # ──────────────────────────────────────────────────────────
 
     def _estilo_resultado(self):
+        """Aplica al resultado la fuente monoespaciada y el tamaño de letra actuales."""
         self.txt.setStyleSheet("font-family: '{}'; font-size: {}pt;".format(
             T.MONO, T.tam(11)))
 

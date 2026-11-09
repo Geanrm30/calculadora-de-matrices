@@ -2,12 +2,16 @@
 """
 Solucionador de sistemas A·x = b por eliminación de Gauss y Gauss-Jordan con
 aritmética exacta de fracciones (versión PySide6).
+Unidad: Proyecto Integrador (interfaz gráfica).
+MTM0120 Álgebra Lineal — Universidad Americana.
+Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
+               Geanfranco Alexander Rodriguez Mendieta
 """
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut
-from PySide6.QtWidgets import (QApplication, QComboBox, QFileDialog, QFrame,
+from PySide6.QtWidgets import (QApplication, QComboBox, QFileDialog,
                                QHBoxLayout, QLabel, QSpinBox, QSplitter,
-                               QTabWidget, QTextBrowser, QVBoxLayout, QWidget)
+                               QTextBrowser, QVBoxLayout, QWidget)
 
 from core.fraccion import desde_texto
 from core.formato import (subindice, nombre_variable, texto_ecuacion,
@@ -42,7 +46,9 @@ MENSAJES_CONTEXTO = {
 
 class PaginaSolucionador(PaginaBase):
 
+    """Sección del solucionador de sistemas: entrada, proceso paso a paso, solución e informe."""
     def __init__(self, ventana):
+        """Construye los paneles de la sección y carga el primer ejemplo."""
         super().__init__(ventana, "Sistemas de ecuaciones lineales",
                          "Método matricial · operaciones elementales por filas "
                          "· aritmética exacta")
@@ -77,11 +83,9 @@ class PaginaSolucionador(PaginaBase):
         self.atajo("Ctrl+S", self.guardar_informe)
         self.atajo("Ctrl+P", self.exportar_pdf)
 
-    # ──────────────────────────────────────────────────────────
-    # Construcción
-    # ──────────────────────────────────────────────────────────
 
     def _panel_izquierdo(self):
+        """Panel de tamaño, ejemplos y matriz aumentada."""
         w = QWidget()
         w.setMinimumWidth(410)
         w.setMaximumWidth(540)
@@ -94,7 +98,6 @@ class PaginaSolucionador(PaginaBase):
                        for i, (nombre, *_r) in enumerate(SISTEMAS)])
         lay.addWidget(b_ej)
 
-        # Tamaño
         t = self.tarjeta_tamano = Tarjeta("Tamaño del sistema")
         fila = QHBoxLayout()
         fila.setSpacing(10)
@@ -103,9 +106,9 @@ class PaginaSolucionador(PaginaBase):
         for texto, sp in (("Ecuaciones (m)", self.sp_m), ("Variables (n)", self.sp_n)):
             col = QVBoxLayout()
             col.setSpacing(4)
-            l = QLabel(texto)
-            l.setObjectName("nota")
-            col.addWidget(l)
+            rotulo = QLabel(texto)
+            rotulo.setObjectName("nota")
+            col.addWidget(rotulo)
             col.addWidget(sp)
             fila.addLayout(col)
         t.agregar_layout(fila)
@@ -114,7 +117,6 @@ class PaginaSolucionador(PaginaBase):
         t.agregar(b)
         lay.addWidget(t)
 
-        # Matriz aumentada
         t2 = self.tarjeta_cuadricula = Tarjeta("Matriz [A | b]", T.AZUL)
         self.cuadricula = CuadriculaMatriz(corchetes=True, aumentada=True,
                                            max_filas=LIMITE, max_cols=LIMITE)
@@ -128,7 +130,6 @@ class PaginaSolucionador(PaginaBase):
         t2.agregar(nota)
         lay.addWidget(t2, 1)
 
-        # Opciones y acciones
         self.sw_jordan = Interruptor("Incluir forma escalonada reducida (Gauss-Jordan)", True)
         self.sw_vectores = Interruptor("Incluir análisis en Rⁿ (comb. lineal e independencia)", False)
         lay.addWidget(self.sw_jordan)
@@ -151,6 +152,7 @@ class PaginaSolucionador(PaginaBase):
         return w
 
     def _spin(self, valor):
+        """Crea un selector entero entre 1 y LIMITE que regenera la cuadrícula al cambiar."""
         sp = QSpinBox()
         sp.setRange(1, LIMITE)
         sp.setValue(valor)
@@ -158,12 +160,12 @@ class PaginaSolucionador(PaginaBase):
         return sp
 
     def _panel_derecho(self):
+        """Panel con las pestañas de proceso y solución."""
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.setContentsMargins(8, 0, 0, 0)
         lay.setSpacing(10)
 
-        # Barra de estado y acciones
         barra = Barra()
         bv = QVBoxLayout(barra)
         bv.setContentsMargins(16, 12, 12, 10)
@@ -207,6 +209,7 @@ class PaginaSolucionador(PaginaBase):
         return w
 
     def _tab_proceso(self):
+        """Pestaña con el paso a paso y sus controles de reproducción."""
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 10, 0, 0)
@@ -222,8 +225,8 @@ class PaginaSolucionador(PaginaBase):
         self.lbl_pcom.setStyleSheet(
             "color: {}; font-style: italic;".format(T.MUTED))
         self.lbl_pcom.setWordWrap(True)
-        for l in (self.lbl_ptitulo, self.lbl_poper, self.lbl_pcom):
-            lay.addWidget(l)
+        for rotulo in (self.lbl_ptitulo, self.lbl_poper, self.lbl_pcom):
+            lay.addWidget(rotulo)
 
         self.vista = QTextBrowser()
         self.vista.setOpenLinks(False)
@@ -267,6 +270,7 @@ class PaginaSolucionador(PaginaBase):
         return w
 
     def _tab_solucion(self):
+        """Pestaña con la solución y la verificación."""
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 10, 0, 0)
@@ -275,11 +279,9 @@ class PaginaSolucionador(PaginaBase):
         lay.addWidget(self.vista_sol)
         return w
 
-    # ──────────────────────────────────────────────────────────
-    # Cuadrícula
-    # ──────────────────────────────────────────────────────────
 
     def generar_casillas(self):
+        """Reconstruye la cuadrícula con m filas y n + 1 columnas."""
         self.cuadricula.reconstruir(self.sp_m.value(), self.sp_n.value() + 1)
 
     def _forma_cambiada(self, filas, cols):
@@ -292,6 +294,7 @@ class PaginaSolucionador(PaginaBase):
         self.sp_n.blockSignals(False)
 
     def cargar_ejemplo(self, indice):
+        """Carga el sistema de la lista con el índice dado."""
         nombre, detalle, m, n, celdas = SISTEMAS[indice]
         self._contexto = None
         self._mostrar_contexto()
@@ -300,6 +303,7 @@ class PaginaSolucionador(PaginaBase):
         mostrar_aviso(self, "Ejemplo: {}. {}".format(nombre, detalle), "info")
 
     def _poner_sistema(self, m, n, celdas):
+        """Fija m, n y el contenido de la cuadrícula sin disparar sus señales."""
         self.sp_m.blockSignals(True)
         self.sp_n.blockSignals(True)
         self.sp_m.setValue(m)
@@ -309,6 +313,7 @@ class PaginaSolucionador(PaginaBase):
         self.cuadricula.reconstruir(m, n + 1, celdas)
 
     def construir_matriz(self):
+        """Lee la cuadrícula como matriz aumentada de Fraccion; None si hay celdas inválidas."""
         matriz = []
         for i, fila_c in enumerate(self.cuadricula.celdas):
             fila = []
@@ -328,11 +333,9 @@ class PaginaSolucionador(PaginaBase):
             matriz.append(fila)
         return matriz
 
-    # ──────────────────────────────────────────────────────────
-    # Acciones
-    # ──────────────────────────────────────────────────────────
 
     def resolver(self):
+        """Resuelve el sistema, arma el informe y muestra el proceso y la solución."""
         self._parar()
         self.ocultar_error()
         matriz = self.construir_matriz()
@@ -345,7 +348,7 @@ class PaginaSolucionador(PaginaBase):
 
         try:
             resultado = _resolver(matriz, n_vars, aplicar_jordan=jordan)
-        except Exception as ex:                      # noqa: BLE001
+        except Exception as ex:
             self.error("Error al resolver", "Ocurrió un problema: {}".format(ex))
             return
 
@@ -372,6 +375,7 @@ class PaginaSolucionador(PaginaBase):
             tarjeta.pulso(color)
 
     def limpiar(self):
+        """Pone la cuadrícula en 0 y borra el resultado."""
         self._parar()
         self.cuadricula.limpiar()
         self._resultado = None
@@ -402,6 +406,7 @@ class PaginaSolucionador(PaginaBase):
         self.resolver()
 
     def _mostrar_contexto(self):
+        """Muestra la nota del contexto con el que llegó el sistema (si lo hay)."""
         texto = MENSAJES_CONTEXTO.get(self._contexto)
         if texto:
             self.lbl_contexto.setText(texto)
@@ -411,6 +416,7 @@ class PaginaSolucionador(PaginaBase):
             self.lbl_contexto.hide()
 
     def enviar_a_matrices(self):
+        """Envía la matriz de coeficientes y el vector b a la sección de operaciones."""
         celdas = self.cuadricula.textos()
         if not celdas:
             return
@@ -421,6 +427,7 @@ class PaginaSolucionador(PaginaBase):
         self.ventana.ir_a("matrices")
 
     def copiar_informe(self):
+        """Copia el informe al portapapeles como texto."""
         if not self._informe:
             return
         QApplication.clipboard().setText(self._informe)
@@ -436,6 +443,7 @@ class PaginaSolucionador(PaginaBase):
         mostrar_aviso(self, "Informe copiado como imagen")
 
     def abrir_en_ventana(self):
+        """Abre el informe en la ventana de resultados."""
         if not self._informe:
             self.info("Sin resultado", "Primero resuelva un sistema con RESOLVER.")
             return
@@ -461,6 +469,7 @@ class PaginaSolucionador(PaginaBase):
                 "insignia": "✓ Verificado" if ok else "✗ No verifica"}
 
     def guardar_informe(self):
+        """Pide una ruta y guarda el informe como texto."""
         if not self._informe:
             return
         ruta, _ = QFileDialog.getSaveFileName(
@@ -475,11 +484,9 @@ class PaginaSolucionador(PaginaBase):
         except OSError as ex:
             self.error("Error al guardar", str(ex))
 
-    # ──────────────────────────────────────────────────────────
-    # Pestaña 1 — proceso paso a paso
-    # ──────────────────────────────────────────────────────────
 
     def _poblar_proceso(self, r):
+        """Guarda el resultado y arma la lista de pasos de eliminación y de Jordan."""
         self._r = r
         self._pasos = []
         for p in r["pasos"]:
@@ -494,11 +501,13 @@ class PaginaSolucionador(PaginaBase):
         self._actualizar_proceso()
 
     def _titulo(self, texto, color):
+        """Fija el título del paso mostrado con el color dado."""
         self.lbl_ptitulo.setText(texto)
         self.lbl_ptitulo.setStyleSheet(
             "color: {}; font-weight: 700; font-size: 11pt;".format(color))
 
     def _actualizar_proceso(self):
+        """Muestra el paso actual (o el resumen) y habilita los botones que correspondan."""
         r = self._r
         pasos = self._pasos
         idx = self._idx
@@ -554,6 +563,7 @@ class PaginaSolucionador(PaginaBase):
         self.b_play.setEnabled(total > 0)
 
     def _html_sistema_original(self, r, pivotes):
+        """HTML con el sistema ingresado."""
         n_vars = r["n_vars"]
         ecs = "\n".join("  " + texto_ecuacion(f, n_vars) for f in r["original"])
         cuerpo = [render.etiqueta("Sistema ingresado:"),
@@ -567,6 +577,7 @@ class PaginaSolucionador(PaginaBase):
         return "".join(cuerpo)
 
     def _html_todos(self, r, pivotes):
+        """HTML con todos los pasos juntos, de la eliminación a la solución."""
         n_vars = r["n_vars"]
         n_elim = len(r["pasos"])
         j_pasos = r.get("pasos_jordan") or []
@@ -592,31 +603,31 @@ class PaginaSolucionador(PaginaBase):
         return "".join(cuerpo)
 
     def _ir(self, idx):
+        """Va al paso idx (-1 es el último) deteniendo la reproducción."""
         self._parar()
         total = len(self._pasos)
         self._idx = (total + 1) if idx == -1 else max(0, min(idx, total + 1))
         self._actualizar_proceso()
 
     def _prev(self):
+        """Retrocede un paso."""
         self._parar()
         if self._pasos and self._idx > 0:
             self._idx -= 1
             self._actualizar_proceso()
 
     def _next(self):
+        """Avanza un paso."""
         self._parar()
         if self._pasos and self._idx <= len(self._pasos):
             self._idx += 1
             self._actualizar_proceso()
 
-    # ──────────────────────────────────────────────────────────
-    # Pestaña 2 — solución y verificación
-    # ──────────────────────────────────────────────────────────
 
     def _html_solucion(self, r, jordan, vectores):
         """HTML de la pestaña «Solución y verificación»."""
         h = []
-        add = lambda s: h.append(render.html_texto(s))      # noqa: E731
+        add = lambda s: h.append(render.html_texto(s))
 
         add(separador("="))
         add("  CLASIFICACIÓN · SOLUCIÓN · VERIFICACIÓN")
@@ -672,18 +683,16 @@ class PaginaSolucionador(PaginaBase):
         add(separador("="))
         return "".join(h)
 
-    # ──────────────────────────────────────────────────────────
-    # Reproductor automático de los pasos
-    # ──────────────────────────────────────────────────────────
 
     def _alternar_reproduccion(self):
+        """Inicia o detiene la reproducción automática de los pasos."""
         if self._reproduciendo:
             self._parar()
             return
         total = len(self._pasos)
         if not total:
             return
-        if self._idx >= total:                # ya estaba al final: reinicia
+        if self._idx >= total:
             self._idx = 0
             self._actualizar_proceso()
         self._reproduciendo = True
@@ -691,25 +700,25 @@ class PaginaSolucionador(PaginaBase):
         self._reloj.start(self.combo_vel.currentData())
 
     def _parar(self):
+        """Detiene la reproducción automática."""
         self._reloj.stop()
         if self._reproduciendo:
             self._reproduciendo = False
         self.b_play.setText("▶  Reproducir")
 
     def _cambio_velocidad(self):
+        """Reprograma el reloj con la velocidad elegida si está reproduciendo."""
         if self._reproduciendo:
             self._reloj.start(self.combo_vel.currentData())
 
     def _tick(self):
+        """Avanza un paso de la reproducción y se detiene al llegar al final."""
         if self._idx < len(self._pasos):
             self._idx += 1
             self._actualizar_proceso()
         if self._idx >= len(self._pasos):
             self._parar()
 
-    # ──────────────────────────────────────────────────────────
-    # Exportar a PDF
-    # ──────────────────────────────────────────────────────────
 
     def _cuerpo_pdf(self, paleta="impreso"):
         """HTML del informe (pasos y solución); por defecto con colores de impresión."""
@@ -724,6 +733,7 @@ class PaginaSolucionador(PaginaBase):
             ])
 
     def exportar_pdf(self):
+        """Pide una ruta y guarda el informe como PDF."""
         if self._resultado is None:
             self.info("Sin resultado", "Primero resuelva un sistema con RESOLVER.")
             return
@@ -738,11 +748,9 @@ class PaginaSolucionador(PaginaBase):
         except OSError as ex:
             self.error("Error al guardar", str(ex))
 
-    # ──────────────────────────────────────────────────────────
-    # Estado guardable (se recupera al volver a abrir el programa)
-    # ──────────────────────────────────────────────────────────
 
     def estado(self):
+        """Devuelve tamaño, celdas y opciones para guardar la sesión."""
         return {
             "m": self.sp_m.value(),
             "n": self.sp_n.value(),
@@ -754,6 +762,7 @@ class PaginaSolucionador(PaginaBase):
         }
 
     def restaurar(self, d):
+        """Restaura el estado guardado por 'estado'; ignora datos dañados."""
         try:
             self.sw_jordan.setChecked(bool(d.get("jordan", True)))
             self.sw_vectores.setChecked(bool(d.get("vectores", False)))
@@ -763,11 +772,8 @@ class PaginaSolucionador(PaginaBase):
             if d.get("resuelto"):
                 self.resolver()
         except (KeyError, IndexError, TypeError, ValueError):
-            pass                      # datos viejos o dañados: se ignoran
+            pass
 
-    # ──────────────────────────────────────────────────────────
-    # Tamaño de letra
-    # ──────────────────────────────────────────────────────────
 
     def aplicar_escala(self):
         """Redibuja cuadrícula e informes con el tamaño de letra actual."""

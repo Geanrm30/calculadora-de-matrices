@@ -3,7 +3,9 @@
 Módulo de matrices para el Proyecto Integrador: Calculadora de Álgebra Lineal.
 Implementa el Módulo III (Sesiones 10-11): determinante por expansión de cofactores,
 regla de Sarrus (3×3) y reducción triangular; inversa por Gauss-Jordan y por la
-fórmula A⁻¹ = (1/det(A))·adj(A). MTM0120 Álgebra Lineal — Universidad Americana.
+fórmula A⁻¹ = (1/det(A))·adj(A).
+Unidad: Sesiones 10-11.
+MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
 """
