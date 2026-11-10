@@ -60,8 +60,4 @@ def iniciar():
 if __name__ == "__main__":
     if not asegurar_dependencias():
         sys.exit(1)
-    for _modulo, _paquete in (("numpy", "numpy"), ("scipy", "scipy"),
-                              ("matplotlib", "matplotlib")):
-        if not asegurar_dependencias(_modulo, _paquete):
-            sys.exit(1)
     sys.exit(iniciar())

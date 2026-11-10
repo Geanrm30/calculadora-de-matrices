@@ -71,10 +71,11 @@ bisección queda escrito y puede verificarse.
 python main.py
 ```
 
-La primera vez, el programa descarga e instala el componente gráfico
-(PySide6-Essentials, unos 80 MB) y las librerías numéricas, mostrando una
-ventana de espera con barra de progreso. Si la instalación automática fallara,
-la propia ventana lo explica y puede hacerse a mano:
+La primera vez, el programa comprueba qué librerías faltan (PySide6-Essentials,
+NumPy, SciPy y Matplotlib) y las instala todas en una sola pasada, mostrando una
+ventana de espera con barra de progreso; las que ya estén no se vuelven a
+descargar. El componente gráfico pesa unos 80 MB. Si la instalación automática
+fallara, la propia ventana indica el comando exacto y puede hacerse a mano:
 
 ```bash
 pip install -r requirements.txt
@@ -344,7 +345,7 @@ negativos se conserva el signo y se descompone el valor absoluto.
 ```text
 calculadora-de-matrices/
 ├── main.py                 Punto de entrada: crea la ventana PySide6
-├── instalador.py           Instala las dependencias la primera vez (con ventana de espera)
+├── instalador.py           Instala en una pasada las librerías que falten (con ventana de espera)
 │
 ├── core/                   Estructuras de datos y álgebra básica
 │   ├── fraccion.py           Aritmética exacta con números racionales

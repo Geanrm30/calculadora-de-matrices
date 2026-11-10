@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Instalación automática del componente gráfico (PySide6) la primera vez que se
-abre la calculadora. Muestra una ventana de espera con una barra de progreso;
-si no se puede mostrar una ventana, informa por consola.
+Instalación automática de las librerías que usa la calculadora (PySide6, NumPy, SciPy y
+Matplotlib) la primera vez que se abre. Instala solo las que falten, en una sola pasada,
+con una ventana de espera y barra de progreso; si no hay ventana, informa por consola.
 
-Este módulo solo usa la biblioteca estándar: se ejecuta ANTES de que exista
-PySide6, así que no puede depender de él.
+Este módulo solo usa la biblioteca estándar: se ejecuta ANTES de que existan esas
+librerías, así que no puede depender de ellas.
 Unidad: Proyecto Integrador (interfaz gráfica).
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
@@ -19,8 +19,8 @@ import subprocess
 import sys
 import threading
 
-PAQUETE = "PySide6-Essentials>=6.6"
-MODULO = "PySide6"
+PAQUETES = (("PySide6", "PySide6-Essentials>=6.6"), ("numpy", "numpy"),
+            ("scipy", "scipy"), ("matplotlib", "matplotlib"))
 
 FONDO, PANEL, TEXTO, MUTED = "#1E1E2E", "#181825", "#CDD6F4", "#7F849C"
 NARANJA, ROJO, SUPERF = "#FAB387", "#F38BA8", "#313244"
@@ -35,10 +35,9 @@ def hay_modulo(nombre):
 class Instalacion:
     """Ejecuta pip paso a paso; `al_linea(texto)` recibe lo que va ocurriendo."""
 
-    def __init__(self, modulo, paquete, al_linea):
-        """Guarda el módulo y el paquete pip a instalar y la función que recibe cada línea de salida."""
-        self.modulo = modulo
-        self.paquete = paquete
+    def __init__(self, faltantes, al_linea):
+        """Guarda los pares (módulo, paquete pip) a instalar y la función que recibe cada línea de salida."""
+        self.faltantes = faltantes
         self.al_linea = al_linea
         self.cancelada = False
         self._proceso = None
@@ -73,18 +72,23 @@ class Instalacion:
         self._proceso.wait()
         return self._proceso.returncode == 0 and not self.cancelada
 
+    def _completo(self):
+        """Indica si ya se pueden importar todos los módulos que faltaban."""
+        return all(hay_modulo(modulo) for modulo, _ in self.faltantes)
+
     def ejecutar(self):
-        """Devuelve True si al terminar el módulo ya se puede importar."""
-        if hay_modulo(self.modulo):
+        """Devuelve True si al terminar todos los módulos ya se pueden importar."""
+        if self._completo():
             return True
         if not hay_modulo("pip"):
             self.al_linea("Preparando el instalador de paquetes (pip)...")
             self._pip(["ensurepip", "--upgrade"])
-        base = ["pip", "install", "--disable-pip-version-check", self.paquete]
+        base = ["pip", "install", "--disable-pip-version-check"]
+        base += [paquete for _, paquete in self.faltantes]
         for extra in ([], ["--user"]):
             if self.cancelada:
                 return False
-            if self._pip(base + extra) and hay_modulo(self.modulo):
+            if self._pip(base + extra) and self._completo():
                 return True
         return False
 
@@ -96,7 +100,7 @@ def _amigable(linea):
     """
     bajo = linea.lower()
     if bajo.startswith("collecting"):
-        return "Buscando los componentes necesarios..."
+        return "Buscando las librerías necesarias..."
     if bajo.startswith(("downloading", "using cached")):
         partes = linea.split()
         nombre = partes[1].split("-")[0] if len(partes) > 1 else ""
@@ -104,7 +108,7 @@ def _amigable(linea):
     if bajo.startswith("defaulting to user installation"):
         return "Instalando solo para tu usuario..."
     if bajo.startswith("installing"):
-        return "Instalando (esto puede tardar un poco)..."
+        return "Instalando las librerías (esto puede tardar un poco)..."
     if bajo.startswith("successfully"):
         return "¡Listo!"
     if bajo.startswith("preparando"):
@@ -112,7 +116,12 @@ def _amigable(linea):
     return None
 
 
-def _con_ventana(modulo, paquete):
+def _comando_manual(faltantes):
+    """Comando pip que el usuario puede escribir a mano para instalar lo que falta."""
+    return "pip install " + " ".join(paquete.split(">")[0] for _, paquete in faltantes)
+
+
+def _con_ventana(faltantes):
     """
     Muestra la ventana de espera. Devuelve True/False según el resultado, o
     None si no se pudo abrir ninguna ventana (entonces se usa la consola).
@@ -141,9 +150,10 @@ def _con_ventana(modulo, paquete):
     detalle = tk.Label(
         raiz, bg=FONDO, fg=MUTED, font=("Segoe UI", 10), justify="center",
         wraplength=460,
-        text="Se está descargando un componente necesario.\n"
-             "Hace falta internet y puede tardar un par de minutos.\n"
-             "Solo ocurre esta vez; no cierres esta ventana.")
+        text="Se están descargando las librerías necesarias: {}.\n"
+             "Hace falta internet y puede tardar unos minutos.\n"
+             "Solo ocurre esta vez; no cierres esta ventana.".format(
+                 ", ".join(modulo for modulo, _ in faltantes)))
     detalle.pack(pady=(12, 14))
 
     estilo = ttk.Style(raiz)
@@ -165,7 +175,7 @@ def _con_ventana(modulo, paquete):
                       command=raiz.destroy)
 
     cola = queue.Queue()
-    trabajo = Instalacion(modulo, paquete, cola.put)
+    trabajo = Instalacion(faltantes, cola.put)
     resultado = {"ok": False}
 
     def hilo():
@@ -177,11 +187,11 @@ def _con_ventana(modulo, paquete):
         """Muestra en la ventana que la instalación falló y habilita el cierre."""
         barra.stop()
         barra.pack_forget()
-        titulo.config(text="No se pudo instalar el componente", fg=ROJO)
+        titulo.config(text="No se pudieron instalar las librerías", fg=ROJO)
         detalle.config(
             text="Revisa tu conexión a internet y vuelve a abrir el programa.\n"
-                 "También puedes instalarlo a mano escribiendo en una consola:\n"
-                 "pip install {}".format(paquete.split(">")[0]))
+                 "También puedes instalarlas a mano escribiendo en una consola:\n"
+                 "{}".format(_comando_manual(faltantes)))
         estado.config(text="")
         boton.pack(pady=(16, 0))
         raiz.protocol("WM_DELETE_WINDOW", raiz.destroy)
@@ -235,34 +245,36 @@ def _esperar_tecla():
         pass
 
 
-def _con_consola(modulo, paquete):
-    """Instala el paquete mostrando el progreso en la consola."""
+def _con_consola(faltantes):
+    """Instala las librerías que faltan mostrando el progreso en la consola."""
     _decir("=" * 62)
     _decir("  Calculadora de Álgebra Lineal")
     _decir("=" * 62)
-    _decir("Primera ejecución: falta un componente de la interfaz ({}).".format(modulo))
-    _decir("Se va a descargar e instalar ahora (necesita internet).")
-    _decir("Puede tardar un par de minutos, no cierres esta ventana.\n")
-    ok = Instalacion(modulo, paquete, _decir).ejecutar()
+    _decir("Primera ejecución: faltan librerías ({}).".format(
+        ", ".join(modulo for modulo, _ in faltantes)))
+    _decir("Se van a descargar e instalar ahora (necesita internet).")
+    _decir("Puede tardar unos minutos, no cierres esta ventana.\n")
+    ok = Instalacion(faltantes, _decir).ejecutar()
     if ok:
         _decir("\nInstalación terminada. Abriendo la calculadora...\n")
         return True
-    _decir("\nNo se pudo instalar automáticamente {}.".format(modulo))
+    _decir("\nNo se pudieron instalar automáticamente las librerías.")
     _decir("Revisa tu conexión a internet y vuelve a abrir el programa, o")
-    _decir("instálalo a mano escribiendo en una consola:")
-    _decir("    pip install {}".format(paquete.split(">")[0]))
+    _decir("instálalas a mano escribiendo en una consola:")
+    _decir("    " + _comando_manual(faltantes))
     _esperar_tecla()
     return False
 
 
-def asegurar_dependencias(modulo=MODULO, paquete=PAQUETE):
+def asegurar_dependencias(paquetes=PAQUETES):
     """
-    Comprueba que la librería gráfica esté disponible y, si no, la instala
+    Comprueba que estén todas las librerías y, si faltan, instala solo esas en una pasada
     (con ventana de espera si es posible). Devuelve True si se puede continuar.
     """
-    if hay_modulo(modulo):
+    faltantes = [(modulo, paquete) for modulo, paquete in paquetes if not hay_modulo(modulo)]
+    if not faltantes:
         return True
-    resultado = _con_ventana(modulo, paquete)
+    resultado = _con_ventana(faltantes)
     if resultado is None:
-        return _con_consola(modulo, paquete)
-    return bool(resultado) and hay_modulo(modulo)
+        return _con_consola(faltantes)
+    return bool(resultado) and all(hay_modulo(modulo) for modulo, _ in faltantes)
