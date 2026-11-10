@@ -59,6 +59,7 @@ ATAJOS = [
     ]),
     ("Métodos Numéricos", [
         ("Enter", "Calcular desde cualquier campo de la pestaña"),
+        ("Tab", "Aceptar la sugerencia de función al escribir f(x) (sin, sqrt, log…)"),
         ("Ctrl+Enter", "Calcular (bisección, gráfica, descomposición o errores)"),
         ("Ctrl+G", "Graficar la raíz de la bisección"),
         ("Ctrl+L", "Limpiar la pestaña actual"),

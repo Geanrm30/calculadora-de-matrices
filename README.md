@@ -331,7 +331,12 @@ negativos se conserva el signo y se descompone el valor absoluto.
   ajuste de líneas y guardado en `.txt` o PDF.
 - **Copiar y pegar:** matrices como tabla (compatible con Excel, Word y PowerPoint) o
   como imagen; en la tabla de la bisección, clic derecho para copiar una fila o toda la tabla.
-- **Autocompletado** de funciones (`sin`, `sqrt`, `log`…) en los campos de `f(x)`.
+- **Autocompletado** de funciones (`sin`, `sqrt`, `log`…) en los campos de `f(x)`: aparece desde la
+  segunda letra y se acepta con `Tab` (o `Enter`).
+- **Teclado de funciones:** botón bajo el campo `f(x)` de la bisección y del graficador que despliega
+  un teclado de calculadora (sin, cos, tan, ln, log₁₀, √, x², xⁿ, |x|, eˣ, π, e, dígitos y operadores).
+  Inserta en la posición del cursor, tiene retroceso y borrado total, y en el graficador añade `;`
+  para escribir varias funciones.
 - **Aviso de potencia:** si se escribe `x^3`, se interpreta como potencia y se avisa que
   en Python se escribe `x**3`.
 - **Barra de estado** con el tiempo del último cálculo, el tema, el tamaño de letra y la
@@ -380,7 +385,8 @@ calculadora-de-matrices/
     ├── pagina_*.py           Una página por herramienta (inicio, solucionador, matrices,
     │                         LU, numérica y teoremas) sobre pagina_base.py
     ├── grafica.py            Gráfica de Matplotlib animada y su ventana propia
-    ├── autocompletar.py      Sugerencias de funciones al escribir f(x)
+    ├── autocompletar.py      Sugerencias de funciones al escribir f(x) (se aceptan con Tab)
+    ├── teclado.py            Teclado de calculadora para escribir f(x) con botones
     ├── componentes.py        Botones, interruptores, tarjetas y cuadrícula de matriz
     ├── render.py, visor.py   HTML de informes y ventana de resultados
     ├── exportar.py, imagen.py  Exportación a PDF e imágenes de informes

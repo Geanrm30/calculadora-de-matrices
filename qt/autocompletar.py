@@ -10,7 +10,7 @@ Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
 """
 import re
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtWidgets import QCompleter
 
 from core import evaluador
@@ -19,11 +19,27 @@ _PALABRA_FINAL = re.compile(r"[A-Za-z_]*$")
 _MIN_LETRAS = 2
 
 
+class _CompletadorConTab(QCompleter):
+    """Completador que acepta la sugerencia resaltada también con Tab (sin mover el foco)."""
+
+    def eventFilter(self, objeto, evento):
+        """Con Tab y el popup abierto elige la sugerencia y consume la tecla."""
+        if (evento.type() == QEvent.KeyPress and evento.key() == Qt.Key_Tab
+                and objeto is self.popup() and self.popup().isVisible()):
+            indice = self.popup().currentIndex()
+            if not indice.isValid():
+                indice = self.completionModel().index(0, 0)
+            self.popup().hide()
+            self.activated[str].emit(self.completionModel().data(indice))
+            return True
+        return super().eventFilter(objeto, evento)
+
+
 def instalar(campo):
     """Activa en el campo las sugerencias de funciones y constantes y devuelve el completador."""
     nombres = sorted(evaluador.nombres_de_funciones() | evaluador.nombres_de_constantes())
     funciones = evaluador.nombres_de_funciones()
-    completador = QCompleter(nombres, campo)
+    completador = _CompletadorConTab(nombres, campo)
     completador.setWidget(campo)
     completador.setCaseSensitivity(Qt.CaseInsensitive)
     completador.setCompletionMode(QCompleter.PopupCompletion)

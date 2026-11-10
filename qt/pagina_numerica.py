@@ -32,6 +32,7 @@ from qt.ejemplos import (EJEMPLOS_BISECCION, EJEMPLOS_GRAFICA,
 from qt.exportar import escribir_pdf
 from qt.imagen import imagen_de_texto
 from qt.pagina_base import PaginaBase
+from qt.teclado import TecladoFunciones
 from qt.visor import abrir_visor
 
 
@@ -352,6 +353,8 @@ class PaginaNumerica(PaginaBase):
         t = self.tarjeta_datos_a = Tarjeta("Datos del método")
         self.f_a = _campo("x**3 - 2*x - 5", "f(x), por ejemplo x**3 - 2*x - 5")
         t.agregar_layout(_con_etiqueta("Función f(x)", self.f_a))
+        self.teclado_a = TecladoFunciones(self.f_a)
+        t.agregar(self.teclado_a)
         fila = QHBoxLayout()
         fila.setSpacing(8)
         self.a_a, self.b_b = _campo("", "2"), _campo("", "3")
@@ -689,6 +692,8 @@ class PaginaNumerica(PaginaBase):
         t = self.tarjeta_datos_b = Tarjeta("Función y rango")
         self.f_b = _campo("1/x", "f(x); varias separadas por «;»")
         t.agregar_layout(_con_etiqueta("Función f(x)", self.f_b))
+        self.teclado_b = TecladoFunciones(self.f_b, con_punto_y_coma=True)
+        t.agregar(self.teclado_b)
         fila = QHBoxLayout()
         fila.setSpacing(8)
         self.xmin_b, self.xmax_b = _campo("-5", "-5"), _campo("5", "5")
@@ -1164,6 +1169,8 @@ class PaginaNumerica(PaginaBase):
         """Aplica el nuevo tamaño de letra a los informes y a la tabla."""
         for inf in (self.inf_a, self.inf_c, self.inf_d):
             inf.estilo()
+        for teclado in (self.teclado_a, self.teclado_b):
+            teclado.estilo()
         self._estilo_tabla()
         if self._res_a:
             self._llenar_tabla(self._res_a["filas"])
