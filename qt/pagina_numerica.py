@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Métodos Numéricos (Programa 7): A) Bisección, B) Graficador de funciones,
-C) Notación posicional en base 10 y base 2, D) Errores numéricos.
-Unidad: Programa 7: Métodos Numéricos.
+Métodos Numéricos (Programas 7 y 8): A) Bisección, B) Graficador de funciones,
+C) Notación posicional en base 10 y base 2, D) Errores numéricos y
+E) Jacobi y Gauss-Seidel (ver pagina_iterativos).
+Unidad: Programa 7: Métodos Numéricos y Programa 8: Métodos Iterativos.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
@@ -32,6 +33,7 @@ from qt.ejemplos import (EJEMPLOS_BISECCION, EJEMPLOS_GRAFICA,
 from qt.exportar import escribir_pdf
 from qt.imagen import imagen_de_texto
 from qt.pagina_base import PaginaBase
+from qt.pagina_iterativos import PaginaIterativos
 from qt.teclado import TecladoFunciones
 from qt.visor import abrir_visor
 
@@ -231,12 +233,12 @@ class TarjetaInforme(Tarjeta):
 
 class PaginaNumerica(PaginaBase):
 
-    """Sección de métodos numéricos: bisección, graficador, notación posicional y errores."""
+    """Sección de métodos numéricos: bisección, graficador, notación posicional, errores y métodos iterativos."""
     def __init__(self, ventana):
-        """Construye las cuatro pestañas y la barra de atajos."""
+        """Construye las cinco pestañas y la barra de atajos."""
         super().__init__(ventana, "Métodos Numéricos",
                          "Bisección  ·  Graficador de funciones  ·  Notación "
-                         "posicional  ·  Errores numéricos")
+                         "posicional  ·  Errores numéricos  ·  Jacobi y Gauss-Seidel")
         self._res_a = None
         self._raiz_marcada = None
         self._grafica_hecha = False
@@ -248,6 +250,9 @@ class PaginaNumerica(PaginaBase):
         self.tabs.addTab(self._tab_grafica(), "B · Graficador")
         self.tabs.addTab(self._tab_posicional(), "C · Notación posicional")
         self.tabs.addTab(self._tab_errores(), "D · Errores numéricos")
+        self.pestana_e = PaginaIterativos(self, TarjetaInforme, self._fila_tab,
+                                          self._panel_izq, self._con_desplazo)
+        self.tabs.addTab(self.pestana_e, "E · Jacobi y Gauss-Seidel")
         self.tabs.currentChanged.connect(self.ocultar_error)
         self.raiz.addWidget(self.tabs, 1)
         self._conectar_enter()
@@ -284,17 +289,18 @@ class PaginaNumerica(PaginaBase):
     def _informe_actual(self):
         """Tarjeta de informe de la pestaña actual."""
         i = self.tabs.currentIndex()
-        return {0: self.inf_a, 1: self.inf_a, 2: self.inf_c, 3: self.inf_d}[i]
+        return {0: self.inf_a, 1: self.inf_a, 2: self.inf_c, 3: self.inf_d,
+                4: self.pestana_e.informe_actual()}[i]
 
     def calcular_actual(self):
         """Ejecuta la acción principal de la pestaña actual (Ctrl+Enter)."""
         {0: self.calcular_biseccion, 1: self.graficar, 2: self.descomponer,
-         3: self.informe_completo}[self.tabs.currentIndex()]()
+         3: self.informe_completo, 4: self.pestana_e.calcular}[self.tabs.currentIndex()]()
 
     def limpiar_actual(self):
         """Limpia los campos de la pestaña actual (se puede deshacer)."""
         self._limpiable({0: self.limpiar_a, 1: self.limpiar_b, 2: self.limpiar_c,
-                         3: self.limpiar_d}[self.tabs.currentIndex()])()
+                         3: self.limpiar_d, 4: self.pestana_e.limpiar}[self.tabs.currentIndex()])()
 
     def _limpiable(self, limpiar):
         """Devuelve una acción que limpia con `limpiar` guardando antes lo escrito para deshacer."""
@@ -324,6 +330,8 @@ class PaginaNumerica(PaginaBase):
             autocompletar.al_pulsar_enter(campo, self.ver_errores)
         for campo in (self.x_d, self.dx_d):
             autocompletar.al_pulsar_enter(campo, self.ver_propagacion)
+        for campo in self.pestana_e.campos_enter():
+            autocompletar.al_pulsar_enter(campo, self.pestana_e.calcular)
         for campo in (self.f_a, self.f_b):
             autocompletar.instalar(campo)
 
@@ -1116,6 +1124,7 @@ class PaginaNumerica(PaginaBase):
             "d_res": self.inf_d.texto,
             "historiales": [self.inf_a.historial, self.inf_c.historial,
                             self.inf_d.historial],
+            "e": self.pestana_e.estado(),
         }
 
     def restaurar(self, d):
@@ -1140,6 +1149,11 @@ class PaginaNumerica(PaginaBase):
             hs = d.get("historiales", [[], [], []])
             self.inf_a.historial, self.inf_c.historial, self.inf_d.historial = \
                 [list(h)[:40] for h in hs]
+            if d.get("e"):
+                try:
+                    self.pestana_e.restaurar(d["e"])
+                except (KeyError, IndexError, TypeError, ValueError):
+                    pass
             if d.get("a_calculado"):
                 self._recalcular_silencioso()
             if d.get("b_hecho"):
@@ -1172,6 +1186,7 @@ class PaginaNumerica(PaginaBase):
         for teclado in (self.teclado_a, self.teclado_b):
             teclado.estilo()
         self._estilo_tabla()
+        self.pestana_e.aplicar_escala()
         if self._res_a:
             self._llenar_tabla(self._res_a["filas"])
 

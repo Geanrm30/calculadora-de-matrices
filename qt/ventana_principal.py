@@ -684,6 +684,12 @@ class VentanaPrincipal(QMainWindow):
                      "descomponen enteros en base 10 y 2, y explican los errores "
                      "numéricos (0.1 + 0.2, épsilon, propagación).",
                      lambda: num.tabs.tabBar()),
+            PasoTour("Jacobi y Gauss-Seidel",
+                     "Pestaña E: escribe [A | b], x(0), la tolerancia y el criterio (norma 2 "
+                     "por defecto). Compara los dos métodos con tablas, gráfica del error "
+                     "y paso a paso; si hace falta, propone reordenar las filas.",
+                     lambda: num.pestana_e.btn_calcular, "numerico",
+                     lambda: (num.tabs.setCurrentIndex(4), num.pestana_e.cargar_ejemplo(0))),
             PasoTour("Teoremas: busca y filtra",
                      "Busca por nombre o enunciado (Ctrl+F) y filtra por categoría. "
                      "Lo encontrado sale resaltado y las coincidencias se abren solas.",

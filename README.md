@@ -20,7 +20,7 @@ MTM0120 Álgebra Lineal · Universidad Americana · Facultad de Ingeniería y Ar
 1. [Descripción general](#1-descripción-general)
 2. [Instalación y ejecución](#2-instalación-y-ejecución)
 3. [Módulos de la aplicación](#3-módulos-de-la-aplicación)
-4. [Métodos numéricos (Programa 7)](#4-métodos-numéricos-programa-7)
+4. [Métodos numéricos (Programas 7 y 8)](#4-métodos-numéricos-programas-7-y-8)
 5. [Interfaz y atajos de teclado](#5-interfaz-y-atajos-de-teclado)
 6. [Arquitectura del proyecto](#6-arquitectura-del-proyecto)
 7. [Decisiones técnicas](#7-decisiones-técnicas)
@@ -37,7 +37,8 @@ MTM0120 Álgebra Lineal · Universidad Americana · Facultad de Ingeniería y Ar
 Proyecto integrador de la asignatura **MTM0120 Álgebra Lineal**. Implementa las
 Unidades I a III del curso (sistemas de ecuaciones, operaciones con matrices y
 vectores, propiedades algebraicas, determinantes e inversas), la factorización
-LU y el módulo de Métodos Numéricos del Programa 7.
+LU, el módulo de Métodos Numéricos del Programa 7 y los métodos iterativos
+(Jacobi y Gauss-Seidel) del Programa 8.
 
 El objetivo no es solo entregar el resultado, sino **explicar el procedimiento**:
 cada operación elemental, cada paso de un determinante o cada iteración de la
@@ -52,8 +53,8 @@ bisección queda escrito y puede verificarse.
 | Matrices y vectores | Suma, resta, producto, transpuesta, escalar, determinante (3 métodos), inversa (2 métodos) y Regla de Cramer |
 | Propiedades | Verificación de 31 propiedades algebraicas de las Sesiones 9 a 11 |
 | Factorización LU | `A = L·U` para matrices m×n y solución de `A·x = b` en dos etapas |
-| Métodos numéricos | Bisección propia, graficador, notación posicional (base 10 y 2) y errores numéricos |
-| Teoremas | Catálogo de 30 teoremas con buscador y filtros por categoría |
+| Métodos numéricos | Bisección propia, graficador, notación posicional (base 10 y 2), errores numéricos y métodos iterativos Jacobi y Gauss-Seidel propios |
+| Teoremas | Catálogo de 34 teoremas con buscador y filtros por categoría |
 | Interfaz | Tema claro y oscuro, tamaño de letra ajustable, recorrido guiado, ventana de resultados, sesión persistente |
 
 ---
@@ -92,7 +93,7 @@ sustituyan el algoritmo.
 |---|---|
 | PySide6-Essentials | Interfaz gráfica y exportación de informes a PDF |
 | Matplotlib | Graficador de funciones, incrustado en la ventana |
-| NumPy | Muestreo de la gráfica, épsilon de máquina (`numpy.finfo`), overflow y underflow |
+| NumPy | Muestreo de la gráfica, épsilon de máquina (`numpy.finfo`), overflow y underflow; en Jacobi y Gauss-Seidel, las matrices de iteración, el radio espectral y la solución de referencia (`numpy.linalg.solve`) con la que se **valida** el resultado |
 | SciPy | Únicamente para **contrastar** la raíz (`scipy.optimize.bisect` y `brentq`); nunca es la solución principal |
 
 El máximo común divisor se implementa con el algoritmo de Euclides en lugar de
@@ -185,8 +186,8 @@ reconstruye `A = L·U`; con `b` o `x` obtiene el otro.
 
 ### 3.4 Teoremas
 
-Catálogo de 30 teoremas (sistemas, matrices, determinante, factorización LU y
-métodos numéricos) con vista previa, filtros por categoría, búsqueda con `Ctrl+F`,
+Catálogo de 34 teoremas (sistemas, matrices, determinante, factorización LU y
+métodos numéricos, incluida la convergencia de Jacobi y Gauss-Seidel) con vista previa, filtros por categoría, búsqueda con `Ctrl+F`,
 **Expandir todo** y **Copiar**. El botón **Abrir en…** lleva a la herramienta
 correspondiente y señala el botón exacto con una indicación visual.
 
@@ -197,9 +198,10 @@ correspondiente y señala el botón exacto con una indicación visual.
 
 ---
 
-## 4. Métodos numéricos (Programa 7)
+## 4. Métodos numéricos (Programas 7 y 8)
 
-Acceso con `Ctrl+5`. Cuatro pestañas.
+Acceso con `Ctrl+5`. Cinco pestañas: bisección, graficador, notación posicional,
+errores numéricos y Jacobi y Gauss-Seidel.
 
 ### 4.1 Bisección
 
@@ -289,6 +291,48 @@ negativos se conserva el signo y se descompone el valor absoluto.
 - Propagación del error con `f(x) = sen(x) + x²`: `Δy` aproximado `= f′(x)·Δx`,
   `Δy` real y la diferencia entre ambos, indicando que la aproximación es de primer orden.
 
+### 4.5 Jacobi y Gauss-Seidel (Programa 8)
+
+Programados desde cero en `modulos/modulo_iterativo.py`, con la notación
+`A = D + L + U`, `x(k+1) = T·x(k) + c`, `T_J = −D⁻¹(L + U)` y
+`T_GS = −(D + L)⁻¹·U`. NumPy solo construye las matrices de iteración, calcula el
+radio espectral `ρ(T)` y la solución de referencia con la que se contrasta el resultado.
+
+**Datos.** Matriz aumentada `[A | b]` (hasta 10×10), vector inicial `x(0)`, tolerancia
+`ε > 0`, iteraciones máximas (hasta 5000) y criterio de parada: **norma 2** por defecto
+(`d = ‖x(k) − x(k−1)‖₂`), norma ∞ o error relativo porcentual `εₐ (%)`. Opcionalmente, el
+factor de relajación `λ` (`0 < λ < 2`) para Gauss-Seidel (SOR): está oculto y aparece al
+pulsar **Mostrar relajación λ** o al cargar un ejemplo con relajación.
+
+**Validaciones y diagnóstico.** Dimensiones, tolerancia e iteraciones (la celda o el
+campo culpable se marca en rojo); ceros en la diagonal; dominancia diagonal estricta por
+filas, fila por fila (se explica que es condición *suficiente*, no necesaria); si A es
+simétrica definida positiva. Si conviene, **propone** un reordenamiento de filas que
+elimina los ceros o deja la diagonal dominante; solo se aplica si pulsas
+**Reordenar filas y recalcular**. Si no existe ninguno, lo informa y no fuerza nada.
+
+**Resultados.** Tabla de iteraciones de cada método (`k`, `x₁…xₙ`, error entre
+iteraciones, error verdadero `‖x* − x(k)‖₂` y residuo `‖b − Ax‖∞`) que se arma fila a
+fila; resumen con la solución, las iteraciones y el estado de cada método; **gráfica
+animada del error por iteración** (escala logarítmica, con la tolerancia como línea
+punteada), solo cuando ambos métodos tienen datos válidos; comparación (cuál usó menos
+iteraciones, diferencia entre soluciones, `ρ(T_J)` frente a `ρ(T_GS)`) y validación con
+`numpy.linalg.solve`, sin reemplazar la implementación propia.
+
+**Paso a paso.** El despeje de cada incógnita, la sustitución
+numérica de **todas** las iteraciones de cada método (cada `xᵢ` y el error `d` frente
+a `ε`; hasta 300, y si hay más el resto queda en la tabla) y la tabla de iteraciones. Con el interruptor **Mostrar D, L, U, T y c** se añaden
+la forma matricial `A = D + L + U`, las matrices de iteración y la comprobación
+`x(1) = T·x(0) + c`. **Abrir en ventana** lo presenta con índice, matrices dibujadas,
+tablas y colores (verde converge, rojo no converge).
+
+**Avisos sin cerrar el programa.** Si el error crece durante 10 iteraciones seguidas con
+`ρ(T) ≥ 1`, si los valores se vuelven no finitos o pasan de `10¹⁰⁰`, o si se agota el
+máximo de iteraciones sin cumplir `ε`, se detiene con un mensaje claro y se conserva lo
+calculado hasta ese punto.
+
+> Los decimales se escriben con punto (`0.0001`); la coma también se acepta al leer.
+
 ---
 
 ## 5. Interfaz y atajos de teclado
@@ -359,7 +403,7 @@ calculadora-de-matrices/
 │   ├── vector.py             Operaciones en Rⁿ
 │   ├── procedimiento.py      Paso a paso escrito de cada operación
 │   ├── propiedades.py        Verificador de las 31 propiedades algebraicas
-│   ├── teoremas.py           Catálogo de 30 teoremas
+│   ├── teoremas.py           Catálogo de 34 teoremas
 │   ├── evaluador.py          Evaluador seguro de f(x): AST con lista blanca, sin eval
 │   ├── calentamiento.py      Carga anticipada de Matplotlib y SciPy en segundo plano
 │   └── formato.py            Construcción de cadenas: matrices, ecuaciones, subíndices
@@ -367,7 +411,8 @@ calculadora-de-matrices/
 ├── modulos/                Operaciones sobre matrices y métodos numéricos
 │   ├── modulo_matrices.py    Determinante, inversa, cofactores, adjunta y Cramer
 │   ├── modulo_lu.py          Factorización LU y solución de A·x = b
-│   └── modulo_numerico.py    Bisección, muestreo de la gráfica, notación posicional y errores
+│   ├── modulo_numerico.py    Bisección, muestreo de la gráfica, notación posicional y errores
+│   └── modulo_iterativo.py   Jacobi y Gauss-Seidel: validaciones, reordenamiento, informe y datos de la gráfica
 │
 ├── solver/                 Resolución de sistemas
 │   ├── clasificacion.py      Clasificación por Rouché-Frobenius
@@ -384,7 +429,8 @@ calculadora-de-matrices/
     ├── ventana_principal.py  Ventana, menú lateral, tema, sesión y barra de estado
     ├── pagina_*.py           Una página por herramienta (inicio, solucionador, matrices,
     │                         LU, numérica y teoremas) sobre pagina_base.py
-    ├── grafica.py            Gráfica de Matplotlib animada y su ventana propia
+    ├── pagina_iterativos.py  Pestaña E de Métodos numéricos: Jacobi y Gauss-Seidel
+    ├── grafica.py            Gráficas de Matplotlib animadas (función y error por iteración) y su ventana propia
     ├── autocompletar.py      Sugerencias de funciones al escribir f(x) (se aceptan con Tab)
     ├── teclado.py            Teclado de calculadora para escribir f(x) con botones
     ├── componentes.py        Botones, interruptores, tarjetas y cuadrícula de matriz
@@ -518,6 +564,21 @@ Ejemplo de tabla para `x³ − 2x − 5` en `[2, 3]`:
 | … | … | … | … | … | … |
 | 14 | 2.094482 | 2.094604 | 2.094543 | −0.000090 | 0.000061 |
 
+### Jacobi y Gauss-Seidel (norma 2, ε = 10⁻⁴, máximo 100 iteraciones)
+
+| Caso | Resultado |
+|---|---|
+| Convergencia: `[[10,3,1],[5,−10,3],[1,3,10]]`, `b = (14, −5, 14)` | Jacobi 16 iteraciones, Gauss-Seidel 5; `ρ(T_J) = 0.4899`, `ρ(T_GS) = 0.2509`; `x ≈ (0.9328, 1.2463, 0.9328)` |
+| Sistema 5×5 con solución exacta | Solución exacta `(−2, −1, 0, 1, 2)`; en Gauss-Seidel `d₁ = 2.881144`, `d₂ = 0.54468`, `d₃ = 0.169906` |
+| Error relativo porcentual, `εₛ = 0.05 %` | Ambos métodos paran en la iteración 4 |
+| Reordenamiento: no domina `[[2,−6,−1],[−3,−1,7],[−8,1,−2]]` | Sin reordenar, ambos divergen y se avisa; con la permutación propuesta converge a `(4, 8, −2)` |
+| Cero en la diagonal `[[0,5,1],[6,1,1],[1,1,7]]` | Se rechaza el cálculo y se propone reordenar; reordenado converge a `(1, 2, −1)` |
+| Ceros sin ordenamiento posible | Se informa que ninguna permutación quita los ceros y no se calcula |
+| Simétrica definida positiva y no dominante | Jacobi no converge (`ρ(T_J) > 1`); Gauss-Seidel sí (20 iteraciones con `ε = 10⁻⁶`) |
+| Advertencia: `[[1,2,2],[2,1,2],[2,2,1]]` | El error crece, se detiene y se avisa sin cerrar el programa |
+| Relajación, tridiagonal (`εₛ = 5 %`) | Gauss-Seidel: 6 iteraciones con `λ = 1` y 4 con `λ = 1.2` |
+| Validaciones | A no cuadrada, `b` o `x(0)` de otro tamaño, `ε ≤ 0`, iteraciones no enteras o menores que 1 y `λ` fuera de `(0, 2)` se rechazan marcando el campo |
+
 ### Sistemas lineales
 
 | Sistema | Resultado |
@@ -553,6 +614,9 @@ Se sigue la guía «comentar con criterio» en todos los archivos `.py`:
 - Las funciones de la bisección deben ser continuas en el intervalo: el programa
   detecta asíntotas y huecos, pero el cambio de signo por sí solo no prueba continuidad.
 - En LU sin permutación, si hace falta intercambiar filas el programa se detiene y lo indica.
+- Jacobi y Gauss-Seidel admiten sistemas de hasta 10×10 en pantalla y 5000 iteraciones. La
+  dominancia diagonal es condición suficiente, no necesaria: el programa informa `ρ(T)` para
+  decidir. El criterio de parada mide la diferencia entre iteraciones, no el error verdadero.
 - Las preferencias y la última sesión se guardan en la configuración del usuario del
   sistema (en Windows, el registro, bajo `UAM`). **Ayuda → Acerca de → Borrar todos los
   datos** restablece los valores por defecto.

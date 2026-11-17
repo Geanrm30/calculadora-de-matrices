@@ -21,6 +21,7 @@ calentamiento.esperar()
 from matplotlib.backends.backend_qtagg import (FigureCanvasQTAgg,
                                                NavigationToolbar2QT)
 from matplotlib.figure import Figure
+from matplotlib.ticker import MaxNLocator
 from PySide6.QtCore import (QElapsedTimer, QEasingCurve, QTimer, QVariantAnimation,
                             Qt)
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QVBoxLayout,
@@ -47,6 +48,8 @@ class _BarraGrafica(NavigationToolbar2QT):
 class Grafica(QWidget):
 
     """Gráfica de Matplotlib con barra de navegación, animada y con el tema de la aplicación."""
+    MENSAJE_VACIO = "Escribe una función y pulsa «Graficar»"
+
     def __init__(self, parent=None):
         """Crea la figura, su lienzo, la barra de navegación y el temporizador de la animación."""
         super().__init__(parent)
@@ -89,7 +92,7 @@ class Grafica(QWidget):
         """Deja la gráfica vacía con la indicación de que se escriba una función."""
         self._parar()
         ax = self._ejes()
-        ax.text(0.5, 0.5, "Escribe una función y pulsa «Graficar»",
+        ax.text(0.5, 0.5, self.MENSAJE_VACIO,
                 transform=ax.transAxes, ha="center", va="center",
                 color=T.MUTED, fontsize=11)
         ax.set_xticks([])
@@ -178,6 +181,10 @@ class Grafica(QWidget):
         self._ax = ax
         self.figura.tight_layout()
         self.barra.update()
+        self._mostrar(ax, animar)
+
+    def _mostrar(self, ax, animar):
+        """Deja la figura lista: de una vez, o con la animación del trazado y de los extras."""
         if not animar:
             self._leyenda(ax)
             self.canvas.draw_idle()
@@ -265,8 +272,74 @@ class Grafica(QWidget):
         return self.canvas.grab().toImage()
 
 
+class GraficaError(Grafica):
+    """Error por iteración de Jacobi y Gauss-Seidel en escala logarítmica, con la tolerancia ε como referencia."""
+    MENSAJE_VACIO = "Calcula Jacobi y Gauss-Seidel para ver el error por iteración"
+    _pendiente = None
+
+    def _sin_tamano(self):
+        """Verdadero si el lienzo aún no tiene un tamaño útil (su pestaña no se ha mostrado)."""
+        return self.canvas.width() < 80 or self.canvas.height() < 80
+
+    def _dibujar_pendiente(self):
+        """Dibuja lo que quedó esperando a que el lienzo tuviera tamaño."""
+        if self._pendiente is not None and self._ultima and not self._sin_tamano():
+            animar, self._pendiente = self._pendiente, None
+            self.dibujar(self._ultima[0], animar=animar)
+
+    def showEvent(self, e):
+        """Al mostrarse la pestaña dibuja lo pendiente, ya con el tamaño real."""
+        super().showEvent(e)
+        QTimer.singleShot(30, self._dibujar_pendiente)
+
+    def resizeEvent(self, e):
+        """Si el lienzo acaba de recibir tamaño, dibuja lo pendiente."""
+        super().resizeEvent(e)
+        QTimer.singleShot(30, self._dibujar_pendiente)
+
+    def dibujar(self, datos, raiz=None, intervalo=None, animar=True):
+        """
+        `datos`: resultado de `preparar_grafica_error`. `raiz` e `intervalo` no se usan: existen
+        para que la ventana de gráfica llame igual a las dos clases. Con la pestaña aún oculta
+        espera a tener tamaño: Matplotlib no puede trazar en un lienzo de altura cero.
+        """
+        self._parar()
+        self._ultima = (datos,)
+        if self._sin_tamano():
+            self._pendiente = animar
+            return
+        self._pendiente = None
+        ax = self._ejes()
+        colores = [T.AZUL, T.NARANJA]
+        self._curvas = []
+        self._extras = []
+        for i, c in enumerate(datos["curvas"]):
+            xs, ys = (np.array([]), np.array([])) if animar else (c["xs"], c["ys"])
+            (linea,) = ax.plot(xs, ys, color=colores[i % len(colores)], linewidth=2.0,
+                               marker="o", markersize=4.5, label=c["etiqueta"])
+            self._curvas.append((linea, c["xs"], c["ys"]))
+        ax.set_yscale("log")
+        errores = np.concatenate([c["ys"] for c in datos["curvas"]])
+        eps = datos["tolerancia"]
+        ax.set_ylim(min(errores.min(), eps) / 3, max(errores.max(), eps) * 3)
+        ax.set_xlim(datos["xmin"], datos["xmax"])
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        linea_eps = ax.axhline(eps, color=T.ROJO, linestyle="--", linewidth=1.3,
+                               alpha=0.0 if animar else 1.0,
+                               label="Tolerancia ε = {:.6g}".format(eps))
+        self._extras.append((linea_eps, 1.0))
+        ax.set_title(datos["titulo"], fontsize=12)
+        ax.set_xlabel("Iteración k")
+        ax.set_ylabel(datos["etiqueta_y"])
+        self._ax = ax
+        self.figura.tight_layout()
+        self.barra.update()
+        self._mostrar(ax, animar)
+
+
 class VentanaGrafica(QWidget):
     """La gráfica en una ventana propia, grande, con la misma animación."""
+    CLASE_GRAFICA = Grafica
 
     def __init__(self, titulo, datos, raiz=None, intervalo=None, resumen=""):
         """Crea la ventana con la gráfica grande, sus botones y el resumen."""
@@ -295,7 +368,7 @@ class VentanaGrafica(QWidget):
             barra.addWidget(b)
         lay.addLayout(barra)
 
-        self.grafica = Grafica()
+        self.grafica = self.CLASE_GRAFICA()
         lay.addWidget(self.grafica, 1)
         self.lbl = QLabel(resumen)
         self.lbl.setObjectName("nota")
@@ -345,10 +418,16 @@ class VentanaGrafica(QWidget):
         super().closeEvent(e)
 
 
-def abrir_ventana_grafica(titulo, datos, raiz=None, intervalo=None, resumen=""):
+class VentanaGraficaError(VentanaGrafica):
+    """Ventana propia para la gráfica del error de Jacobi y Gauss-Seidel."""
+    CLASE_GRAFICA = GraficaError
+
+
+def abrir_ventana_grafica(titulo, datos, raiz=None, intervalo=None, resumen="",
+                          clase=VentanaGrafica):
     """Abre la gráfica en una ventana propia, desplazada respecto a la ventana activa."""
     from qt import visor
-    v = VentanaGrafica(titulo, datos, raiz, intervalo, resumen)
+    v = clase(titulo, datos, raiz, intervalo, resumen)
     activa = QApplication.activeWindow()
     if activa is not None:
         v.move(activa.x() + 40 + 28 * len(visor._ABIERTAS),

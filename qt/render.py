@@ -146,7 +146,7 @@ def html_vector_solucion(resultado):
         "".join(partes))
 
 
-_CELDA = r"-?\d+(?:/\d+)?"
+_CELDA = r"[-−]?\d+(?:[.,]\d+)?(?:/\d+)?"
 _FILA_MATRIZ = re.compile(
     r"^\s*\[\s*((?:{c}\s+)*{c})\s*(?:\|\s*((?:{c}\s+)*{c})\s*)?\]\s*$".format(c=_CELDA))
 _PASO = re.compile(r"^\s*(Paso \d+:|── |Iteración \d+:)")
@@ -228,40 +228,73 @@ def _html_matriz_de_texto(filas):
     return "<table cellspacing='0' cellpadding='0'>{}</table>".format("".join(trs))
 
 
-_CAB_TABLA = re.compile(r"^\s*i\s{2,}xₗ\s{2,}xᵤ\s{2,}xᵣ\s{2,}")
 _REGLA_TABLA = re.compile(r"^\s*-+(\s+-+)+\s*$")
-_FILA_TABLA = re.compile(r"^\s*\d+\s{2,}")
+
+
+def _tabla_desde(lineas, i):
+    """
+    Si en la línea i empieza una tabla de texto (cabecera, regla de guiones y filas con las
+    mismas columnas, separadas por 2+ espacios) devuelve (cabecera, filas, línea siguiente).
+    """
+    if i + 1 >= len(lineas) or not _REGLA_TABLA.match(lineas[i + 1]):
+        return None
+    cab = re.split(r"\s{2,}", lineas[i].strip())
+    if len(cab) < 2 or len(cab) != len(lineas[i + 1].split()):
+        return None
+    j, filas = i + 2, []
+    while j < len(lineas) and lineas[j].strip():
+        celdas = re.split(r"\s{2,}", lineas[j].strip())
+        if len(celdas) != len(cab):
+            break
+        filas.append(celdas)
+        j += 1
+    return (cab, filas, j) if filas else None
+
+
+def _color_de_celda(cab, c, v, biseccion):
+    """Color del texto de una celda según su columna: signos de f(xᵣ), error, ¿domina? y estado."""
+    h = cab[c]
+    if h.startswith("f(") and v.startswith("+"):
+        return T.VERDE
+    if h.startswith("f(") and v.startswith("\u2212"):
+        return T.ROJO
+    if biseccion and c == 3:
+        return T.NARANJA
+    if h.startswith(("‖Δx", "máx")):
+        return T.NARANJA
+    if h == "¿Domina?":
+        return T.VERDE if v == "Sí" else T.ROJO
+    if h == "Estado":
+        return T.VERDE if v.startswith("Convergencia") else T.ROJO
+    return T.TEXTO
 
 
 def _html_tabla_de_texto(cab, filas):
     """
-    Tabla de iteraciones de la bisección (columnas separadas por 2+ espacios):
-    cabecera azul, filas alternadas, signos de f(xr) en verde/rojo y la última
+    Tabla de texto (iteraciones de la bisección, de Jacobi y Gauss-Seidel, dominancia o
+    comparación): cabecera azul, filas alternadas y, en las tablas de iteraciones, la última
     fila resaltada (la iteración que acaba de añadirse).
     """
     tenue = _mezcla(T.FONDO, T.SUPERF, 0.55)
     actual = _mezcla(T.SUPERF, T.NARANJA, 0.45)
+    biseccion = cab[:4] == ["i", "xₗ", "xᵤ", "xᵣ"]
+    de_iteraciones = biseccion or (cab[0] == "k" and cab[1].startswith("x"))
     trs = ["<tr>{}</tr>".format("".join(
         "<td align='center' style='background-color:{}; color:{};"
         " font-weight:bold; padding:4px 12px;'>{}</td>".format(
             T.HDR_BG, T.AZUL, _E(c)) for c in cab))]
     for r, celdas in enumerate(filas):
-        ultima = r == len(filas) - 1
+        ultima = de_iteraciones and r == len(filas) - 1
         bg = actual if ultima else (T.SUPERF if r % 2 == 0 else tenue)
         tds = []
         for c, v in enumerate(celdas):
-            color = T.TEXTO
-            if cab[c].startswith("f(") and v.startswith("+"):
-                color = T.VERDE
-            elif cab[c].startswith("f(") and v.startswith("\u2212"):
-                color = T.ROJO
-            elif c == 3:
-                color = T.NARANJA
+            color = _color_de_celda(cab, c, v, biseccion)
+            texto_libre = c == 0 and not v.isdigit()
             tds.append(
                 "<td align='{}' style='background-color:{}; color:{};{}"
                 " padding:3px 12px;'>{}</td>".format(
-                    "center" if c == 0 else "right", bg, color,
-                    " font-weight:bold;" if ultima or c == 3 else "", _E(v)))
+                    "left" if texto_libre else "center" if c == 0 else "right", bg, color,
+                    " font-weight:bold;" if ultima or (biseccion and c == 3) else "", _E(v)))
         trs.append("<tr>{}</tr>".format("".join(tds)))
     return ("<table cellspacing='1' cellpadding='0' style='margin:4px 0 4px 18px;'>"
             "{}</table>".format("".join(trs)))
@@ -291,17 +324,12 @@ def html_texto(texto):
     i = 0
     while i < len(lineas):
         linea = lineas[i]
-        if (_CAB_TABLA.match(linea) and i + 1 < len(lineas)
-                and _REGLA_TABLA.match(lineas[i + 1])):
-            j = i + 2
-            filas = []
-            while j < len(lineas) and _FILA_TABLA.match(lineas[j]):
-                filas.append(re.split(r"\s{2,}", lineas[j].strip()))
-                j += 1
+        tabla = _tabla_desde(lineas, i)
+        if tabla is not None:
+            cab, filas, j = tabla
             cerrar_tramo()
             cerrar_matriz()
-            piezas.append(_html_tabla_de_texto(
-                re.split(r"\s{2,}", linea.strip()), filas))
+            piezas.append(_html_tabla_de_texto(cab, filas))
             i = j
             continue
         m = _FILA_MATRIZ.match(linea)

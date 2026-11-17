@@ -487,7 +487,7 @@ class PaginaTeoremas(PaginaBase):
     def __init__(self, ventana):
         """Construye el buscador, los filtros y una tarjeta por cada teorema."""
         super().__init__(ventana, "Teoremas y criterios",
-                         "Catálogo de teoremas del curso (Sesiones 1–11 y Programa 7)")
+                         "Catálogo de teoremas del curso (Sesiones 1–11 y Programas 7 y 8)")
         self._categoria = "todos"
         self._consulta = ""
 
@@ -552,7 +552,7 @@ class PaginaTeoremas(PaginaBase):
 
     def _construir_tarjetas(self, cantidad):
         """Crea hasta 'cantidad' tarjetas y deja el resto para después, en tandas pequeñas.
-        Así abrir la sección no congela la ventana mientras se construyen las 30 tarjetas.
+        Así abrir la sección no congela la ventana mientras se construyen las tarjetas.
         """
         for _ in range(cantidad):
             if not self._pendientes:

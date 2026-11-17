@@ -226,6 +226,7 @@ class VisorTexto(QWidget):
         doc = self.edit.document()
         entradas = [["Inicio", 0]]
         grupos = {}
+        bloque_actual = 0
         bloque = doc.begin()
         while bloque.isValid():
             crudo = bloque.text()
@@ -236,16 +237,19 @@ class VisorTexto(QWidget):
                 continue
             grupo = next((g for patron, g in _GRUPOS if patron.match(crudo)), None)
             if grupo:
-                if grupo in grupos:
-                    grupos[grupo][1] += 1
+                clave = (grupo, bloque_actual)
+                if clave in grupos:
+                    grupos[clave][1] += 1
                 else:
                     entradas.append([grupo, numero])
-                    grupos[grupo] = [entradas[-1], 1]
+                    grupos[clave] = [entradas[-1], 1]
                 continue
+            if _TITULO_BLOQUE.match(re.sub(r"\s{2,}", " ", t)):
+                bloque_actual += 1
             nombre = self._nombre_de_entrada(crudo, t)
             if nombre:
                 entradas.append([nombre, numero])
-        for nombre, (entrada, cantidad) in grupos.items():
+        for (nombre, _), (entrada, cantidad) in grupos.items():
             entrada[0] = "{} ({})".format(nombre, cantidad)
 
         self._entradas = entradas

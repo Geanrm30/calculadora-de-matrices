@@ -270,4 +270,43 @@ TEOREMAS = [
         "   Modelo         el modelo matemático no describe bien el problema.",
         "Métodos Numéricos: Errores numéricos, tipos de error.",
     ),
+    (
+        "Forma matricial de Jacobi y Gauss-Seidel",
+        "Se escribe A = D + L + U (diagonal, parte estrictamente inferior y parte "
+        "estrictamente superior) y el método como x(k+1) = T·x(k) + c:\n"
+        "   Jacobi         T_J  = −D⁻¹(L + U)     c_J  = D⁻¹·b\n"
+        "   Gauss-Seidel   T_GS = −(D + L)⁻¹·U    c_GS = (D + L)⁻¹·b\n"
+        "Jacobi usa solo los valores de la iteración anterior; Gauss-Seidel usa de "
+        "inmediato los que acaba de calcular. Con relajación λ (SOR): "
+        "(D + λL)·x(k+1) = [(1 − λ)D − λU]·x(k) + λ·b.",
+        "Métodos Numéricos: Jacobi y Gauss-Seidel, forma matricial y fórmulas.",
+    ),
+    (
+        "Convergencia de un método iterativo: ρ(T) < 1",
+        "x(k+1) = T·x(k) + c converge a la solución para cualquier x(0) si y solo si "
+        "el radio espectral cumple\n"
+        "   ρ(T) = máx |λᵢ| < 1     (λᵢ = valores propios de T)\n"
+        "Cuanto menor es ρ(T), más rápido baja el error. El criterio de parada "
+        "‖x(k) − x(k−1)‖ < ε mide la diferencia entre iteraciones, no el error "
+        "verdadero ‖x* − x(k)‖.",
+        "Métodos Numéricos: Jacobi y Gauss-Seidel, radio espectral y tabla de iteraciones.",
+    ),
+    (
+        "Diagonal estrictamente dominante (condición suficiente)",
+        "Si |aᵢᵢ| > Σ_{j≠i} |aᵢⱼ| en todas las filas, Jacobi y Gauss-Seidel convergen "
+        "con cualquier x(0). Es suficiente pero NO necesaria: un sistema que no la "
+        "cumple puede converger de todos modos. Si no domina, a veces permutar las "
+        "filas lo consigue (la permutación que deja la diagonal dominante, si "
+        "existe, es única); si hay ceros en la diagonal, permutar es obligatorio.",
+        "Métodos Numéricos: Jacobi y Gauss-Seidel, dominancia diagonal y reordenamiento de filas.",
+    ),
+    (
+        "Matriz simétrica definida positiva y relajación",
+        "Si A es simétrica y definida positiva, Gauss-Seidel converge con cualquier "
+        "x(0), aunque A no sea diagonalmente dominante (Jacobi puede no hacerlo). "
+        "Con relajación λ, el método SOR solo puede converger si 0 < λ < 2 y, para "
+        "A simétrica definida positiva, converge siempre que 0 < λ < 2 "
+        "(Ostrowski-Reich).",
+        "Métodos Numéricos: Jacobi y Gauss-Seidel, verificación y relajación λ.",
+    ),
 ]

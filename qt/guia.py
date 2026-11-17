@@ -186,7 +186,7 @@ def _prop(texto):
 
 def especificacion_de_teorema(v, n):
     """
-    (página, preparar, objetivo, texto) para el teorema número n (1-30), o None.
+    (página, preparar, objetivo, texto) para el teorema número n (1-34), o None.
     `v` es la ventana principal; las funciones se evalúan cuando ya se llegó a la página.
     """
     s, m = v.pagina_solucionador, v.pagina_matrices
@@ -258,5 +258,14 @@ def especificacion_de_teorema(v, n):
              "Aquí ves por qué 0.1 + 0.2 != 0.3, el épsilon de máquina, el overflow y el underflow."),
         30: ("numerico", numerica(3), lambda: v.pagina_numerica.btn_tipos,
              "Este botón muestra cada tipo de error con un ejemplo."),
+        31: ("numerico", numerica(4), lambda: v.pagina_numerica.pestana_e.btn_calcular,
+             "Pulsa «Calcular»: el informe muestra D, L, U, T_J, T_GS y los vectores c."),
+        32: ("numerico", numerica(4), lambda: v.pagina_numerica.pestana_e.btn_calcular,
+             "El informe da ρ(T_J) y ρ(T_GS): converge cuando ρ(T) < 1."),
+        33: ("numerico", numerica(4), lambda: v.pagina_numerica.pestana_e.tarjeta_sistema,
+             "Edita A: el informe revisa la dominancia fila por fila y propone reordenar si ayuda."),
+        34: ("numerico", lambda: (numerica(4)(), v.pagina_numerica.pestana_e.mostrar_lambda(True)),
+             lambda: v.pagina_numerica.pestana_e.sw_lam,
+             "Activa la relajación λ en Gauss-Seidel; el informe indica si A es simétrica definida positiva."),
     }
     return tabla.get(n)

@@ -278,13 +278,13 @@ class PaginaInicio(QWidget):
                           T.VERDE, "Ctrl+4",
                           lambda: ventana.ir_a("lu")),
             TarjetaAcceso("f(x)", "Métodos numéricos",
-                          "Bisección con tabla, graficador de funciones, "
-                          "notación posicional y errores numéricos.",
+                          "Bisección, graficador, notación posicional, errores "
+                          "numéricos y Jacobi con Gauss-Seidel.",
                           T.ROJO, "Ctrl+5",
                           lambda: ventana.ir_a("numerico")),
             TarjetaAcceso("∴", "Teoremas clave",
                           "Catálogo con buscador de los teoremas y criterios "
-                          "del curso (Sesiones 1–11 y Programa 7).",
+                          "del curso (Sesiones 1–11 y Programas 7 y 8).",
                           T.MORADO, "Ctrl+6",
                           lambda: ventana.ir_a("teoremas")),
         ]
