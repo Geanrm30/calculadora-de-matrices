@@ -20,7 +20,7 @@ MTM0120 Álgebra Lineal · Universidad Americana · Facultad de Ingeniería y Ar
 1. [Descripción general](#1-descripción-general)
 2. [Instalación y ejecución](#2-instalación-y-ejecución)
 3. [Módulos de la aplicación](#3-módulos-de-la-aplicación)
-4. [Métodos numéricos (Programas 7 y 8)](#4-métodos-numéricos-programas-7-y-8)
+4. [Métodos numéricos (Programas 7, 8 y 9)](#4-métodos-numéricos-programas-7-8-y-9)
 5. [Interfaz y atajos de teclado](#5-interfaz-y-atajos-de-teclado)
 6. [Arquitectura del proyecto](#6-arquitectura-del-proyecto)
 7. [Decisiones técnicas](#7-decisiones-técnicas)
@@ -37,8 +37,8 @@ MTM0120 Álgebra Lineal · Universidad Americana · Facultad de Ingeniería y Ar
 Proyecto integrador de la asignatura **MTM0120 Álgebra Lineal**. Implementa las
 Unidades I a III del curso (sistemas de ecuaciones, operaciones con matrices y
 vectores, propiedades algebraicas, determinantes e inversas), la factorización
-LU, el módulo de Métodos Numéricos del Programa 7 y los métodos iterativos
-(Jacobi y Gauss-Seidel) del Programa 8.
+LU, el módulo de Métodos Numéricos del Programa 7, los métodos iterativos
+(Jacobi y Gauss-Seidel) del Programa 8 y el método abierto de Newton-Raphson del Programa 9.
 
 El objetivo no es solo entregar el resultado, sino **explicar el procedimiento**:
 cada operación elemental, cada paso de un determinante o cada iteración de la
@@ -51,10 +51,10 @@ bisección queda escrito y puede verificarse.
 | Aritmética | Fracciones exactas (`Fraccion`): sin errores de redondeo en álgebra lineal |
 | Sistemas lineales | Gauss y Gauss-Jordan, clasificación por Rouché-Frobenius, variables libres y verificación exacta |
 | Matrices y vectores | Suma, resta, producto, transpuesta, escalar, determinante (3 métodos), inversa (2 métodos) y Regla de Cramer |
-| Propiedades | Verificación de 31 propiedades algebraicas de las Sesiones 9 a 11 |
+| Propiedades | Verificación de 31 propiedades algebraicas |
 | Factorización LU | `A = L·U` para matrices m×n y solución de `A·x = b` en dos etapas |
-| Métodos numéricos | Bisección propia, graficador, notación posicional (base 10 y 2), errores numéricos y métodos iterativos Jacobi y Gauss-Seidel propios |
-| Teoremas | Catálogo de 34 teoremas con buscador y filtros por categoría |
+| Métodos numéricos | Bisección propia, graficador, notación posicional (base 10 y 2), errores numéricos, Jacobi y Gauss-Seidel y Newton-Raphson propios |
+| Teoremas | Catálogo de 39 teoremas con buscador y filtros por categoría |
 | Interfaz | Tema claro y oscuro, tamaño de letra ajustable, recorrido guiado, ventana de resultados, sesión persistente |
 
 ---
@@ -93,8 +93,9 @@ sustituyan el algoritmo.
 |---|---|
 | PySide6-Essentials | Interfaz gráfica y exportación de informes a PDF |
 | Matplotlib | Graficador de funciones, incrustado en la ventana |
+| SymPy | En Newton-Raphson: interpreta f(x) (tras validarla con la lista blanca) y obtiene f′(x) simbólica; no resuelve la ecuación |
 | NumPy | Muestreo de la gráfica, épsilon de máquina (`numpy.finfo`), overflow y underflow; en Jacobi y Gauss-Seidel, las matrices de iteración, el radio espectral y la solución de referencia (`numpy.linalg.solve`) con la que se **valida** el resultado |
-| SciPy | Únicamente para **contrastar** la raíz (`scipy.optimize.bisect` y `brentq`); nunca es la solución principal |
+| SciPy | Únicamente para **contrastar** la raíz (`scipy.optimize.bisect`, `brentq` y `newton`); nunca es la solución principal |
 
 El máximo común divisor se implementa con el algoritmo de Euclides en lugar de
 `math.gcd`, y toda la lógica se apoya en estructuras nativas: listas anidadas,
@@ -160,6 +161,16 @@ en Rⁿ, suma y escalar, transpuesta, producto, inversa y determinante). Cada un
 calcula los dos lados por caminos distintos y los compara con aritmética exacta;
 el diagnóstico es `[Se cumple]` o `[No se cumple]`.
 
+**Pestaña Escalonada.** Con la matriz A (cualquier m×n, sin columna b):
+verifica si está en forma escalonada (REF) o escalonada reducida (RREF) indicando qué
+condición falla y en qué fila, y la reduce a REF o RREF con el paso a paso, mostrando
+columnas pivote, rango y columnas libres.
+
+**Pestaña Vectores.** Con `u`, `v` y los escalares `c`, `c₁`, `c₂`: `u + v`,
+`u − v`, `c·u` y `c₁u + c₂v` en **un solo paso** para cualquier Rⁿ, con comprobación en
+dos pasos. En R² se abre una gráfica animada con `u`, `v`, `u+v`, `u−v`, `c·u`,
+`c₁u + c₂v` y el paralelogramo.
+
 **Pestaña Solucionador.** Envía `[A|b]` al solucionador o resuelve `A·x = b` por Cramer.
 
 El producto `A·x` se presenta de las dos formas habituales: como combinación
@@ -186,8 +197,8 @@ reconstruye `A = L·U`; con `b` o `x` obtiene el otro.
 
 ### 3.4 Teoremas
 
-Catálogo de 34 teoremas (sistemas, matrices, determinante, factorización LU y
-métodos numéricos, incluida la convergencia de Jacobi y Gauss-Seidel) con vista previa, filtros por categoría, búsqueda con `Ctrl+F`,
+Catálogo de 39 teoremas (sistemas, matrices, formas escalonadas, vectores, determinante, factorización LU y
+métodos numéricos, incluida la convergencia de Jacobi, Gauss-Seidel y Newton-Raphson) con vista previa, filtros por categoría, búsqueda con `Ctrl+F`,
 **Expandir todo** y **Copiar**. El botón **Abrir en…** lleva a la herramienta
 correspondiente y señala el botón exacto con una indicación visual.
 
@@ -198,10 +209,10 @@ correspondiente y señala el botón exacto con una indicación visual.
 
 ---
 
-## 4. Métodos numéricos (Programas 7 y 8)
+## 4. Métodos numéricos (Programas 7, 8 y 9)
 
-Acceso con `Ctrl+5`. Cinco pestañas: bisección, graficador, notación posicional,
-errores numéricos y Jacobi y Gauss-Seidel.
+Acceso con `Ctrl+5`. Seis pestañas: bisección, graficador, notación posicional,
+errores numéricos, Jacobi y Gauss-Seidel y Newton-Raphson.
 
 ### 4.1 Bisección
 
@@ -288,8 +299,14 @@ negativos se conserva el signo y se descompone el valor absoluto.
   underflow y error del modelo matemático.
 - Error absoluto `Eₐ = |xᵥ − xₐ|`, relativo `Eᵣ = Eₐ / |xᵥ|` y porcentual. Con
   `xᵥ = 0` el relativo se informa como no definido.
-- Propagación del error con `f(x) = sen(x) + x²`: `Δy` aproximado `= f′(x)·Δx`,
-  `Δy` real y la diferencia entre ambos, indicando que la aproximación es de primer orden.
+- Propagación del error con la `f(x)` que escribas (por defecto `sen(x) + x²`; `f′` con
+  SymPy): `Δy` aproximado `= f′(x)·Δx`, `Δy` real y la diferencia,
+  (la aproximación es de primer orden).
+- Truncamiento frente a redondeo: interés compuesto `Cₖ = (1 + i)·Cₖ₋₁` guardando `d`
+  decimales en cada período, con aritmética exacta (`Fraction`) como referencia. Tabla de todos
+  los períodos y gráfica del error con signo de cada método.
+  Supuestos: tasa nominal anual `r` capitalizada `m` veces al año (`i = r/m`), el capital
+  inicial también se guarda con `d` decimales y el redondeo es «mitad hacia arriba».
 
 ### 4.5 Jacobi y Gauss-Seidel (Programa 8)
 
@@ -332,6 +349,26 @@ máximo de iteraciones sin cumplir `ε`, se detiene con un mensaje claro y se co
 calculado hasta ese punto.
 
 > Los decimales se escriben con punto (`0.0001`); la coma también se acepta al leer.
+
+### 4.6 Newton-Raphson (Programa 9)
+
+Programado desde cero en `modulos/modulo_newton.py`: `xᵢ₊₁ = xᵢ − f(xᵢ)/f′(xᵢ)`. SymPy solo
+interpreta `f(x)` y calcula `f′(x)`; el método, los criterios y los estados son propios.
+`scipy.optimize.newton` aparece únicamente como contraste opcional.
+
+**Datos.** `f(x)` (con teclado de funciones), `x₀`, tolerancia `ε > 0` (por defecto 0.0001),
+iteraciones máximas (por defecto 50) y tolerancia del residuo. Criterio de parada:
+`εₐ = |xᵢ₊₁ − xᵢ|`, error relativo porcentual `εₐ(%) = |(xᵢ₊₁ − xᵢ)/xᵢ₊₁|·100` (solo si
+`xᵢ₊₁ ≠ 0`; si no, se informa el error absoluto) o `εₐ` junto con el residuo `|f(xᵢ₊₁)|`.
+La derivada `f′(x)` se obtiene simbólicamente con SymPy.
+Todo se valida y el campo culpable se marca en rojo.
+
+**Resultados.** Tabla `i, xᵢ, f(xᵢ), f′(xᵢ), xᵢ₊₁, εₐ, εₐ(%), |f(xᵢ₊₁)|` que se arma fila a
+fila; resumen con la aproximación final, iteraciones, error, residuo y **estado**
+(convergencia, derivada nula o casi nula, oscilación, divergencia o máximo de iteraciones);
+**gráfica animada** con `f`, el eje x, las aproximaciones y las rectas tangentes; informe paso
+a paso y contraste opcional con SciPy. Se comprueba que `f′` no sea cero ni demasiado pequeña
+antes de dividir y el resultado nunca se llama «exacto».
 
 ---
 
@@ -403,16 +440,20 @@ calculadora-de-matrices/
 │   ├── vector.py             Operaciones en Rⁿ
 │   ├── procedimiento.py      Paso a paso escrito de cada operación
 │   ├── propiedades.py        Verificador de las 31 propiedades algebraicas
-│   ├── teoremas.py           Catálogo de 34 teoremas
+│   ├── teoremas.py           Catálogo de 39 teoremas
 │   ├── evaluador.py          Evaluador seguro de f(x): AST con lista blanca, sin eval
-│   ├── calentamiento.py      Carga anticipada de Matplotlib y SciPy en segundo plano
+│   ├── simbolico.py          f(x) y f′(x) con SymPy, validada antes por la lista blanca
+│   ├── calentamiento.py      Carga anticipada de Matplotlib, SciPy y SymPy en segundo plano
 │   └── formato.py            Construcción de cadenas: matrices, ecuaciones, subíndices
 │
 ├── modulos/                Operaciones sobre matrices y métodos numéricos
 │   ├── modulo_matrices.py    Determinante, inversa, cofactores, adjunta y Cramer
 │   ├── modulo_lu.py          Factorización LU y solución de A·x = b
 │   ├── modulo_numerico.py    Bisección, muestreo de la gráfica, notación posicional y errores
-│   └── modulo_iterativo.py   Jacobi y Gauss-Seidel: validaciones, reordenamiento, informe y datos de la gráfica
+│   ├── modulo_iterativo.py   Jacobi y Gauss-Seidel: validaciones, reordenamiento, informe y datos de la gráfica
+│   ├── modulo_newton.py      Newton-Raphson: validaciones, iteraciones, estados, informe y datos de la gráfica
+│   ├── modulo_escalonada.py  Verificar y reducir a REF / RREF cualquier matriz m×n
+│   └── modulo_vectores.py    u+v, u−v, c·u, c₁u + c₂v y datos de la gráfica en R²
 │
 ├── solver/                 Resolución de sistemas
 │   ├── clasificacion.py      Clasificación por Rouché-Frobenius
@@ -430,6 +471,7 @@ calculadora-de-matrices/
     ├── pagina_*.py           Una página por herramienta (inicio, solucionador, matrices,
     │                         LU, numérica y teoremas) sobre pagina_base.py
     ├── pagina_iterativos.py  Pestaña E de Métodos numéricos: Jacobi y Gauss-Seidel
+    ├── pagina_newton.py      Pestaña F de Métodos numéricos: Newton-Raphson
     ├── grafica.py            Gráficas de Matplotlib animadas (función y error por iteración) y su ventana propia
     ├── autocompletar.py      Sugerencias de funciones al escribir f(x) (se aceptan con Tab)
     ├── teclado.py            Teclado de calculadora para escribir f(x) con botones
@@ -579,6 +621,16 @@ Ejemplo de tabla para `x³ − 2x − 5` en `[2, 3]`:
 | Relajación, tridiagonal (`εₛ = 5 %`) | Gauss-Seidel: 6 iteraciones con `λ = 1` y 4 con `λ = 1.2` |
 | Validaciones | A no cuadrada, `b` o `x(0)` de otro tamaño, `ε ≤ 0`, iteraciones no enteras o menores que 1 y `λ` fuera de `(0, 2)` se rechazan marcando el campo |
 
+### Newton-Raphson (ε = 10⁻⁴, máximo 50 iteraciones)
+
+| Caso | Resultado |
+|---|---|
+| Convergencia: `x³ − 2x − 5`, `x₀ = 2` | 3 iteraciones, `x ≈ 2.094551`, residuo `1.7·10⁻⁹` |
+| Ejemplo de clase: `e⁻ˣ − x`, `x₀ = 0` | 4 iteraciones, `x ≈ 0.567143` |
+| Derivada nula: `x² − 4`, `x₀ = 0` | Se detiene antes de dividir: `f′(0) = 0`, estado «derivada nula o casi nula» |
+| Máximo de iteraciones: `x¹⁰ − 1`, `x₀ = 0.5`, máx. 10 | «Máximo de iteraciones sin cumplir ε» (con 100 converge en 42) |
+| Validaciones | `f` mal escrita o con letras desconocidas, `x₀` no numérico, `ε ≤ 0`, iteraciones no enteras o menores que 1 se rechazan marcando el campo |
+
 ### Sistemas lineales
 
 | Sistema | Resultado |
@@ -614,6 +666,9 @@ Se sigue la guía «comentar con criterio» en todos los archivos `.py`:
 - Las funciones de la bisección deben ser continuas en el intervalo: el programa
   detecta asíntotas y huecos, pero el cambio de signo por sí solo no prueba continuidad.
 - En LU sin permutación, si hace falta intercambiar filas el programa se detiene y lo indica.
+- Newton-Raphson es un método local: depende de `x₀` y puede divergir, oscilar o ir a otra
+  raíz. La gráfica se limita a una ventana razonable alrededor del proceso. Con SciPy ausente
+  el contraste se omite sin afectar al resultado. No se usó pandas: la tabla es propia.
 - Jacobi y Gauss-Seidel admiten sistemas de hasta 10×10 en pantalla y 5000 iteraciones. La
   dominancia diagonal es condición suficiente, no necesaria: el programa informa `ρ(T)` para
   decidir. El criterio de parada mide la diferencia entre iteraciones, no el error verdadero.

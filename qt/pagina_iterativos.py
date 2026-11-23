@@ -110,7 +110,7 @@ class TablaIteraciones(QTableWidget):
             item = QTableWidgetItem(valor)
             item.setTextAlignment(Qt.AlignCenter if c == 0 else Qt.AlignRight | Qt.AlignVCenter)
             nombre = self._cabecera[c]
-            if nombre.startswith(("‖Δx", "máx")):
+            if nombre.startswith(("‖Δx", "máx", "εₐ", "Error")):
                 item.setForeground(QColor(T.NARANJA))
             if not self._pendientes:
                 tipo = item.font()

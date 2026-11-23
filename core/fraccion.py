@@ -3,7 +3,7 @@
 Aritmética exacta con números racionales implementada sobre enteros de Python.
 Permite comparaciones exactas (sin tolerancia de punto flotante) necesarias para
 la eliminación gaussiana.
-Unidad: Proyecto Integrador (Sesiones 1-11).
+Unidad: Proyecto Integrador.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta

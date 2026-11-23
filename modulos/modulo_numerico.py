@@ -909,27 +909,40 @@ def calcular_errores(xv, xa):
     return r
 
 
-def propagacion_error(x, dx):
-    """Propagación con f(x) = sen(x) + x²: aproximación lineal frente al cambio real."""
-    r = {"valido": False, "mensaje": "", "informe": ""}
+FUNCION_PROPAGACION = "sen(x) + x^2"
+
+
+def propagacion_error(x, dx, texto_f=None):
+    """
+    Propagación del error con la f(x) que escribe el usuario (por defecto sen(x) + x²): la
+    aproximación lineal Δy ≈ f′(x)·Δx frente al cambio real, con f′ obtenida con SymPy.
+    """
+    from core.simbolico import ErrorDerivada, FuncionDerivable
+    r = {"valido": False, "mensaje": "", "campo": None, "informe": ""}
     try:
         x = leer_numero(x, "x")
         dx = leer_numero(dx, "la perturbación Δx")
     except ValueError as ex:
-        r["mensaje"] = str(ex)
+        r.update(mensaje=str(ex), campo="dx" if "Δx" in str(ex) else "x")
         return r
-    f = lambda t: math.sin(t) + t * t
-    fp = lambda t: math.cos(t) + 2 * t
+    try:
+        deriv = FuncionDerivable(texto_f if (texto_f or "").strip() else FUNCION_PROPAGACION)
+    except (ErrorFuncion, ErrorDerivada) as ex:
+        r.update(mensaje=str(ex), campo="f")
+        return r
+    f, fp = deriv.valor, deriv.derivada_en
     try:
         fx, fx2, d = f(x), f(x + dx), fp(x)
-    except (OverflowError, ValueError):
-        r["mensaje"] = "Los valores son demasiado grandes para calcular."
+    except (FueraDeDominio, OverflowError, ValueError) as ex:
+        r.update(mensaje="f o f′ no están definidas en x = {} o en x + Δx = {} ({})."
+                 .format(cif(x), cif(x + dx), ex), campo="x")
         return r
     dy_ap = d * dx
     dy_real = fx2 - fx
     dif = abs(dy_ap - dy_real)
     lineas = ["=== Propagación del error ===", ""]
-    lineas.append("f(x) = sen(x) + x²          f′(x) = cos(x) + 2x")
+    lineas.append("f(x) = {}".format(deriv.texto))
+    lineas.append("f′(x) = {}      (derivada simbólica de SymPy)".format(deriv.texto_derivada))
     lineas.append("x = {}      Δx = {}".format(cif(x), cif(dx)))
     lineas.append("")
     lineas.append("f(x)      = f({}) = {}".format(cif(x), cif(fx)))
@@ -947,22 +960,208 @@ def propagacion_error(x, dx):
     lineas.append("")
     lineas.append("--- Interpretación ---")
     lineas.append("  La aproximación mediante la derivada es de primer orden "
-             "(recta tangente): el error que se comete es del orden de (Δx)². "
-             "Funciona mejor cuando la perturbación es pequeña.")
-    lineas.append("")
-    lineas.append("--- Comprobación con perturbaciones cada vez menores ---")
-    lineas.append("  {:>12}  {:>16}  {:>16}  {:>14}".format(
-        "Δx", "Δy aproximado", "Δy real", "diferencia"))
-    for k in (1, 10, 100, 1000):
-        h = dx / k
-        try:
-            ap, re = d * h, f(x + h) - fx
-        except (OverflowError, ValueError):
-            continue
-        lineas.append("  {:>12}  {:>16}  {:>16}  {:>14}".format(
-            cif(h), cif(ap), cif(re), cif(abs(ap - re))))
-    lineas.append("  Al dividir Δx entre 10, la diferencia baja aproximadamente "
-             "100 veces (orden 2).")
+                  "(recta tangente): el error que se comete es del orden de (Δx)². "
+                  "Funciona mejor cuando la perturbación es pequeña.")
     r.update(valido=True, informe="\n".join(lineas), dy_aprox=dy_ap, dy_real=dy_real,
-             dif=dif)
+             dif=dif, texto_f=deriv.texto, texto_df=deriv.texto_derivada)
     return r
+
+
+# ----------------------------------------------- truncamiento frente a redondeo ----
+
+LIMITE_PERIODOS = 1200
+
+
+def _fraccion_decimal(texto, nombre):
+    """Lee un número decimal o fracción como Fraction exacta (sin pasar por float)."""
+    from fractions import Fraction
+    t = (texto or "").strip().replace(",", ".").replace(_MENOS, "-")
+    if not t:
+        raise ValueError("Falta el valor de {}.".format(nombre))
+    try:
+        v = Fraction(t)
+    except (ValueError, ZeroDivisionError):
+        raise ValueError("«{}» no es un número válido para {}.".format(texto, nombre)) from None
+    return v
+
+
+def _entero(texto, nombre, minimo, maximo):
+    """Lee un entero entre `minimo` y `maximo` o lanza ValueError con el motivo."""
+    v = leer_numero(texto, nombre)
+    if v != int(v) or not minimo <= v <= maximo:
+        raise ValueError("El valor de {} debe ser un entero entre {} y {}.".format(
+            nombre, minimo, maximo))
+    return int(v)
+
+
+def _texto_decimal(entero, decimales):
+    """Entero escalado por 10^decimales escrito con sus decimales exactos."""
+    signo = "−" if entero < 0 else ""
+    entero = abs(entero)
+    if decimales == 0:
+        return signo + str(entero)
+    return "{}{}.{}".format(signo, entero // 10 ** decimales,
+                            str(entero % 10 ** decimales).zfill(decimales))
+
+
+def simular_interes(capital, tasa, por_anio, anios, decimales):
+    """
+    Interés compuesto Cₖ = (1 + i)·Cₖ₋₁ guardando solo `decimales` cifras decimales en cada
+    período, de dos maneras: TRUNCANDO (se corta) y REDONDEANDO (mitad hacia arriba). Todo el
+    cálculo es exacto (fracciones y enteros); el valor exacto sirve de referencia. Devuelve
+    {valido, mensaje, campo, informe, filas, ...} con las filas de la tabla y los datos de la gráfica.
+    """
+    from fractions import Fraction
+    import numpy as np
+    r = {"valido": False, "mensaje": "", "campo": None, "informe": "", "filas": []}
+    campo = "capital"
+    try:
+        c0 = _fraccion_decimal(capital, "el capital inicial C₀")
+        if c0 <= 0 or c0 > 10 ** 12:
+            raise ValueError("El capital inicial debe estar entre 0 y 1 000 000 000 000.")
+        campo = "tasa"
+        tasa_pct = _fraccion_decimal(tasa, "la tasa anual")
+        if not 0 < tasa_pct <= 100:
+            raise ValueError("La tasa anual debe ser mayor que 0 y no pasar de 100 %.")
+        campo = "por_anio"
+        m = _entero(por_anio, "los períodos por año", 1, 365)
+        campo = "anios"
+        anios_n = _entero(anios, "los años", 1, 100)
+        campo = "decimales"
+        d = _entero(decimales, "los decimales que guarda la máquina", 0, 8)
+    except ValueError as ex:
+        r.update(mensaje=str(ex), campo=campo)
+        return r
+    n = m * anios_n
+    if n > LIMITE_PERIODOS:
+        r.update(mensaje="Con {} períodos por año y {} años hay {} períodos; el máximo es {}."
+                 .format(m, anios_n, n, LIMITE_PERIODOS), campo="anios")
+        return r
+    escala = 10 ** d
+    factor = 1 + tasa_pct / 100 / m
+    exacto = c0
+    # El capital inicial también se guarda con d decimales (truncado y redondeado).
+    base = c0 * escala
+    trunc = base.numerator // base.denominator
+    redon = (base + Fraction(1, 2)).numerator // (base + Fraction(1, 2)).denominator
+    filas = [{"k": 0, "exacto": exacto, "trunc": trunc, "redon": redon,
+              "e_t": float(Fraction(trunc, escala) - exacto),
+              "e_r": float(Fraction(redon, escala) - exacto)}]
+    for k in range(1, n + 1):
+        exacto = exacto * factor
+        pt = Fraction(trunc, escala) * factor * escala
+        pr = Fraction(redon, escala) * factor * escala
+        trunc = pt.numerator // pt.denominator
+        mitad = pr + Fraction(1, 2)
+        redon = mitad.numerator // mitad.denominator
+        filas.append({"k": k, "exacto": exacto, "trunc": trunc, "redon": redon,
+                      "e_t": float(Fraction(trunc, escala) - exacto),
+                      "e_r": float(Fraction(redon, escala) - exacto)})
+    r.update(valido=True, filas=filas, n=n, decimales=d, capital=c0, tasa=tasa_pct,
+             por_anio=m, anios=anios_n, factor=factor)
+    r["informe"] = _informe_interes(r)
+    r["grafica"] = _datos_grafica_interes(r, np)
+    return r
+
+
+def columnas_interes(d):
+    """Cabecera de la tabla de la simulación."""
+    return ["k", "Exacto", "Truncado", "Redondeado", "Error trunc. (T − E)",
+            "Error red. (R − E)"]
+
+
+def valores_fila_interes(fila, d):
+    """Celdas de una fila de la tabla, con los valores guardados escritos con d decimales."""
+    exacto = fila["exacto"]
+    return [str(fila["k"]),
+            "{:.{p}f}".format(float(exacto), p=d + 4).replace("-", _MENOS),
+            _texto_decimal(fila["trunc"], d), _texto_decimal(fila["redon"], d),
+            _cientifica(fila["e_t"]), _cientifica(fila["e_r"])]
+
+
+def _cientifica(v):
+    """Error con signo: 6 decimales, o notación científica si es muy pequeño."""
+    if v == 0:
+        return "0"
+    if abs(v) < 1e-4:
+        return "{:.2e}".format(v).replace("-", _MENOS)
+    return "{:.6f}".format(v).replace("-", _MENOS)
+
+
+def _datos_grafica_interes(r, np):
+    """Datos de la gráfica de los errores (con signo) de truncamiento y redondeo contra el período."""
+    ks = np.array([f["k"] for f in r["filas"]], dtype=float)
+    return {"valido": True, "mensaje": "",
+            "curvas": [{"etiqueta": "Truncamiento (T − E)", "xs": ks,
+                        "ys": np.array([f["e_t"] for f in r["filas"]])},
+                       {"etiqueta": "Redondeo (R − E)", "xs": ks,
+                        "ys": np.array([f["e_r"] for f in r["filas"]])}],
+            "titulo": "Error acumulado: truncamiento frente a redondeo",
+            "xmin": 0, "xmax": float(r["n"]),
+            "resumen": "Error con signo respecto al valor exacto en cada período, guardando {} "
+                       "decimales. El truncamiento se desvía siempre hacia abajo; el redondeo "
+                       "compensa errores de ambos signos.".format(r["decimales"])}
+
+
+def _informe_interes(r):
+    """Informe de la simulación: datos, fórmulas, tabla, resultado final y lectura de los errores."""
+    d, n, filas = r["decimales"], r["n"], r["filas"]
+    i_pct = r["tasa"] / r["por_anio"]
+    ultima = filas[-1]
+    lineas = ["=== Truncamiento frente a redondeo: interés compuesto ===", "",
+              "Capital inicial:       C₀ = {}".format(cif(float(r["capital"]))),
+              "Tasa anual:            r = {} %".format(cif(float(r["tasa"]))),
+              "Períodos por año:      m = {}      Años: {}      →  n = {} períodos".format(
+                  r["por_anio"], r["anios"], n),
+              "Tasa por período:      i = r/m = {} %      Factor 1 + i = {}".format(
+                  cif(float(i_pct)), cif(float(r["factor"]))),
+              "Decimales guardados:   d = {}   (cada período la máquina conserva solo {} cifras "
+              "decimales, como los centavos)".format(d, d), "",
+              "--- Fórmulas ---",
+              "  Valor exacto:   Cₖ = C₀·(1 + i)ᵏ",
+              "  Truncado:       Cₖ = corte_d[(1 + i)·Cₖ₋₁]   (se descartan las cifras sobrantes)",
+              "  Redondeado:     Cₖ = redondeo_d[(1 + i)·Cₖ₋₁]   (a la cifra más cercana, "
+              "mitad hacia arriba)",
+              "  Error con signo: T − E = truncado − exacto,   R − E = redondeado − exacto", ""]
+    lineas += ["--- Tabla de períodos ---", ""]
+    cab = columnas_interes(d)
+    cuerpo = [valores_fila_interes(f, d) for f in filas]
+    if len(cuerpo) > 60:
+        corte = cuerpo[:25] + [["…"] * len(cab)] + cuerpo[-10:]
+        cuerpo = corte
+        nota = ["", "  (el informe muestra los primeros 25 y los últimos 10 períodos; la tabla de "
+                    "la pantalla los incluye todos)"]
+    else:
+        nota = []
+    anchos = [max(len(cab[c]), *(len(f[c]) for f in cuerpo)) for c in range(len(cab))]
+    lineas.append("  ".join(h.rjust(w) for h, w in zip(cab, anchos)))
+    lineas.append("  ".join("-" * w for w in anchos))
+    for fila in cuerpo:
+        lineas.append("  ".join(v.rjust(w) for v, w in zip(fila, anchos)))
+    lineas += nota
+    et, er = ultima["e_t"], ultima["e_r"]
+    lineas += ["", "--- Resultado en el período n = {} ---".format(n), "",
+               "  Valor exacto:   {}".format("{:.{p}f}".format(float(ultima["exacto"]), p=d + 4)),
+               "  Truncado:       {}     error = {}".format(
+                   _texto_decimal(ultima["trunc"], d), _cientifica(et)),
+               "  Redondeado:     {}     error = {}".format(
+                   _texto_decimal(ultima["redon"], d), _cientifica(er))]
+    mas_et, mas_er = (sum(1 for f in filas[1:] if f["e_t"] > 0),
+                      sum(1 for f in filas[1:] if f["e_r"] > 0))
+    menos_er = sum(1 for f in filas[1:] if f["e_r"] < 0)
+    lineas += ["", "--- Lectura de los errores ---", "",
+               "  Truncamiento: error ≤ 0 en {} de {} períodos y > 0 en {}: siempre se pierde "
+               "valor, así que el error se acumula en una sola dirección.".format(
+                   n - mas_et, n, mas_et),
+               "  Redondeo: el error de cada paso puede tener cualquier signo y se cancela en parte "
+               "(el acumulado fue > 0 en {} períodos y < 0 en {}); por eso crece mucho más "
+               "despacio que el del truncamiento.".format(mas_er, menos_er)]
+    if abs(er) > 0 and abs(et) > 0:
+        lineas.append("  Al final el truncamiento acumula {} veces el error del redondeo "
+                      "(|T − E| / |R − E| = {}).".format(
+                          "≈ {:.1f}".format(abs(et) / abs(er)), cif(abs(et) / abs(er))))
+    lineas += ["", "  Cada período introduce un error de a lo más 10⁻{0} (truncar) o ½·10⁻{0} "
+                   "(redondear); el error de cada paso se amplifica por (1 + i) en los períodos "
+                   "siguientes.".format(_sup(d))]
+    return "\n".join(lineas)
+

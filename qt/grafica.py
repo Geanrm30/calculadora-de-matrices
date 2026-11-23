@@ -272,9 +272,8 @@ class Grafica(QWidget):
         return self.canvas.grab().toImage()
 
 
-class GraficaError(Grafica):
-    """Error por iteración de Jacobi y Gauss-Seidel en escala logarítmica, con la tolerancia ε como referencia."""
-    MENSAJE_VACIO = "Calcula Jacobi y Gauss-Seidel para ver el error por iteración"
+class _GraficaConEspera(Grafica):
+    """Gráfica que espera a que su pestaña tenga tamaño real antes de trazar (Matplotlib no traza con altura 0)."""
     _pendiente = None
 
     def _sin_tamano(self):
@@ -296,6 +295,11 @@ class GraficaError(Grafica):
         """Si el lienzo acaba de recibir tamaño, dibuja lo pendiente."""
         super().resizeEvent(e)
         QTimer.singleShot(30, self._dibujar_pendiente)
+
+
+class GraficaError(_GraficaConEspera):
+    """Error por iteración de Jacobi y Gauss-Seidel en escala logarítmica, con la tolerancia ε como referencia."""
+    MENSAJE_VACIO = "Calcula Jacobi y Gauss-Seidel para ver el error por iteración"
 
     def dibujar(self, datos, raiz=None, intervalo=None, animar=True):
         """
@@ -335,6 +339,226 @@ class GraficaError(Grafica):
         self.figura.tight_layout()
         self.barra.update()
         self._mostrar(ax, animar)
+
+
+def _sub_x(k):
+    """«x₀», «x₁»… para rotular las aproximaciones."""
+    return "x" + "".join("₀₁₂₃₄₅₆₇₈₉"[int(d)] for d in str(k))
+
+
+class GraficaNewton(_GraficaConEspera):
+    """
+    Newton-Raphson: la curva f(x), el eje x, las rectas tangentes de cada iteración y las
+    aproximaciones xᵢ sobre el eje. La curva se traza y después las tangentes aparecen una a una.
+    """
+    MENSAJE_VACIO = "Calcula Newton-Raphson para ver la curva y las tangentes"
+    _MS_PASO = 380
+
+    def dibujar(self, datos, raiz=None, intervalo=None, animar=True):
+        """`datos`: resultado de `preparar_grafica_newton`. `raiz` e `intervalo` no se usan."""
+        self._parar()
+        self._ultima = (datos,)
+        if self._sin_tamano():
+            self._pendiente = animar
+            return
+        self._pendiente = None
+        ax = self._ejes()
+        ini = 0.0 if animar else 1.0
+        self._curvas, self._extras, self._grupo_de = [], [], []
+        xs, ys = datos["xs"], datos["ys"]
+        (linea,) = ax.plot([] if animar else xs, [] if animar else ys, color=T.AZUL,
+                           linewidth=2.2, label="f(x)")
+        self._curvas.append((linea, xs, ys))
+        ax.axhline(0, color=T.TEXTO, linewidth=0.9, alpha=0.7)
+
+        def extra(objeto, grupo, alfa=1.0):
+            """Registra un elemento que aparece con el fundido de su iteración."""
+            self._extras.append((objeto, alfa))
+            self._grupo_de.append(grupo)
+
+        pasos = datos["pasos"]
+        for k, p in enumerate(pasos):
+            (vert,) = ax.plot([p["x"], p["x"]], [0, p["fx"]], color=T.MUTED, linestyle=":",
+                              linewidth=1.2, alpha=ini)
+            extra(vert, k)
+            if p["xn"] is not None:
+                (tang,) = ax.plot([p["x"], p["xn"]], [p["fx"], 0], color=T.NARANJA,
+                                  linewidth=1.7, alpha=ini, zorder=3,
+                                  label="Tangente en xᵢ" if k == 0 else None)
+                extra(tang, k)
+            (sobre,) = ax.plot([p["x"]], [p["fx"]], "o", color=T.NARANJA, markersize=4.5,
+                               alpha=ini, zorder=4)
+            extra(sobre, k)
+            (eje,) = ax.plot([p["x"]], [0], "o", color=T.MORADO if k == 0 else T.AZUL,
+                             markersize=7, markeredgecolor=T.TEXTO, markeredgewidth=0.6,
+                             alpha=ini, zorder=5,
+                             label=("Valor inicial x₀" if k == 0 else
+                                    "Aproximaciones xᵢ" if k == 1 else None))
+            extra(eje, k)
+            nota = ax.annotate(_sub_x(k), (p["x"], 0), textcoords="offset points",
+                               xytext=(0, -17 if k % 2 == 0 else 11), ha="center",
+                               color=T.TEXTO, fontsize=9, alpha=ini)
+            extra(nota, k)
+        r = datos["raiz"]
+        if r is not None:
+            etiqueta = ("Raíz aproximada x ≈ {:.6f}" if r["convergio"] else
+                        "Última aproximación x ≈ {:.6f}").format(r["x"])
+            (punto,) = ax.plot([r["x"]], [0], "D", color=T.ROJO if r["convergio"] else T.NARANJA,
+                               markersize=9, markeredgecolor=T.TEXTO, zorder=6, alpha=ini,
+                               label=etiqueta)
+            extra(punto, len(pasos))
+        self._limites(ax, datos)
+        ax.set_title(datos["titulo"], fontsize=12)
+        ax.set_xlabel("x")
+        ax.set_ylabel("f(x)")
+        self._ax = ax
+        self.figura.tight_layout()
+        self.barra.update()
+        self._mostrar(ax, animar)
+
+    @staticmethod
+    def _limites(ax, datos):
+        """Ejes: x en la ventana del proceso; y según la curva y los puntos visibles (sin valores extremos)."""
+        visibles = datos["ys"][np.isfinite(datos["ys"])]
+        extra = [0.0] + [p["fx"] for p in datos["pasos"]
+                         if datos["xmin"] <= p["x"] <= datos["xmax"]]
+        lo, hi = float(visibles.min()), float(visibles.max())
+        if len(visibles) > 20:
+            p2, p98 = np.percentile(visibles, [2, 98])
+            span = max(p98 - p2, 1e-9)
+            lo, hi = max(lo, p2 - 0.6 * span), min(hi, p98 + 0.6 * span)
+        lo, hi = min([lo] + extra), max([hi] + extra)
+        if hi - lo < 1e-9:
+            lo, hi = lo - 1, hi + 1
+        pad = 0.1 * (hi - lo)
+        ax.set_xlim(datos["xmin"], datos["xmax"])
+        ax.set_ylim(lo - pad, hi + pad)
+
+    def _cuadro(self):
+        """Un cuadro: primero se traza la curva y luego aparece, iteración por iteración, el resto."""
+        ms = self._reloj.elapsed()
+        grupos = (max(self._grupo_de) + 1) if self._grupo_de else 1
+        extras_ms = min(2800, self._MS_PASO * grupos + 300)
+        if not self.isVisible():
+            ms = _MS_CURVA + extras_ms
+        if ms <= _MS_CURVA:
+            t = 1.0 - (1.0 - ms / _MS_CURVA) ** 3
+            for linea, xs, ys in self._curvas:
+                k = min(len(xs), int(len(xs) * t) + 1)
+                linea.set_data(xs[:k], ys[:k])
+        else:
+            for linea, xs, ys in self._curvas:
+                linea.set_data(xs, ys)
+            paso = extras_ms / (grupos + 1)
+            for (obj, alfa), g in zip(self._extras, self._grupo_de):
+                obj.set_alpha(alfa * min(1.0, max(0.0, (ms - _MS_CURVA - g * paso) / paso)))
+        if ms >= _MS_CURVA + extras_ms:
+            self._terminar_animacion()
+        else:
+            self._pintar_cuadro()
+
+
+class GraficaInteres(_GraficaConEspera):
+    """Error con signo (truncamiento y redondeo) de la simulación del interés compuesto contra el período."""
+    MENSAJE_VACIO = "Simula el interés compuesto para ver el error de cada método"
+
+    def dibujar(self, datos, raiz=None, intervalo=None, animar=True):
+        """`datos`: resultado de `modulo_numerico.simular_interes` (clave «grafica»)."""
+        self._parar()
+        self._ultima = (datos,)
+        if self._sin_tamano():
+            self._pendiente = animar
+            return
+        self._pendiente = None
+        ax = self._ejes()
+        self._curvas, self._extras = [], []
+        for i, c in enumerate(datos["curvas"]):
+            xs, ys = (np.array([]), np.array([])) if animar else (c["xs"], c["ys"])
+            (linea,) = ax.plot(xs, ys, color=[T.ROJO, T.AZUL][i % 2], linewidth=2.0,
+                               label=c["etiqueta"])
+            self._curvas.append((linea, c["xs"], c["ys"]))
+        ax.axhline(0, color=T.TEXTO, linewidth=0.9, alpha=0.7)
+        todos = np.concatenate([c["ys"] for c in datos["curvas"]])
+        lo, hi = float(min(todos.min(), 0.0)), float(max(todos.max(), 0.0))
+        pad = 0.08 * max(hi - lo, 1e-12)
+        ax.set_ylim(lo - pad, hi + pad)
+        ax.set_xlim(datos["xmin"], max(datos["xmax"], datos["xmin"] + 1))
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.set_title(datos["titulo"], fontsize=12)
+        ax.set_xlabel("Período k")
+        ax.set_ylabel("Error = valor guardado − exacto")
+        self._ax = ax
+        self.figura.tight_layout()
+        self.barra.update()
+        self._mostrar(ax, animar)
+
+
+class GraficaVectores(_GraficaConEspera):
+    """Vectores de R² como flechas desde el origen: u, v, u+v, u−v, c·u, c₁u + c₂v y el paralelogramo."""
+    MENSAJE_VACIO = "Calcula con vectores de R² para verlos dibujados"
+    _MS_TOTAL = 1200
+
+    def dibujar(self, datos, raiz=None, intervalo=None, animar=True):
+        """`datos`: la clave «grafica» de `modulo_vectores.calcular`."""
+        self._parar()
+        self._ultima = (datos,)
+        if self._sin_tamano():
+            self._pendiente = animar
+            return
+        self._pendiente = None
+        ax = self._ejes()
+        ini = 0.0 if animar else 1.0
+        self._curvas, self._extras = [], []
+        colores = {"azul": T.AZUL, "naranja": T.NARANJA, "verde": T.VERDE, "rojo": T.ROJO,
+                   "morado": T.MORADO, "texto": T.TEXTO}
+        xmin, xmax, ymin, ymax = datos["limites"]
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+        ax.set_aspect("equal", adjustable="box")
+        ax.axhline(0, color=T.MUTED, linewidth=0.9)
+        ax.axvline(0, color=T.MUTED, linewidth=0.9)
+        u, s, v = datos["paralelogramo"]
+        self._grupo = []
+        for a, b in ((u, s), (v, s)):
+            (linea,) = ax.plot([a[0], b[0]], [a[1], b[1]], color=T.MUTED, linestyle="--",
+                               linewidth=1.3, alpha=ini, zorder=2)
+            self._extras.append((linea, 0.9))
+            self._grupo.append(0)
+        for k, (nombre, (x, y), color) in enumerate(datos["flechas"]):
+            col = colores[color]
+            q = ax.quiver([0], [0], [x], [y], angles="xy", scale_units="xy", scale=1,
+                          color=col, width=0.007, alpha=ini, zorder=4,
+                          label="{} = ({:g}, {:g})".format(nombre, x, y))
+            self._extras.append((q, 1.0))
+            self._grupo.append(k + 1)
+            if x or y:
+                tx = ax.annotate(nombre.split("  ")[0], (x, y), textcoords="offset points",
+                                 xytext=(6, 6), color=col, fontsize=10, alpha=ini, zorder=5)
+                self._extras.append((tx, 1.0))
+                self._grupo.append(k + 1)
+        ax.set_title(datos["titulo"], fontsize=12)
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        self._ax = ax
+        self.figura.tight_layout()
+        self.barra.update()
+        self._mostrar(ax, animar)
+
+    def _animados(self):
+        """Solo los artistas que aparecen con el fundido."""
+        return [obj for obj, _ in self._extras]
+
+    def _cuadro(self):
+        """Un cuadro: cada vector aparece con un fundido, uno tras otro."""
+        ms = self._reloj.elapsed() if self.isVisible() else self._MS_TOTAL
+        grupos = max(self._grupo) + 1
+        paso = self._MS_TOTAL / (grupos + 1)
+        for (obj, alfa), g in zip(self._extras, self._grupo):
+            obj.set_alpha(alfa * min(1.0, max(0.0, (ms - g * paso) / paso)))
+        if ms >= self._MS_TOTAL:
+            self._terminar_animacion()
+        else:
+            self._pintar_cuadro()
 
 
 class VentanaGrafica(QWidget):
@@ -421,6 +645,21 @@ class VentanaGrafica(QWidget):
 class VentanaGraficaError(VentanaGrafica):
     """Ventana propia para la gráfica del error de Jacobi y Gauss-Seidel."""
     CLASE_GRAFICA = GraficaError
+
+
+class VentanaGraficaVectores(VentanaGrafica):
+    """Ventana propia para la gráfica de vectores de R²."""
+    CLASE_GRAFICA = GraficaVectores
+
+
+class VentanaGraficaInteres(VentanaGrafica):
+    """Ventana propia para la gráfica del error del interés compuesto."""
+    CLASE_GRAFICA = GraficaInteres
+
+
+class VentanaGraficaNewton(VentanaGrafica):
+    """Ventana propia para la gráfica de Newton-Raphson (curva, tangentes y aproximaciones)."""
+    CLASE_GRAFICA = GraficaNewton
 
 
 def abrir_ventana_grafica(titulo, datos, raiz=None, intervalo=None, resumen="",

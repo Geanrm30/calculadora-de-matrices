@@ -60,7 +60,7 @@ ATAJOS = [
     ("Métodos Numéricos", [
         ("Enter", "Calcular desde cualquier campo de la pestaña"),
         ("Tab", "Aceptar la sugerencia de función al escribir f(x) (sin, sqrt, log…)"),
-        ("Ctrl+Enter", "Calcular (bisección, gráfica, descomposición, errores o Jacobi y Gauss-Seidel)"),
+        ("Ctrl+Enter", "Calcular (bisección, gráfica, descomposición, errores, Jacobi y Gauss-Seidel o Newton-Raphson)"),
         ("Ctrl+G", "Graficar la raíz de la bisección"),
         ("Ctrl+L", "Limpiar la pestaña actual"),
         ("Ctrl+Shift+Z", "Deshacer la última limpieza"),

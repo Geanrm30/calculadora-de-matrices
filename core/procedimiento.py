@@ -4,7 +4,7 @@ Paso a paso de las operaciones con matrices y vectores para el Proyecto Integrad
 core/algebra.py CALCULA; este módulo EXPLICA. Recorre las mismas posiciones que
 los bucles del cálculo y escribe fórmula, sustitución y resultado por cada entrada.
 Ninguna función imprime: todas devuelven listas de líneas de texto.
-Unidad: Proyecto Integrador (Sesiones 1-11).
+Unidad: Proyecto Integrador.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta

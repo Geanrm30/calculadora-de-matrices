@@ -3,7 +3,7 @@
 Construcción de cadenas de texto para el usuario: matrices, ecuaciones y subíndices.
 Ninguna función imprime; todas devuelven cadenas para que el destino quede a cargo
 del módulo que las consuma.
-Unidad: Proyecto Integrador (Sesiones 1-11).
+Unidad: Proyecto Integrador.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta

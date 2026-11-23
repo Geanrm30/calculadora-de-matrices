@@ -3,7 +3,7 @@
 Analiza dependencia e independencia lineal de vectores resolviendo el sistema
 homogéneo A·c = 0 con los vectores como columnas de A; incluye criterios
 por inspección.
-Unidad: Proyecto Integrador (Sesiones 1-11).
+Unidad: Proyecto Integrador.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta

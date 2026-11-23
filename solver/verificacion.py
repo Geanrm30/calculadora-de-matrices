@@ -2,7 +2,7 @@
 """
 Comprueba la solución sustituyendo en el sistema original con aritmética exacta;
 siempre verifica contra el sistema sin reducir para que la prueba sea independiente.
-Unidad: Proyecto Integrador (Sesiones 1-11).
+Unidad: Proyecto Integrador.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta

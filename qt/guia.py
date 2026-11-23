@@ -186,7 +186,7 @@ def _prop(texto):
 
 def especificacion_de_teorema(v, n):
     """
-    (página, preparar, objetivo, texto) para el teorema número n (1-34), o None.
+    (página, preparar, objetivo, texto) para el teorema número n (1-39), o None.
     `v` es la ventana principal; las funciones se evalúan cuando ya se llegó a la página.
     """
     s, m = v.pagina_solucionador, v.pagina_matrices
@@ -267,5 +267,15 @@ def especificacion_de_teorema(v, n):
         34: ("numerico", lambda: (numerica(4)(), v.pagina_numerica.pestana_e.mostrar_lambda(True)),
              lambda: v.pagina_numerica.pestana_e.sw_lam,
              "Activa la relajación λ en Gauss-Seidel; el informe indica si A es simétrica definida positiva."),
+        35: ("numerico", numerica(5), lambda: v.pagina_numerica.pestana_f.btn_calcular,
+             "Pulsa «Calcular Newton-Raphson»: la tabla muestra xᵢ, f(xᵢ), f′(xᵢ), xᵢ₊₁ y el error de cada iteración."),
+        36: ("numerico", numerica(5), lambda: v.pagina_numerica.pestana_f.tarjeta_resumen,
+             "El resumen da el estado final: convergencia, derivada nula, oscilación, divergencia o máximo de iteraciones."),
+        37: ("matrices", lambda: m.tabs.setCurrentIndex(3), lambda: m.botones_op["esc_verificar"],
+             "Pulsa «¿Está A en forma escalonada?»: cada condición sale con [Se cumple] o [No se cumple]. También puedes reducir A a REF o RREF."),
+        38: ("matrices", lambda: m.tabs.setCurrentIndex(4), lambda: m.botones_op["vec"],
+             "Pulsa «Calcular»: c₁u + c₂v sale en un solo paso. «Graficar en R²» dibuja el paralelogramo."),
+        39: ("numerico", numerica(3), lambda: v.pagina_numerica.btn_interes,
+             "Pulsa «Simular interés compuesto»: la tabla y la gráfica comparan truncar con redondear."),
     }
     return tabla.get(n)

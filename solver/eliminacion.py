@@ -2,7 +2,7 @@
 """
 Reducción de la matriz aumentada a forma escalonada (Gauss) y escalonada
 reducida (Gauss-Jordan) mediante operaciones elementales por filas.
-Unidad: Proyecto Integrador (Sesiones 1-11).
+Unidad: Proyecto Integrador.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta

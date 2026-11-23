@@ -27,6 +27,8 @@ from qt.componentes import (PestanasAnimadas, mostrar_animado, BotonAnimado, Cua
                             Tarjeta, agregar_acciones_grid, aparecer,
                             mostrar_aviso)
 from qt.ejemplos import MATRICES
+from modulos import modulo_escalonada as ESC
+from modulos import modulo_vectores as VEC
 from qt.exportar import escribir_pdf
 from qt.imagen import imagen_de_matriz, imagen_de_texto
 from qt.pagina_base import PaginaBase
@@ -196,6 +198,8 @@ class PaginaMatrices(PaginaBase):
         self.tabs.addTab(self._tab_operaciones(), "Operaciones")
         self.tabs.addTab(self._tab_propiedades(), "Propiedades")
         self.tabs.addTab(self._tab_solucionador(), "Solucionador")
+        self.tabs.addTab(self._tab_escalonada(), "Escalonada")
+        self.tabs.addTab(self._tab_vectores(), "Vectores")
         marco = self.marco_tabs = QFrame()
         marco.setObjectName("tarjeta")
         ml = QVBoxLayout(marco)
@@ -329,6 +333,112 @@ class PaginaMatrices(PaginaBase):
             self.botones_enviar[modo] = b
         lay.addStretch(1)
         return w
+
+    def _tab_escalonada(self):
+        """Pestaña de formas escalonadas: verifica REF/RREF y reduce cualquier matriz A (sin columna b)."""
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(0, 12, 0, 0)
+        lay.setSpacing(8)
+        n = QLabel("Usa la matriz A (cualquier tamaño m×n; no necesita columna b).")
+        n.setObjectName("nota")
+        n.setWordWrap(True)
+        lay.addWidget(n)
+        b1 = BotonAnimado("¿Está A en forma escalonada (REF / RREF)?", "azul")
+        b1.clicked.connect(lambda: self.ejecutar_escalonada("verificar"))
+        lay.addWidget(b1)
+        fila = QHBoxLayout()
+        b2 = BotonAnimado("Reducir A a REF", "verde")
+        b2.clicked.connect(lambda: self.ejecutar_escalonada("ref"))
+        b3 = BotonAnimado("Reducir A a RREF", "verde")
+        b3.clicked.connect(lambda: self.ejecutar_escalonada("rref"))
+        fila.addWidget(b2)
+        fila.addWidget(b3)
+        lay.addLayout(fila)
+        self.botones_op.update({"esc_verificar": b1, "esc_ref": b2, "esc_rref": b3})
+        n2 = QLabel("REF: filas nulas abajo y pivotes que bajan hacia la derecha. RREF: además los "
+                    "pivotes valen 1 y son lo único no nulo de su columna.")
+        n2.setObjectName("nota")
+        n2.setWordWrap(True)
+        lay.addWidget(n2)
+        lay.addStretch(1)
+        return w
+
+    def _tab_vectores(self):
+        """Pestaña de vectores: u, v, escalares, combinación c₁u + c₂v y gráfica en R²."""
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(0, 12, 0, 0)
+        lay.setSpacing(8)
+        n = QLabel("Escribe cada vector con comas, por ejemplo 2, −1 (R²) o 1, 2, 3 (R³).")
+        n.setObjectName("nota")
+        n.setWordWrap(True)
+        lay.addWidget(n)
+        self.ed_u, self.ed_v = QLineEdit("2, 1"), QLineEdit("1, 3")
+        self.ed_c, self.ed_c1, self.ed_c2 = QLineEdit("2"), QLineEdit("2"), QLineEdit("-1")
+        for rot, ed in (("u =", self.ed_u), ("v =", self.ed_v)):
+            f = QHBoxLayout()
+            f.addWidget(QLabel(rot))
+            f.addWidget(ed, 1)
+            lay.addLayout(f)
+        f = QHBoxLayout()
+        for rot, ed in (("c =", self.ed_c), ("c₁ =", self.ed_c1), ("c₂ =", self.ed_c2)):
+            f.addWidget(QLabel(rot))
+            ed.setAlignment(Qt.AlignCenter)
+            f.addWidget(ed)
+        lay.addLayout(f)
+        b1 = BotonAnimado("Calcular u+v, u−v, c·u y c₁u + c₂v", "verde")
+        b1.clicked.connect(lambda: self.ejecutar_vectores())
+        lay.addWidget(b1)
+        self.btn_graf_vec = BotonAnimado("Graficar en R² (ventana)", "azul")
+        self.btn_graf_vec.clicked.connect(self.abrir_grafica_vectores)
+        lay.addWidget(self.btn_graf_vec)
+        self.botones_op.update({"vec": b1})
+        lay.addStretch(1)
+        return w
+
+    def ejecutar_escalonada(self, modo):
+        """Verifica o reduce A (sin columna b) a REF/RREF y muestra el resultado."""
+        self.ocultar_error()
+        A = self._leer_matriz(self.grid_A, "A")
+        if A is None:
+            return
+        if modo == "verificar":
+            texto, _ = ESC.informe_verificacion(A)
+            self._sin_resultado()
+            self.mostrar_resultado(texto, "¿A es escalonada?")
+            return
+        texto, R, _cols = ESC.reducir(A, modo == "rref")
+        self._con_resultado(R)
+        self.mostrar_resultado(texto, "A → " + ("RREF" if modo == "rref" else "REF"))
+
+    def ejecutar_vectores(self):
+        """Calcula las operaciones con u y v; devuelve el resultado o None si hay datos inválidos."""
+        self.ocultar_error()
+        campos = {"u": self.ed_u, "v": self.ed_v, "c": self.ed_c, "c1": self.ed_c1,
+                  "c2": self.ed_c2}
+        r = VEC.calcular(self.ed_u.text(), self.ed_v.text(), self.ed_c.text(),
+                         self.ed_c1.text(), self.ed_c2.text())
+        if not r["valido"]:
+            self.error("Vectores", r["mensaje"])
+            campos[r["campo"]].setFocus()
+            return None
+        self._sin_resultado()
+        self.mostrar_resultado(r["informe"], "Vectores")
+        return r
+
+    def abrir_grafica_vectores(self):
+        """Calcula y abre la gráfica animada de los vectores de R²."""
+        r = self.ejecutar_vectores()
+        if r is None:
+            return
+        if r["grafica"] is None:
+            self.info("Solo en R²", "La gráfica se dibuja para vectores de 2 componentes.")
+            return
+        from qt.grafica import VentanaGraficaVectores, abrir_ventana_grafica
+        g = r["grafica"]
+        abrir_ventana_grafica("Vectores en R²", g, None, None, g["resumen"],
+                              clase=VentanaGraficaVectores)
 
     def _tarjeta_resultado(self):
         """Crea la tarjeta de resultado con sus acciones y el historial."""
@@ -993,6 +1103,8 @@ class PaginaMatrices(PaginaBase):
             "pasos": self.sw_pasos.isChecked(),
             "metodo": self.combo_det.currentText(),
             "propiedad": self.combo_prop.currentIndex(),
+            "vectores": [e.text() for e in (self.ed_u, self.ed_v, self.ed_c, self.ed_c1,
+                                            self.ed_c2)],
             "resultado": self._texto_res,
             "etiqueta": self._etiqueta_res,
             "matriz": ([[str(v) for v in fila] for fila in self.resultado_actual]
@@ -1025,6 +1137,9 @@ class PaginaMatrices(PaginaBase):
             for n in ("B", "C"):
                 if not d.get("usa_" + n, True):
                     self.alternar_matriz(n)
+            for e, t in zip((self.ed_u, self.ed_v, self.ed_c, self.ed_c1, self.ed_c2),
+                            d.get("vectores", [])):
+                e.setText(str(t))
             self._historial = list(d.get("historial", []))[:MAX_HISTORIAL]
             if d.get("resultado"):
                 if d.get("matriz"):

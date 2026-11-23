@@ -207,3 +207,28 @@ EJEMPLOS_POSICIONAL = [
     {"nombre": "Número negativo: −13 (base 10)", "numero": "-13", "base": 10},
     {"nombre": "(101101)₂ en base 2", "numero": "101101", "base": 2},
 ]
+
+
+def _newton(nombre, sugerencia, f, x0, eps="0.0001", nmax="50", criterio="abs", tol_res="0.0001"):
+    """Ejemplo de Newton-Raphson con los valores por defecto del programa."""
+    return {"nombre": nombre, "sugerencia": sugerencia, "f": f, "x0": x0, "eps": eps,
+            "nmax": nmax, "criterio": criterio, "tol_res": tol_res}
+
+
+EJEMPLOS_NEWTON = [
+    _newton("Ejemplo 1: e⁻ˣ − x, x₀ = 0",
+            "4 iteraciones, x ≈ 0.567143; εₐ = 0.5, 0.066311, 8.32×10⁻⁴ y 1.25×10⁻⁷.",
+            "exp(-x) - x", "0"),
+    _newton("Ejemplo 2: x⁵ − 4x⁴ + 5x³ − 6x + 4, x₀ = −1.25",
+            "4 iteraciones hacia x = −1.",
+            "x**5 - 4*x**4 + 5*x**3 - 6*x + 4", "-1.25"),
+    _newton("Caso 1 (convergencia): x³ − 2x − 5, x₀ = 2",
+            "3 iteraciones, x ≈ 2.094551.",
+            "x**3 - 2*x - 5", "2"),
+    _newton("Caso 2 (derivada nula): x² − 4, x₀ = 0",
+            "f′(0) = 0: el método se detiene de forma controlada, sin dividir entre cero.",
+            "x**2 - 4", "0"),
+    _newton("Caso 3 (máximo de iteraciones): x¹⁰ − 1, x₀ = 0.5, máx. 10",
+            "f′(0.5) ≈ 0.02: x₁ = 51.65 y el método baja despacio; con máx. 10 no llega a ε.",
+            "x**10 - 1", "0.5", nmax="10"),
+]

@@ -2,7 +2,7 @@
 """
 Operaciones vectoriales en Rⁿ reutilizando core/algebra.py, ya que un vector
 es algebraicamente una matriz n×1.
-Unidad: Proyecto Integrador (Sesiones 1-11).
+Unidad: Proyecto Integrador.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta

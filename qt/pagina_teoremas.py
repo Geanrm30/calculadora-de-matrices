@@ -487,7 +487,7 @@ class PaginaTeoremas(PaginaBase):
     def __init__(self, ventana):
         """Construye el buscador, los filtros y una tarjeta por cada teorema."""
         super().__init__(ventana, "Teoremas y criterios",
-                         "Catálogo de teoremas del curso (Sesiones 1–11 y Programas 7 y 8)")
+                         "Catálogo de teoremas del curso (Programas 7, 8 y 9)")
         self._categoria = "todos"
         self._consulta = ""
 

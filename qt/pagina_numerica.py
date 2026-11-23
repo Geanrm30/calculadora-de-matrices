@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Métodos Numéricos (Programas 7 y 8): A) Bisección, B) Graficador de funciones,
-C) Notación posicional en base 10 y base 2, D) Errores numéricos y
-E) Jacobi y Gauss-Seidel (ver pagina_iterativos).
-Unidad: Programa 7: Métodos Numéricos y Programa 8: Métodos Iterativos.
+Métodos Numéricos (Programas 7, 8 y 9): A) Bisección, B) Graficador de funciones,
+C) Notación posicional en base 10 y base 2, D) Errores numéricos,
+E) Jacobi y Gauss-Seidel (ver pagina_iterativos) y F) Newton-Raphson (ver pagina_newton).
+Unidad: Programa 7: Métodos Numéricos, Programa 8: Métodos Iterativos y Programa 9: Newton-Raphson.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
@@ -33,7 +33,9 @@ from qt.ejemplos import (EJEMPLOS_BISECCION, EJEMPLOS_GRAFICA,
 from qt.exportar import escribir_pdf
 from qt.imagen import imagen_de_texto
 from qt.pagina_base import PaginaBase
-from qt.pagina_iterativos import PaginaIterativos
+from qt.grafica import GraficaInteres, VentanaGraficaInteres, abrir_ventana_grafica
+from qt.pagina_iterativos import PaginaIterativos, TablaIteraciones
+from qt.pagina_newton import PaginaNewton
 from qt.teclado import TecladoFunciones
 from qt.visor import abrir_visor
 
@@ -233,12 +235,12 @@ class TarjetaInforme(Tarjeta):
 
 class PaginaNumerica(PaginaBase):
 
-    """Sección de métodos numéricos: bisección, graficador, notación posicional, errores y métodos iterativos."""
+    """Sección de métodos numéricos: bisección, graficador, notación posicional, errores, métodos iterativos y Newton-Raphson."""
     def __init__(self, ventana):
-        """Construye las cinco pestañas y la barra de atajos."""
+        """Construye las seis pestañas y la barra de atajos."""
         super().__init__(ventana, "Métodos Numéricos",
-                         "Bisección  ·  Graficador de funciones  ·  Notación "
-                         "posicional  ·  Errores numéricos  ·  Jacobi y Gauss-Seidel")
+                         "Bisección  ·  Graficador de funciones  ·  Notación posicional  ·  "
+                         "Errores numéricos  ·  Jacobi y Gauss-Seidel  ·  Newton-Raphson")
         self._res_a = None
         self._raiz_marcada = None
         self._grafica_hecha = False
@@ -253,6 +255,9 @@ class PaginaNumerica(PaginaBase):
         self.pestana_e = PaginaIterativos(self, TarjetaInforme, self._fila_tab,
                                           self._panel_izq, self._con_desplazo)
         self.tabs.addTab(self.pestana_e, "E · Jacobi y Gauss-Seidel")
+        self.pestana_f = PaginaNewton(self, TarjetaInforme, self._fila_tab,
+                                      self._panel_izq, self._con_desplazo)
+        self.tabs.addTab(self.pestana_f, "F · Newton-Raphson")
         self.tabs.currentChanged.connect(self.ocultar_error)
         self.raiz.addWidget(self.tabs, 1)
         self._conectar_enter()
@@ -290,17 +295,19 @@ class PaginaNumerica(PaginaBase):
         """Tarjeta de informe de la pestaña actual."""
         i = self.tabs.currentIndex()
         return {0: self.inf_a, 1: self.inf_a, 2: self.inf_c, 3: self.inf_d,
-                4: self.pestana_e.informe_actual()}[i]
+                4: self.pestana_e.informe_actual(), 5: self.pestana_f.informe_actual()}[i]
 
     def calcular_actual(self):
         """Ejecuta la acción principal de la pestaña actual (Ctrl+Enter)."""
         {0: self.calcular_biseccion, 1: self.graficar, 2: self.descomponer,
-         3: self.informe_completo, 4: self.pestana_e.calcular}[self.tabs.currentIndex()]()
+         3: self.informe_completo, 4: self.pestana_e.calcular,
+         5: self.pestana_f.calcular}[self.tabs.currentIndex()]()
 
     def limpiar_actual(self):
         """Limpia los campos de la pestaña actual (se puede deshacer)."""
         self._limpiable({0: self.limpiar_a, 1: self.limpiar_b, 2: self.limpiar_c,
-                         3: self.limpiar_d, 4: self.pestana_e.limpiar}[self.tabs.currentIndex()])()
+                         3: self.limpiar_d, 4: self.pestana_e.limpiar,
+                         5: self.pestana_f.limpiar}[self.tabs.currentIndex()])()
 
     def _limpiable(self, limpiar):
         """Devuelve una acción que limpia con `limpiar` guardando antes lo escrito para deshacer."""
@@ -328,11 +335,15 @@ class PaginaNumerica(PaginaBase):
             autocompletar.al_pulsar_enter(campo, self.graficar)
         for campo in (self.xv_d, self.xa_d):
             autocompletar.al_pulsar_enter(campo, self.ver_errores)
-        for campo in (self.x_d, self.dx_d):
+        for campo in (self.f_d, self.x_d, self.dx_d):
             autocompletar.al_pulsar_enter(campo, self.ver_propagacion)
+        for campo in (self.capital_d, self.tasa_d, self.panio_d, self.anios_d, self.dec_d):
+            autocompletar.al_pulsar_enter(campo, self.ver_interes)
         for campo in self.pestana_e.campos_enter():
             autocompletar.al_pulsar_enter(campo, self.pestana_e.calcular)
-        for campo in (self.f_a, self.f_b):
+        for campo in self.pestana_f.campos_enter():
+            autocompletar.al_pulsar_enter(campo, self.pestana_f.calcular)
+        for campo in (self.f_a, self.f_b, self.f_d, self.pestana_f.f_campo):
             autocompletar.instalar(campo)
 
     def _graficar_raiz_si_hay(self):
@@ -963,7 +974,7 @@ class PaginaNumerica(PaginaBase):
         self.ocultar_error()
 
     def _tab_errores(self):
-        """Construye la pestaña D: punto flotante, tipos de error, error absoluto y propagación."""
+        """Construye la pestaña D: punto flotante, tipos de error, error absoluto, propagación e interés compuesto."""
         izq, lay = self._panel_izq()
 
         t1 = Tarjeta("Punto flotante y tipos de error")
@@ -988,7 +999,11 @@ class PaginaNumerica(PaginaBase):
         lay.addWidget(t2)
 
         t3 = self.tarjeta_prop = Tarjeta("Propagación del error")
-        t3.agregar(_etiqueta("f(x) = sen(x) + x²   ·   f′(x) = cos(x) + 2x"))
+        self.f_d = _campo(N.FUNCION_PROPAGACION, "f(x), por ejemplo sen(x) + x^2")
+        t3.agregar_layout(_con_etiqueta("Función f(x)", self.f_d))
+        self.teclado_d = TecladoFunciones(self.f_d)
+        t3.agregar(self.teclado_d)
+        t3.agregar(_etiqueta("f′(x) se obtiene con SymPy. Por defecto: f(x) = sen(x) + x²."))
         fila = QHBoxLayout()
         fila.setSpacing(8)
         self.x_d, self.dx_d = _campo("", "1"), _campo("", "0.1")
@@ -1000,6 +1015,30 @@ class PaginaNumerica(PaginaBase):
         t3.agregar(b4)
         lay.addWidget(t3)
 
+        t4 = self.tarjeta_interes = Tarjeta("Truncamiento frente a redondeo")
+        nota = _etiqueta("Interés compuesto Cₖ = (1 + i)·Cₖ₋₁ guardando solo d decimales en cada "
+                         "período: se compara truncar con redondear.")
+        nota.setWordWrap(True)
+        t4.agregar(nota)
+        self.capital_d, self.tasa_d = _campo("", "1000"), _campo("", "5")
+        self.panio_d, self.anios_d = _campo("", "12"), _campo("", "5")
+        self.dec_d = _campo("", "2")
+        fila1 = QHBoxLayout()
+        fila1.setSpacing(8)
+        fila1.addLayout(_con_etiqueta("Capital inicial C₀", self.capital_d))
+        fila1.addLayout(_con_etiqueta("Tasa anual r (%)", self.tasa_d))
+        t4.agregar_layout(fila1)
+        fila2 = QHBoxLayout()
+        fila2.setSpacing(8)
+        fila2.addLayout(_con_etiqueta("Períodos por año m", self.panio_d))
+        fila2.addLayout(_con_etiqueta("Años", self.anios_d))
+        fila2.addLayout(_con_etiqueta("Decimales d", self.dec_d))
+        t4.agregar_layout(fila2)
+        self.btn_interes = b7 = BotonAnimado("Simular interés compuesto", "verde")
+        b7.clicked.connect(self.ver_interes)
+        t4.agregar(b7)
+        lay.addWidget(t4)
+
         b5 = BotonAnimado("Informe completo del módulo", "primario")
         b5.clicked.connect(self.informe_completo)
         lay.addWidget(b5)
@@ -1007,25 +1046,65 @@ class PaginaNumerica(PaginaBase):
         b6.clicked.connect(self._limpiable(self.limpiar_d))
         lay.addWidget(b6)
         lay.addStretch(1)
+
         self.inf_d = TarjetaInforme(self, "Errores numéricos", "informe_errores",
                                     T.NARANJA)
-        return self._fila_tab(self._con_desplazo(izq), self.inf_d)
+        self.tabla_i = TablaIteraciones()
+        self.tabla_i.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tabla_i.customContextMenuRequested.connect(self._menu_tabla_i)
+        self._res_i = None
+        self.sub_d = QTabWidget()
+        self.sub_d.addTab(self.inf_d, "Informe")
+        self.sub_d.addTab(self.tabla_i, "Interés: tabla")
+        self.sub_d.addTab(self._panel_grafica_interes(), "Interés: gráfica del error")
+        der = QWidget()
+        dl = QVBoxLayout(der)
+        dl.setContentsMargins(8, 0, 0, 0)
+        dl.setSpacing(10)
+        dl.addWidget(self.sub_d, 1)
+        return self._fila_tab(self._con_desplazo(izq), der)
+
+    def _panel_grafica_interes(self):
+        """Panel de la gráfica del error de la simulación con sus botones de ventana, guardar y copiar."""
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(0, 6, 0, 0)
+        lay.setSpacing(8)
+        fila = QHBoxLayout()
+        fila.setSpacing(6)
+        for texto, accion in (("Abrir en ventana", self.abrir_ventana_interes),
+                              ("Guardar imagen", self.guardar_grafica_interes),
+                              ("Copiar imagen", self.copiar_grafica_interes)):
+            b = BotonAnimado(texto, "suave", pequeno=True)
+            b.clicked.connect(accion)
+            fila.addWidget(b)
+        fila.addStretch(1)
+        lay.addLayout(fila)
+        self.grafica_i = GraficaInteres()
+        lay.addWidget(self.grafica_i, 1)
+        self.lbl_grafica_i = _etiqueta("Simula el interés compuesto para ver el error de cada método.")
+        self.lbl_grafica_i.setWordWrap(True)
+        lay.addWidget(self.lbl_grafica_i)
+        return w
+
+    def _poner_d(self, texto, etiqueta, resumen):
+        """Muestra un informe de la pestaña D y lleva la vista a la pestaña «Informe»."""
+        self.sub_d.setCurrentIndex(0)
+        self.inf_d.poner(texto, etiqueta, resumen=resumen)
 
     def ver_punto_flotante(self):
         """Muestra el informe de representación en punto flotante."""
         self.ocultar_error()
-        self.inf_d.poner(N.informe_punto_flotante(), "Punto flotante",
-                         resumen=self._res_d("Punto flotante",
-                                             "0.1 + 0.2 == 0.3  →  {}".format(
-                                                 0.1 + 0.2 == 0.3),
-                                             "ε = 2.22e−16"))
+        self._poner_d(N.informe_punto_flotante(), "Punto flotante",
+                      self._res_d("Punto flotante",
+                                  "0.1 + 0.2 == 0.3  →  {}".format(0.1 + 0.2 == 0.3),
+                                  "ε = 2.22e−16"))
 
     def ver_tipos(self):
         """Muestra el informe de tipos de error."""
         self.ocultar_error()
-        self.inf_d.poner(N.informe_tipos_error(), "Tipos de error",
-                         resumen=self._res_d("Tipos de error",
-                                             "6 tipos de error con ejemplo", ""))
+        self._poner_d(N.informe_tipos_error(), "Tipos de error",
+                      self._res_d("Tipos de error", "6 tipos de error con ejemplo", ""))
 
     @staticmethod
     def _res_d(tipo, respuesta, insignia):
@@ -1054,35 +1133,123 @@ class PaginaNumerica(PaginaBase):
         self.ocultar_error()
         res = self._errores()
         if res:
-            self.inf_d.poner(res[0], "Errores xᵥ/xₐ",
-                             resumen=self._res_d("Error absoluto y relativo",
-                                                 res[1], ""))
+            self._poner_d(res[0], "Errores xᵥ/xₐ",
+                          self._res_d("Error absoluto y relativo", res[1], ""))
 
     def _propagacion(self):
-        """Calcula la propagación del error; devuelve (informe, respuesta) o None si hay error."""
-        for c in (self.x_d, self.dx_d):
+        """Calcula la propagación del error; devuelve (informe, respuesta, f) o None si hay error."""
+        for c in (self.f_d, self.x_d, self.dx_d):
             _marcar(c, False)
-        r = N.propagacion_error(self.x_d.text(), self.dx_d.text())
+        r = N.propagacion_error(self.x_d.text(), self.dx_d.text(), self.f_d.text())
         if not r["valido"]:
-            _marcar(self.dx_d if "Δx" in r["mensaje"] else self.x_d, True)
+            _marcar({"f": self.f_d, "dx": self.dx_d}.get(r["campo"], self.x_d), True)
             self.error("Propagación del error", r["mensaje"])
             return None
         resp = "Δy aprox. = {}  ·  Δy real = {}".format(N.cif(r["dy_aprox"]),
                                                         N.cif(r["dy_real"]))
-        return r["informe"], resp
+        return r["informe"], resp, r["texto_f"]
 
     def ver_propagacion(self):
         """Muestra el informe de propagación del error."""
         self.ocultar_error()
         res = self._propagacion()
         if res:
-            self.inf_d.poner(res[0], "Propagación",
-                             resumen=self._res_d("Propagación del error  ·  "
-                                                 "f(x) = sen(x) + x²", res[1], ""))
+            self._poner_d(res[0], "Propagación",
+                          self._res_d("Propagación del error  ·  f(x) = " + res[2], res[1], ""))
+
+    def _interes(self):
+        """Simula el interés compuesto; devuelve el resultado o None si los datos no sirven."""
+        campos = {"capital": self.capital_d, "tasa": self.tasa_d, "por_anio": self.panio_d,
+                  "anios": self.anios_d, "decimales": self.dec_d}
+        for c in campos.values():
+            _marcar(c, False)
+        r = N.simular_interes(self.capital_d.text(), self.tasa_d.text(), self.panio_d.text(),
+                              self.anios_d.text(), self.dec_d.text())
+        if not r["valido"]:
+            _marcar(campos.get(r["campo"], self.capital_d), True)
+            self.error("Truncamiento frente a redondeo", r["mensaje"])
+            return None
+        return r
+
+    @staticmethod
+    def _res_interes(r):
+        """Respuesta destacada del visor para la simulación del interés."""
+        d, f = r["decimales"], r["filas"][-1]
+        return {"tipo": "Truncamiento frente a redondeo  ·  {} períodos, {} decimales".format(
+                    r["n"], d),
+                "respuesta": "Truncado {}  ·  Redondeado {}".format(
+                    N._texto_decimal(f["trunc"], d), N._texto_decimal(f["redon"], d)),
+                "estado": "ok",
+                "insignia": "Error T = {}  ·  Error R = {}".format(
+                    N._cientifica(f["e_t"]), N._cientifica(f["e_r"]))}
+
+    def ver_interes(self, animar=True):
+        """Simula el interés compuesto y muestra informe, tabla y gráfica del error."""
+        self.ocultar_error()
+        r = self._interes()
+        if r is None:
+            return
+        self._mostrar_interes(r, animar)
+        self.sub_d.setCurrentIndex(1)
+
+    def _mostrar_interes(self, r, animar=True, registrar=True):
+        """Pone el informe, llena la tabla y dibuja la gráfica de una simulación ya calculada."""
+        self._res_i = r
+        d = r["decimales"]
+        self.inf_d.poner(r["informe"], "Interés compuesto", registrar=registrar,
+                         resumen=self._res_interes(r))
+        self.tabla_i.poner(N.columnas_interes(d), [N.valores_fila_interes(f, d) for f in r["filas"]],
+                           True, animar)
+        self.grafica_i.dibujar(r["grafica"], animar=animar)
+        self.lbl_grafica_i.setText(r["grafica"]["resumen"])
+
+    def _menu_tabla_i(self, pos):
+        """Menú de clic derecho de la tabla del interés: copiar la fila o toda la tabla."""
+        fila = self.tabla_i.rowAt(pos.y())
+        menu = QMenu(self)
+        if fila >= 0:
+            menu.addAction("Copiar fila", lambda: self.tabla_i.copiar(fila))
+        if self.tabla_i.rowCount():
+            menu.addAction("Copiar toda la tabla", lambda: self.tabla_i.copiar(-1))
+        if not menu.isEmpty():
+            menu.exec(self.tabla_i.viewport().mapToGlobal(pos))
+
+    def abrir_ventana_interes(self):
+        """Abre la gráfica del error del interés en una ventana grande."""
+        if self._res_i is None:
+            self.info("Sin gráfica", "Primero simula el interés compuesto.")
+            return
+        g = self._res_i["grafica"]
+        abrir_ventana_grafica("Gráfica — truncamiento frente a redondeo", g, None, None,
+                              g["resumen"], clase=VentanaGraficaInteres)
+
+    def guardar_grafica_interes(self):
+        """Pide una ruta y guarda la gráfica del interés como imagen."""
+        if self._res_i is None:
+            self.info("Sin gráfica", "Primero simula el interés compuesto.")
+            return
+        ruta, _ = QFileDialog.getSaveFileName(
+            self, "Guardar gráfica", "truncamiento_redondeo.png",
+            "Imagen PNG (*.png);;PDF (*.pdf);;Todos los archivos (*.*)")
+        if not ruta:
+            return
+        try:
+            self.grafica_i.guardar(ruta)
+            mostrar_aviso(self, "Gráfica guardada")
+        except (OSError, ValueError) as ex:
+            self.error("Error al guardar", str(ex))
+
+    def copiar_grafica_interes(self):
+        """Copia la gráfica del interés al portapapeles como imagen."""
+        if self._res_i is None:
+            self.info("Sin gráfica", "Primero simula el interés compuesto.")
+            return
+        QApplication.clipboard().setImage(self.grafica_i.imagen())
+        mostrar_aviso(self, "Gráfica copiada como imagen")
 
     @_medido("Módulo D")
     def informe_completo(self):
-        """Todo el módulo D; usa los valores de xv/xa y x/Δx si están escritos."""
+        """Todo el módulo D; usa los valores de xv/xa, f(x) con x/Δx y el interés si están escritos."""
         self.ocultar_error()
         partes = [N.informe_punto_flotante(), N.informe_tipos_error()]
         if self.xv_d.text().strip() or self.xa_d.text().strip():
@@ -1095,17 +1262,31 @@ class PaginaNumerica(PaginaBase):
             if res is None:
                 return
             partes.append(res[0])
-        self.inf_d.poner("\n\n".join(partes), "Módulo D completo",
-                         resumen=self._res_d("Errores numéricos",
-                                             "Informe completo del módulo D",
-                                             "{} apartados".format(len(partes))))
+        if any(c.text().strip() for c in (self.capital_d, self.tasa_d, self.panio_d,
+                                          self.anios_d, self.dec_d)):
+            r = self._interes()
+            if r is None:
+                return
+            partes.append(r["informe"])
+            self._mostrar_interes(r, True, registrar=False)
+        self._poner_d("\n\n".join(partes), "Módulo D completo",
+                      self._res_d("Errores numéricos", "Informe completo del módulo D",
+                                  "{} apartados".format(len(partes))))
 
     def limpiar_d(self):
         """Limpia los campos de la pestaña D."""
-        for c in (self.xv_d, self.xa_d, self.x_d, self.dx_d):
+        for c in (self.xv_d, self.xa_d, self.x_d, self.dx_d, self.capital_d, self.tasa_d,
+                  self.panio_d, self.anios_d, self.dec_d):
             c.clear()
             _marcar(c, False)
+        self.f_d.setText(N.FUNCION_PROPAGACION)
+        _marcar(self.f_d, False)
+        self._res_i = None
+        self.tabla_i.vaciar()
+        self.grafica_i.vaciar()
+        self.lbl_grafica_i.setText("Simula el interés compuesto para ver el error de cada método.")
         self.inf_d.poner("")
+        self.sub_d.setCurrentIndex(0)
         self.ocultar_error()
 
     def estado(self):
@@ -1122,9 +1303,13 @@ class PaginaNumerica(PaginaBase):
             "c_res": self.inf_c.texto,
             "d": [c.text() for c in (self.xv_d, self.xa_d, self.x_d, self.dx_d)],
             "d_res": self.inf_d.texto,
+            "d_f": self.f_d.text(),
+            "d_interes": [c.text() for c in (self.capital_d, self.tasa_d, self.panio_d,
+                                             self.anios_d, self.dec_d)],
             "historiales": [self.inf_a.historial, self.inf_c.historial,
                             self.inf_d.historial],
             "e": self.pestana_e.estado(),
+            "f": self.pestana_f.estado(),
         }
 
     def restaurar(self, d):
@@ -1142,6 +1327,10 @@ class PaginaNumerica(PaginaBase):
             self.base_c.setCurrentIndex(int(d["c"][1]))
             for c, v in zip((self.xv_d, self.xa_d, self.x_d, self.dx_d), d["d"]):
                 c.setText(v)
+            self.f_d.setText(str(d.get("d_f", N.FUNCION_PROPAGACION)))
+            for c, v in zip((self.capital_d, self.tasa_d, self.panio_d, self.anios_d,
+                             self.dec_d), d.get("d_interes", [])):
+                c.setText(str(v))
             if d.get("c_res"):
                 self.inf_c.poner(d["c_res"], registrar=False, pulso=False)
             if d.get("d_res"):
@@ -1152,6 +1341,11 @@ class PaginaNumerica(PaginaBase):
             if d.get("e"):
                 try:
                     self.pestana_e.restaurar(d["e"])
+                except (KeyError, IndexError, TypeError, ValueError):
+                    pass
+            if d.get("f"):
+                try:
+                    self.pestana_f.restaurar(d["f"])
                 except (KeyError, IndexError, TypeError, ValueError):
                     pass
             if d.get("a_calculado"):
@@ -1183,10 +1377,12 @@ class PaginaNumerica(PaginaBase):
         """Aplica el nuevo tamaño de letra a los informes y a la tabla."""
         for inf in (self.inf_a, self.inf_c, self.inf_d):
             inf.estilo()
-        for teclado in (self.teclado_a, self.teclado_b):
+        for teclado in (self.teclado_a, self.teclado_b, self.teclado_d):
             teclado.estilo()
+        self.tabla_i.estilo()
         self._estilo_tabla()
         self.pestana_e.aplicar_escala()
+        self.pestana_f.aplicar_escala()
         if self._res_a:
             self._llenar_tabla(self._res_a["filas"])
 

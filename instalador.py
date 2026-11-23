@@ -20,7 +20,8 @@ import sys
 import threading
 
 PAQUETES = (("PySide6", "PySide6-Essentials>=6.6"), ("numpy", "numpy"),
-            ("scipy", "scipy"), ("matplotlib", "matplotlib"))
+            ("scipy", "scipy"), ("matplotlib", "matplotlib"),
+            ("sympy", "sympy"))
 
 FONDO, PANEL, TEXTO, MUTED = "#1E1E2E", "#181825", "#CDD6F4", "#7F849C"
 NARANJA, ROJO, SUPERF = "#FAB387", "#F38BA8", "#313244"

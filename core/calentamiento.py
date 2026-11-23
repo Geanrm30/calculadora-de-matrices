@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Carga anticipada de Matplotlib y SciPy en un hilo, para que su primer uso no congele la ventana.
+Carga anticipada de Matplotlib, SciPy y SymPy en un hilo, para que su primer uso no congele la ventana.
 Quien necesite esas librerías llama antes a esperar(): dos hilos no deben importar
 el mismo paquete a la vez, porque Python puede bloquearse o dejarlo a medio cargar.
 Unidad: Programa 7: Métodos Numéricos.
@@ -18,7 +18,7 @@ def _importar():
     """Importa los módulos pesados en orden; ignora los que no estén instalados."""
     os.environ.setdefault("QT_API", "pyside6")
     for modulo in ("matplotlib.figure", "matplotlib.backends.backend_qtagg",
-                   "scipy.optimize"):
+                   "scipy.optimize", "sympy"):
         try:
             __import__(modulo)
         except ImportError:

@@ -2,7 +2,7 @@
 """
 Obtiene los valores de las variables a partir de la forma escalonada, tanto en
 forma numérica como simbólica (pivotes expresados en función de variables libres).
-Unidad: Proyecto Integrador (Sesiones 1-11).
+Unidad: Proyecto Integrador.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta

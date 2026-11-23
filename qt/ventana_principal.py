@@ -690,6 +690,19 @@ class VentanaPrincipal(QMainWindow):
                      "y paso a paso; si hace falta, propone reordenar las filas.",
                      lambda: num.pestana_e.btn_calcular, "numerico",
                      lambda: (num.tabs.setCurrentIndex(4), num.pestana_e.cargar_ejemplo(0))),
+            PasoTour("Newton-Raphson",
+                     "Pestaña F: escribe f(x) (SymPy calcula f′), x₀, la tolerancia y las "
+                     "iteraciones máximas. Obtienes la tabla, la gráfica con las tangentes, el "
+                     "informe paso a paso y el estado final (convergencia, derivada nula, "
+                     "oscilación o máximo de iteraciones).",
+                     lambda: num.pestana_f.btn_calcular, "numerico",
+                     lambda: (num.tabs.setCurrentIndex(5), num.pestana_f.cargar_ejemplo(0))),
+            PasoTour("Escalonada y vectores",
+                     "En Operaciones, la pestaña «Escalonada» verifica si A es REF o RREF y la "
+                     "reduce sin columna b; «Vectores» calcula c₁u + c₂v en un paso y dibuja "
+                     "u, v, u+v y u−v en R².",
+                     lambda: m.botones_op["esc_verificar"], "matrices",
+                     lambda: m.tabs.setCurrentIndex(3)),
             PasoTour("Teoremas: busca y filtra",
                      "Busca por nombre o enunciado (Ctrl+F) y filtra por categoría. "
                      "Lo encontrado sale resaltado y las coincidencias se abren solas.",

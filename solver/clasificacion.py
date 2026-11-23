@@ -2,7 +2,7 @@
 """
 Clasifica el sistema lineal aplicando el teorema de Rouché-Frobenius sobre la
 matriz escalonada: inconsistente, determinado o indeterminado.
-Unidad: Proyecto Integrador (Sesiones 1-11).
+Unidad: Proyecto Integrador.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta

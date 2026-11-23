@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 Verificador de propiedades algebraicas de matrices y vectores.
-Implementa las propiedades de las Sesiones 9-11: suma, escalar, transpuesta,
+Implementa las propiedades algebraicas: suma, escalar, transpuesta,
 producto, inversa y determinante. Cada propiedad calcula ambos lados por caminos
 distintos y los compara con fracciones exactas. MTM0120 — Universidad Americana.
-Unidad: Sesiones 9-11.
+Unidad: Propiedades algebraicas.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta

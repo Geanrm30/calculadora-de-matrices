@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 Catálogo de teoremas del Proyecto Integrador: Calculadora de Álgebra Lineal.
-Contiene los teoremas de las Sesiones 1-11 (sistemas lineales, independencia,
+Contiene los teoremas de sistemas y matrices (sistemas lineales, independencia,
 matrices, determinante, inversa y factorización LU) y los del Programa 7
-(bisección y errores numéricos). Cada entrada es (nombre, enunciado, dónde_se_usa).
-Unidad: Proyecto Integrador (Sesiones 1-11) y Programa 7.
+(bisección y errores numéricos), el Programa 8 (Jacobi y Gauss-Seidel) y el
+Programa 9 (Newton-Raphson) (formas escalonadas, vectores y errores). Cada entrada es (nombre, enunciado, dónde_se_usa).
+Unidad: Proyecto Integrador y Programa 7.
 MTM0120 Álgebra Lineal — Universidad Americana.
 Elaborado por: Anthony Sying González Chow, Jose Maria Moncada Maya,
                Geanfranco Alexander Rodriguez Mendieta
@@ -308,5 +309,55 @@ TEOREMAS = [
         "A simétrica definida positiva, converge siempre que 0 < λ < 2 "
         "(Ostrowski-Reich).",
         "Métodos Numéricos: Jacobi y Gauss-Seidel, verificación y relajación λ.",
+    ),
+    (
+        "Método de Newton-Raphson",
+        "Con f derivable, la recta tangente a f en xᵢ corta el eje x en el siguiente "
+        "aproximado:\n"
+        "   xᵢ₊₁ = xᵢ − f(xᵢ) / f′(xᵢ)       (f′(xᵢ) ≠ 0)\n"
+        "Es un método abierto: no necesita un intervalo con cambio de signo, solo un "
+        "valor inicial x₀. Se detiene cuando εₐ = |xᵢ₊₁ − xᵢ| < ε (o el error relativo "
+        "porcentual |(xᵢ₊₁ − xᵢ)/xᵢ₊₁|·100 si xᵢ₊₁ ≠ 0), o al llegar al máximo de "
+        "iteraciones. El resultado es una aproximación, nunca un valor exacto.",
+        "Métodos Numéricos: Newton-Raphson, tabla de iteraciones y rectas tangentes.",
+    ),
+    (
+        "Convergencia de Newton-Raphson",
+        "Si f ∈ C², f(r) = 0 y f′(r) ≠ 0, existe un entorno de r tal que, para x₀ dentro "
+        "de él, Newton converge a r con orden cuadrático:\n"
+        "   |eᵢ₊₁| ≈ |f″(r) / (2·f′(r))| · |eᵢ|²\n"
+        "(el número de cifras correctas se duplica en cada iteración). La convergencia es "
+        "LOCAL: con un x₀ lejano puede oscilar, diverger o ir a otra raíz. Si r es raíz "
+        "múltiple (f′(r) = 0) la convergencia pasa a ser solo lineal, y si f′(xᵢ) = 0 la "
+        "fórmula no se puede aplicar (tangente horizontal).",
+        "Métodos Numéricos: Newton-Raphson, tabla de iteraciones y estado final.",
+    ),
+    (
+        "Forma escalonada (REF) y escalonada reducida (RREF)",
+        "Una matriz está en forma escalonada si (1) las filas de ceros están al final, "
+        "(2) el pivote de cada fila queda estrictamente a la derecha del de la fila de "
+        "arriba y (3) debajo de cada pivote todo son ceros. Está en forma escalonada "
+        "REDUCIDA si además (4) cada pivote es 1 y (5) es la única entrada no nula de su "
+        "columna. Toda matriz es equivalente por filas a una RREF y esa RREF es ÚNICA; "
+        "la REF no lo es. Las posiciones pivote y el rango no dependen de la reducción.",
+        "Operaciones con matrices: pestaña «Escalonada» (verificar y reducir).",
+    ),
+    (
+        "Operaciones vectoriales y regla del paralelogramo",
+        "En Rⁿ la suma y el producto por un escalar actúan componente a componente: "
+        "(u + v)ᵢ = uᵢ + vᵢ y (c·u)ᵢ = c·uᵢ, de modo que c₁u + c₂v = (c₁u₁ + c₂v₁, …, "
+        "c₁uₙ + c₂vₙ) se obtiene en un solo paso. En R², u + v es la diagonal, desde el "
+        "origen, del paralelogramo de lados u y v; u − v es la otra diagonal, que va de "
+        "la punta de v a la punta de u.",
+        "Operaciones con matrices: pestaña «Vectores» y su gráfica en R².",
+    ),
+    (
+        "Truncamiento frente a redondeo en cálculos repetidos",
+        "Si en cada paso solo se guardan d decimales, truncar introduce un error de a lo "
+        "más 10⁻ᵈ SIEMPRE del mismo signo, así que se acumula; redondear introduce a lo "
+        "más ½·10⁻ᵈ con signos que se compensan en parte. En el interés compuesto "
+        "Cₖ = (1 + i)·Cₖ₋₁, el error de cada paso se amplifica por (1 + i) en los períodos "
+        "siguientes, por lo que el error acumulado del truncamiento suele ser mucho mayor.",
+        "Métodos Numéricos: Errores numéricos, simulación del interés compuesto.",
     ),
 ]
